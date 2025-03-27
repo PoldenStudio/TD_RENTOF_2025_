@@ -1860,6 +1860,7 @@ MonoBehaviour:
   effectsManager: {fileID: 770569963}
   dataSender: {fileID: 770569962}
   stateManager: {fileID: 1585652921}
+  swipeDetector: {fileID: 1585652908}
   debugMode: 0
 --- !u!114 &770569960
 MonoBehaviour:
@@ -1885,9 +1886,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69a292af95a2cc94aa80f1567b476551, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enableGammaCorrection: 0
-  gammaValue: 2.2
-  globalBrightness: 0.242
 --- !u!114 &770569962
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1917,14 +1915,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   synthLedCountBase: 20
-  speedBrightnessFactor: 5
   speedLedCountFactor: 2
+  speedBrightnessFactor: 5
   tailIntensity: 0.281
   moveDirection: 0
-  sunMovementPixelCount: 10
-  sunMovementCycleLength: 242.4333
-  sunMovementStartTime: 38
-  sunMovementEndTime: 230
+  warmSunSettings:
+    pixelCount: 10
+    cycleLength: 241
+    startTime: 38
+    endTime: 230
+    brightnessMultiplier: 1
+  coldSunSettings:
+    pixelCount: 10
+    cycleLength: 241
+    startTime: 38
+    endTime: 230
+    brightnessMultiplier: 1
+  toggleTouchMode: 1
+  cometMoveDelay: 0.2
+  currentSpeed: 1
 --- !u!114 &770569964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1941,7 +1950,9 @@ MonoBehaviour:
   ledsPerSegment: 1
   stripEnabled: 00000001
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 00000000000000000000000002000000
+  currentDisplayModes: 03000000000000000000000002000000
+  currentSunModes: 00000000000000000000000000000000
+  stripSettings: []
   monochromeStripSettings:
   - globalColor:
       serializedVersion: 2
@@ -1969,6 +1980,8 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4281282535
   stripSegmentColors: []
+  touchPanelCols: 12
+  touchPanelOffset: 50
 --- !u!1 &920054923
 GameObject:
   m_ObjectHideFlags: 0
@@ -3437,11 +3450,13 @@ MonoBehaviour:
   cometController: {fileID: 31414347}
   ledController: {fileID: 1597980945}
   soundManager: {fileID: 1585652922}
+  spiTouchPanel: {fileID: 770569959}
   curtainFullWait: 1
   swipeReactivateDelay: 0.5
   fadeOutDuration: 1
   fadeInDuration: 1
   soundFadeDuration: 1
+  cometDelayInTransition: 1
 --- !u!114 &1585652922
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3840,7 +3855,7 @@ MonoBehaviour:
     currentFrameIdle: 0
   debugText: {fileID: 0}
   autoCalculateOffsets: 0
-  enableFrameDebug: 1
+  enableFrameDebug: 0
   kineticControlCurve:
     serializedVersion: 2
     m_Curve:

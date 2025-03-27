@@ -17,6 +17,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private CometController cometController;
     [SerializeField] private LEDController ledController;
     [SerializeField] private SoundManager soundManager; // Добавлена ссылка на SoundManager
+    [SerializeField] private SPItouchPanel spiTouchPanel; // Добавлен контроллер для SPI лент
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 1f;
@@ -24,6 +25,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float fadeOutDuration = 0.5f;
     [SerializeField] private float fadeInDuration = 0.5f;
     [SerializeField] private float soundFadeDuration = 1f;
+    [SerializeField] private float cometDelayInTransition = 1f; // Задержка перед запуском комет в Transition
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
@@ -40,6 +42,27 @@ public class StateManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E))
         {
             StartCoroutine(TransitionToIdleCoroutine());
+        }
+
+        // Проверяем, достигли ли все кометы конца ленты в режиме Transition
+        if (CurrentState == AppState.Transition)
+        {
+            bool allCometsFinished = true;
+            for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+            {
+                if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+                {
+                    spiTouchPanel.effectsManager.UpdateComets(stripIndex, spiTouchPanel.stripDataManager);
+                    if (spiTouchPanel.effectsManager.stripComets.ContainsKey(stripIndex) && spiTouchPanel.effectsManager.stripComets[stripIndex].Count > 0)
+                    {
+                        allCometsFinished = false;
+                    }
+                }
+            }
+            if (allCometsFinished)
+            {
+                StartCoroutine(CompleteTransitionToIdle());
+            }
         }
     }
 
@@ -71,7 +94,6 @@ public class StateManager : MonoBehaviour
         OnPreviousStateChanged?.Invoke(previousState);
         OnStateChanged?.Invoke(CurrentState);
 
-
         curtainController.SetOnCurtainFullCallback(null);
 
         // LED переход: fade-out, смена JSON на активный, fade-in
@@ -88,6 +110,18 @@ public class StateManager : MonoBehaviour
         cometController.StartCometTravel(() => { cometFinished = true; });
         while (!cometFinished)
             yield return null;
+
+        // Запускаем кометы на SPI лентах через 1 секунду
+        yield return new WaitForSeconds(cometDelayInTransition);
+        for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+        {
+            if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+            {
+                float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(spiTouchPanel.effectsManager.synthLedCountBase + Mathf.Abs(spiTouchPanel.effectsManager.currentSpeed) * spiTouchPanel.effectsManager.speedLedCountFactor));
+                float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(spiTouchPanel.effectsManager.currentSpeed) * spiTouchPanel.effectsManager.speedBrightnessFactor);
+                spiTouchPanel.effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
+            }
+        }
 
         yield return new WaitForSeconds(curtainFullWait);
 
@@ -121,7 +155,6 @@ public class StateManager : MonoBehaviour
         Debug.Log("[StateManager] Starting transition to Idle.");
         playbackController.SetSwipeControlEnabled(false);
 
-
         // LED переход: переключаем JSON на Idle (без fade-эффекта)
         ledController.SwitchToIdleJSON();
 
@@ -133,7 +166,13 @@ public class StateManager : MonoBehaviour
         soundManager?.StartFadeOut(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
 
-        previousState = CurrentState;
+        // Здесь мы не завершаем переход в Idle сразу, а ждем, пока все кометы дойдут до конца ленты
+        // (логика завершения перехода перенесена в FixedUpdate)
+    }
+
+    private IEnumerator CompleteTransitionToIdle()
+    {
+        AppState previousState = CurrentState;
         CurrentState = AppState.Idle;
         OnPreviousStateChanged?.Invoke(previousState);
         OnStateChanged?.Invoke(CurrentState);
@@ -145,6 +184,15 @@ public class StateManager : MonoBehaviour
 
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
+
+        // Сбрасываем кометы на SPI лентах
+        for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+        {
+            if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+            {
+                spiTouchPanel.effectsManager.ResetComets(stripIndex);
+            }
+        }
 
         Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
@@ -165,6 +213,15 @@ public class StateManager : MonoBehaviour
             cometController.ResetComet();
 
             soundManager?.StopSoundImmediately();
+
+            // Сбрасываем кометы на SPI лентах
+            for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+            {
+                if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+                {
+                    spiTouchPanel.effectsManager.ResetComets(stripIndex);
+                }
+            }
 
             OnPreviousStateChanged?.Invoke(previousState);
             OnStateChanged?.Invoke(CurrentState);
@@ -200,6 +257,15 @@ public class StateManager : MonoBehaviour
 
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
+
+        // Сбрасываем кометы на SPI лентах
+        for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+        {
+            if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+            {
+                spiTouchPanel.effectsManager.ResetComets(stripIndex);
+            }
+        }
 
         Debug.Log("[StateManager] SwitchToIdle workflow completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);

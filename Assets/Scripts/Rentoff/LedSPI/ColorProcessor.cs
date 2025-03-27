@@ -5,25 +5,14 @@ namespace LEDControl
 {
     public class ColorProcessor : MonoBehaviour
     {
-        [Header("Gamma Correction")]
-        [Tooltip("Enable Gamma Correction for non-linear brightness adjustment.")]
-        public bool enableGammaCorrection = true;
-
-        [Tooltip("Gamma value. Typical value is 2.2 or 2.5.")]
-        [Range(0.1f, 5.0f)]
-        [SerializeField] private float gammaValue = 2.2f;
-
-        [Range(0f, 1f)]
-        [SerializeField] private float globalBrightness = 1.0f;
-
         private byte[] gammaTable = new byte[256];
 
         private void Awake()
         {
-            InitializeGammaTable();
+            // Инициализация гамма-таблицы не нужна здесь, так как она будет создаваться для каждой ленты
         }
 
-        public void InitializeGammaTable()
+        private void InitializeGammaTable(float gammaValue)
         {
             for (int i = 0; i < 256; ++i)
             {
@@ -33,31 +22,32 @@ namespace LEDControl
             }
         }
 
-        public byte ApplyGammaCorrection(byte colorByte)
+        public byte ApplyGammaCorrection(byte colorByte, float gammaValue, bool enableGammaCorrection)
         {
             if (enableGammaCorrection)
             {
+                InitializeGammaTable(gammaValue);
                 return gammaTable[colorByte];
             }
             return colorByte;
         }
 
-        public string ColorToHexMonochrome(Color32 color)
+        public string ColorToHexMonochrome(Color32 color, float brightness, float gammaValue, bool enableGammaCorrection)
         {
-            float lum = (color.r * 0.299f + color.g * 0.587f + color.b * 0.114f) * globalBrightness;
-            byte monoColorByte = ApplyGammaCorrection((byte)Mathf.Clamp(lum, 0f, 255f));
+            float lum = (color.r * 0.299f + color.g * 0.587f + color.b * 0.114f) * brightness;
+            byte monoColorByte = ApplyGammaCorrection((byte)Mathf.Clamp(lum, 0f, 255f), gammaValue, enableGammaCorrection);
             return monoColorByte.ToString("X2");
         }
 
-        public string ColorToHexRGB(Color32 color)
+        public string ColorToHexRGB(Color32 color, float brightness, float gammaValue, bool enableGammaCorrection)
         {
-            byte r = ApplyGammaCorrection((byte)Mathf.Clamp(color.r * globalBrightness, 0f, 255f));
-            byte g = ApplyGammaCorrection((byte)Mathf.Clamp(color.g * globalBrightness, 0f, 255f));
-            byte b = ApplyGammaCorrection((byte)Mathf.Clamp(color.b * globalBrightness, 0f, 255f));
+            byte r = ApplyGammaCorrection((byte)Mathf.Clamp(color.r * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            byte g = ApplyGammaCorrection((byte)Mathf.Clamp(color.g * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            byte b = ApplyGammaCorrection((byte)Mathf.Clamp(color.b * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
             return r.ToString("X2") + g.ToString("X2") + b.ToString("X2");
         }
 
-        public string ColorToHexRGBW(Color32 color)
+        public string ColorToHexRGBW(Color32 color, float brightness, float gammaValue, bool enableGammaCorrection)
         {
             byte r = color.r;
             byte g = color.g;
@@ -68,33 +58,12 @@ namespace LEDControl
             g = (byte)Mathf.Max(0, g - w);
             b = (byte)Mathf.Max(0, b - w);
 
-            r = ApplyGammaCorrection((byte)Mathf.Clamp(r * globalBrightness, 0f, 255f));
-            g = ApplyGammaCorrection((byte)Mathf.Clamp(g * globalBrightness, 0f, 255f));
-            b = ApplyGammaCorrection((byte)Mathf.Clamp(b * globalBrightness, 0f, 255f));
-            w = ApplyGammaCorrection((byte)Mathf.Clamp(w * globalBrightness, 0f, 255f));
+            r = ApplyGammaCorrection((byte)Mathf.Clamp(r * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            g = ApplyGammaCorrection((byte)Mathf.Clamp(g * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            b = ApplyGammaCorrection((byte)Mathf.Clamp(b * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            w = ApplyGammaCorrection((byte)Mathf.Clamp(w * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
 
             return r.ToString("X2") + g.ToString("X2") + b.ToString("X2") + w.ToString("X2");
-        }
-
-        public void SetGlobalBrightness(float brightness)
-        {
-            globalBrightness = brightness;
-        }
-
-        public float GetGlobalBrightness()
-        {
-            return globalBrightness;
-        }
-
-        public void SetGammaCorrection(bool enabled, float gamma)
-        {
-            enableGammaCorrection = enabled;
-
-            if (gammaValue != gamma)
-            {
-                gammaValue = gamma;
-                InitializeGammaTable();
-            }
         }
     }
 }
