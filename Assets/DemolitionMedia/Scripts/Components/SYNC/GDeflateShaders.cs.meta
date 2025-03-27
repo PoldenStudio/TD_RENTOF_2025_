@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 9ce92273885f13d4c859a3776301f655
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - shaderSimd16: {fileID: 7200000, guid: ea02708acecdbeb4f927a70931e54a59, type: 3}
+  - shaderSimd16Wave: {fileID: 7200000, guid: 35993591792eb514eb36aa5eceadd75c, type: 3}
+  - shaderSimd32: {fileID: 7200000, guid: 17d8f122d9e19f14bb5c694accea19df, type: 3}
+  - shaderSimd32Wave: {fileID: 7200000, guid: 1e09c7dd49d64194bbf1914a5be73da0, type: 3}
+  - shaderSimd64: {fileID: 7200000, guid: d5936d3c8c782aa46bdd7d0ff040ae09, type: 3}
+  - shaderSimd64Wave: {fileID: 7200000, guid: fe716ef64be52f445b036a1961b610f5, type: 3}
+  - shaderSimd128: {fileID: 7200000, guid: 605b85708550d3a419c78eeffdc2a9b8, type: 3}
+  - shaderSimd128Wave: {fileID: 7200000, guid: e96155c5e58a77a409d1bd471d10b7c5, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

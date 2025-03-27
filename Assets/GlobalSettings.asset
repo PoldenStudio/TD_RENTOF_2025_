@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e10ecf94a3e1d1a42b358d54a058c938, type: 3}
+  m_Name: GlobalSettings
+  m_EditorClassIdentifier: 
+  contentSettings:
+    defaultModeMovieName: Active_end.mov
+    idleModeMovieName: Idle_mode.mov
+    spcModeMovieName: Bomba_2024.06.15.mov
+    defaultModeChan: malva_v.4.chan
+    spcModeChan: bomba_v.1.chan
+    defaulModeOST: {fileID: 8300000, guid: 3e5b1cd1287be7e48b65e6f15e754370, type: 3}
+    spcModeOST: {fileID: 8300000, guid: 3e5b1cd1287be7e48b65e6f15e754370, type: 3}
+  networkSettings:
+    soundPort: 7027
+    commandsRecievePort: 7026
+    commandPacketSize: 2
+  generalSettings:
+    activeMode: 0
+    lastSetVolumeLevel: 0
+    installationName: MALVA
+    targetFPS: 120
+    inputScaleFactor: 100
+    threshold: 0.125
+  dmxSettings:
+    dmxPortName: COM8
+    dmxUpdateRate: 60
+    dmxUniverseIndex: 1

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fa6c2ef45a33c45789b51b4fe9e5519d
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 278896
+  packageName: AVPro Video v3 - Ultra Edition
+  packageVersion: 3.0.0
+  assetPath: Assets/AVProVideo/Runtime/Plugins/iOS/AVProVideo.xcframework/Info.plist
+  uploadId: 651967

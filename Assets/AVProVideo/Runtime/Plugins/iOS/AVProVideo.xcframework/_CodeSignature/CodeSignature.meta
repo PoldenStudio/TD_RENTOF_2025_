@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 529f03c5cb434473ebf270834709d720
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 278896
+  packageName: AVPro Video v3 - Ultra Edition
+  packageVersion: 3.0.0
+  assetPath: Assets/AVProVideo/Runtime/Plugins/iOS/AVProVideo.xcframework/_CodeSignature/CodeSignature
+  uploadId: 651967
