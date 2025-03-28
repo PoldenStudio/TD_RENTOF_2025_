@@ -133,7 +133,7 @@ public class SPItouchPanel : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (dataChanged || dataSender.ShouldSendData())
+        if (dataChanged && dataSender.ShouldSendData())
         {
             if (stateManager.CurrentState == StateManager.AppState.Transition && Time.time - transitionStartTime >= 1f && isTransitioning)
             {

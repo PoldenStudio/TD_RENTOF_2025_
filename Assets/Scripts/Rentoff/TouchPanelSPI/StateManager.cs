@@ -61,7 +61,7 @@ public class StateManager : MonoBehaviour
             }
             if (allCometsFinished)
             {
-                StartCoroutine(CompleteTransitionToIdle());
+                //StartCoroutine(CompleteTransitionToIdle());
             }
         }
     }

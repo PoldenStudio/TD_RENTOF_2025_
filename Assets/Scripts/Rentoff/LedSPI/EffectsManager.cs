@@ -96,6 +96,7 @@ namespace LEDControl
         [SerializeField] private float cometMoveDelay = 0.2f;
 
         public float currentSpeed = 1f;
+        public float MultiplySpeed = 2f;
         private float sunMovementPhase = 0f;
         public Dictionary<int, List<Comet>> stripComets = new Dictionary<int, List<Comet>>();
         private Dictionary<int, float> lastTouchTimes = new Dictionary<int, float>(); // Время последнего касания для каждой ленты
@@ -108,9 +109,12 @@ namespace LEDControl
         private SunMovementSettings previousWarmSunSettings;
         private SunMovementSettings previousColdSunSettings;
         [SerializeField] private StripDataManager stripDataManager;
+
+
+
         public void UpdateSpeed(float speed)
         {
-            currentSpeed = speed;
+            currentSpeed = speed * MultiplySpeed;
             // Обновляем направление движения для всех комет на основе знака скорости
             foreach (var strip in stripComets)
             {

@@ -1917,8 +1917,10 @@ MonoBehaviour:
   synthLedCountBase: 20
   speedLedCountFactor: 2
   speedBrightnessFactor: 5
-  tailIntensity: 0.281
+  tailIntensity: 0.086
   moveDirection: 0
+  startFromEnd: 1
+  stationaryBrightnessFactor: 0.5
   warmSunSettings:
     pixelCount: 10
     cycleLength: 241
@@ -1934,6 +1936,8 @@ MonoBehaviour:
   toggleTouchMode: 1
   cometMoveDelay: 0.2
   currentSpeed: 1
+  MultiplySpeed: 2
+  stripDataManager: {fileID: 770569964}
 --- !u!114 &770569964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1946,11 +1950,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90212b2feae384689065f9fe14050f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalLEDsPerStrip: 0a0000000a0000000a000000c8000000
+  totalLEDsPerStrip: c8000000c8000000c8000000fa000000
   ledsPerSegment: 1
-  stripEnabled: 00000001
+  stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 03000000000000000000000002000000
+  currentDisplayModes: 00000000000000000000000002000000
   currentSunModes: 00000000000000000000000000000000
   stripSettings: []
   monochromeStripSettings:
@@ -1978,10 +1982,10 @@ MonoBehaviour:
       rgba: 4278190080
     synthColor:
       serializedVersion: 2
-      rgba: 4281282535
+      rgba: 4294967295
   stripSegmentColors: []
   touchPanelCols: 12
-  touchPanelOffset: 50
+  touchPanelOffset: 70
 --- !u!1 &920054923
 GameObject:
   m_ObjectHideFlags: 0
@@ -3275,7 +3279,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portNames:
-  - COM11
+  - COM12
   baudRate: 115200
   dataTimeout: 1
   idleTimeout: 40
@@ -3629,7 +3633,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stateManager: {fileID: 1585652921}
-  comPortName: COM15
+  comPortName: COM16
   baudRate: 250000
   baseFramesPerSecond: 60
   frameSkip: 1
@@ -3659,136 +3663,8 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   videoLength: 242.4333
-  currentMode: 0
+  currentMode: 2
   ledStrips:
-  - name: LED Strip
-    totalLEDs: 1
-    ledsPerSegment: 1
-    dmxChannelOffset: 202
-    globalColor: {r: 1, g: 1, b: 1, a: 1}
-    segmentColors:
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
-    normalJsonPath: Active_bottom_rgbwmix.json
-    idleJsonPath: Active_bottom_rgbwmix.json
-    jsonFormat: 3
-    fullNormalJsonPath: 
-    fullIdleJsonPath: 
-    currentFrameActive: 0
-    currentFrameIdle: 0
-  - name: "\u041B\u0435\u0432\u0430\u044F \u043B\u0435\u043D\u0442\u0430 (rgb)"
-    totalLEDs: 1
-    ledsPerSegment: 1
-    dmxChannelOffset: 199
-    globalColor: {r: 1, g: 1, b: 1, a: 1}
-    segmentColors:
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    - {r: 0, g: 0, b: 0, a: 1}
-    segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
-    normalJsonPath: Active_top_rgbwmix.json
-    idleJsonPath: Active_top_rgbwmix.json
-    jsonFormat: 3
-    fullNormalJsonPath: 
-    fullIdleJsonPath: 
-    currentFrameActive: 0
-    currentFrameIdle: 0
   - name: LED Strip
     totalLEDs: 50
     ledsPerSegment: 1
@@ -3853,9 +3729,137 @@ MonoBehaviour:
     fullIdleJsonPath: 
     currentFrameActive: 0
     currentFrameIdle: 0
+  - name: "\u041B\u0435\u0432\u0430\u044F \u043B\u0435\u043D\u0442\u0430 (rgb)"
+    totalLEDs: 1
+    ledsPerSegment: 1
+    dmxChannelOffset: 100
+    globalColor: {r: 1, g: 1, b: 1, a: 1}
+    segmentColors:
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
+    normalJsonPath: Active_top_rgbwmix.json
+    idleJsonPath: Active_top_rgbwmix.json
+    jsonFormat: 3
+    fullNormalJsonPath: 
+    fullIdleJsonPath: 
+    currentFrameActive: 0
+    currentFrameIdle: 0
+  - name: LED Strip
+    totalLEDs: 1
+    ledsPerSegment: 1
+    dmxChannelOffset: 101
+    globalColor: {r: 1, g: 1, b: 1, a: 1}
+    segmentColors:
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
+    normalJsonPath: Active_bottom_rgbwmix.json
+    idleJsonPath: Active_bottom_rgbwmix.json
+    jsonFormat: 3
+    fullNormalJsonPath: 
+    fullIdleJsonPath: 
+    currentFrameActive: 0
+    currentFrameIdle: 0
   debugText: {fileID: 0}
-  autoCalculateOffsets: 0
-  enableFrameDebug: 0
+  autoCalculateOffsets: 1
+  enableFrameDebug: 1
   kineticControlCurve:
     serializedVersion: 2
     m_Curve:
@@ -3889,8 +3893,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  kineticHeightDmxChannel1: 511
-  kineticHeightDmxChannel2: 512
+  kineticHeightDmxChannel1: 509
+  kineticHeightDmxChannel2: 510
   idleMode: 1
 --- !u!1 &1631245014
 GameObject:
