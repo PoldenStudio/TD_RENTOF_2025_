@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using LEDControl;
+using UnityEngine;
 
 namespace LEDControl
 {
@@ -21,14 +22,16 @@ namespace LEDControl
 
             for (int i = 0; i < totalLEDs; i++)
             {
-                int baseChannel = i * channelsPerLed + 1 + offset;
+                int baseChannel = i * channelsPerLed + offset;
 
                 if (baseChannel + channelsPerLed - 1 > 512)
-                    break;
+                {
+                    Debug.LogWarning($"DMX channel overflow detected for LED strip! Offset: {offset}, Total LEDs: {totalLEDs}, Channels per LED: {channelsPerLed}");
+                    break; // Прерываем цикл, если данные выходят за пределы DMX
+                }
 
                 if (pixelIndex < pixels.Length)
                 {
-                    // Обработка данных пикселя с учётом исходного и целевого форматов
                     ProcessPixelData(frameData.format, stripFormat, pixels[pixelIndex], preCalculatedFrame.channelValues, baseChannel);
                     pixelIndex++;
                 }
@@ -38,18 +41,14 @@ namespace LEDControl
 
         private static int GetChannelsForFormat(ColorFormat format)
         {
-            switch (format)
+            return format switch
             {
-                case ColorFormat.RGB:
-                    return 3;
-                case ColorFormat.RGBW:
-                case ColorFormat.HSV:
-                    return 4;
-                case ColorFormat.RGBWMix:
-                    return 5;
-                default:
-                    return 3;
-            }
+                ColorFormat.RGB => 3,
+                ColorFormat.RGBW => 4,
+                ColorFormat.HSV => 3,
+                ColorFormat.RGBWMix => 5,
+                _ => 3,
+            };
         }
 
         private static void ProcessPixelData(ColorFormat sourceFormat, ColorFormat targetFormat, byte[] pixelData, byte[] outputBuffer, int baseChannel)

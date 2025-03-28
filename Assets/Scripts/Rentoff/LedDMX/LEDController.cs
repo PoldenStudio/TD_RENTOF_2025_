@@ -272,12 +272,9 @@ namespace LEDControl
             UpdateKineticControl();
         }
 
-        
-        //изменение каналов байт вычисляется неправильно, учитывай что при videoLength играет обозначенное число секунд, но мы можем ускорить его проигрывание за счет currentSpeed
-        //currentSpeed это параметр скорости воспроизведения видео videoLength. при currentSpeed =1, нормальная скорость воспроизведения. Важно это учитывать
-        //
-        //но сейчас логика работает неправильно, в общем мы должны правильно перемещать по кривой, скорость выше, перемещаемся быстрее, медленее или назад, все учитывай. исправь функцию
-     void UpdateKineticControl()
+
+        //исправление логики вычисления кинетики
+        void UpdateKineticControl()
         {
             if (idleMode)
             {
@@ -291,36 +288,26 @@ namespace LEDControl
                 if (!confirmTime)
                 {
                     videoLength = mediaPlayer.DurationSeconds;
-                    kineticStartTime = Time.time;  //  Сбрасываем стартовое время при инициализации
+                    kineticStartTime = Time.time;
                     confirmTime = true;
                 }
 
-                // Вычисляем нормализованное время с учетом скорости.
-                float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;  // Учитываем currentSpeed
+                float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
                 float normalizedTime = elapsedTime / videoLength;
-
-                //  Обрезаем нормализованное время, чтобы оно всегда было в пределах [0, 1] и циклично.
                 normalizedTime = normalizedTime % 1f;
 
-                // Получаем значение кривой по высоте.
                 float yValue = kineticControlCurve.Evaluate(normalizedTime);
-                yValue = Mathf.Clamp01(yValue); //  Ограничение необходимо, но, вероятно, избыточно, т.к. Evaluate возвращает [0,1]
+                yValue = Mathf.Clamp01(yValue);
 
-                byte highByte;
-                byte lowByte;
+                float minKineticValue = 8f;
+                float maxKineticValue = 210f;
+                float scaledValue = Mathf.Lerp(minKineticValue, maxKineticValue, yValue);
 
-                if (yValue < 0.5f)
-                {
-                    // Первая половина диапазона: только первый байт увеличивается от 0 до 255
-                    highByte = (byte)((yValue / 0.5f) * 255.0f);
-                    lowByte = 0;
-                }
-                else
-                {
-                    // Вторая половина диапазона: первый байт фиксирован на 255, второй растет от 0 до 255
-                    highByte = 255;
-                    lowByte = (byte)(((yValue - 0.5f) / 0.5f) * 255.0f);
-                }
+                // Преобразуем scaledValue в 16 битное значение
+                float combinedValue = scaledValue * 256f; // масштабируем, чтобы использовать 2 байта (8 бит + 8 бит)
+
+                byte highByte = (byte)(combinedValue / 256f);  // старший байт
+                byte lowByte = (byte)(combinedValue % 256f);   // младший байт
 
                 WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, highByte);
                 WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, lowByte);
@@ -419,6 +406,7 @@ namespace LEDControl
 
         void BuildJsonDataSyncBuffer(float brightness)
         {
+            // Очищаем буфер только один раз перед началом обработки всех лент
             Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
 
             foreach (var strip in ledStrips)
@@ -432,17 +420,19 @@ namespace LEDControl
                 int frameIndex = Mathf.FloorToInt(currentFrame);
                 frameIndex = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
 
+                // Получаем предрассчитанные значения для текущей ленты
                 byte[] stripValues = frames[frameIndex].channelValues;
-                int offset = strip.dmxChannelOffset;  // Используем ручной offset
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
-                    int globalChannel = offset + i;
+                    int globalChannel = i + 1; // DMX каналы начинаются с 1
 
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
+                        // Суммируем значения (наложение данных от всех лент)
+                        byte currentValue = FrameBuffer[globalChannel];
                         byte newValue = (byte)(stripValues[i] * brightness);
-                        FrameBuffer[globalChannel] = newValue; // Записываем новое значение напрямую
+                        FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
                     }
                 }
             }

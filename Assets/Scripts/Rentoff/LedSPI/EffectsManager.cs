@@ -120,7 +120,15 @@ namespace LEDControl
             {
                 foreach (var comet in strip.Value)
                 {
-                    comet.direction = currentSpeed >= 0 ? 1f : -1f;
+                    if (currentSpeed < 0)
+                    {
+                        comet.direction = -1f;
+                    }
+                    else
+                    {
+                        comet.direction = 1f;
+                    }
+                        //comet.direction = currentSpeed >= 0 ? 1f : -1f;
                 }
             }
         }
