@@ -272,12 +272,9 @@ namespace LEDControl
             UpdateKineticControl();
         }
 
-        
-        //изменение каналов байт вычисляется неправильно, учитывай что при videoLength играет обозначенное число секунд, но мы можем ускорить его проигрывание за счет currentSpeed
-        //currentSpeed это параметр скорости воспроизведения видео videoLength. при currentSpeed =1, нормальная скорость воспроизведения. Важно это учитывать
-        //
-        //но сейчас логика работает неправильно, в общем мы должны правильно перемещать по кривой, скорость выше, перемещаемся быстрее, медленее или назад, все учитывай. исправь функцию
-     void UpdateKineticControl()
+
+        //исправление логики вычисления кинетики
+        void UpdateKineticControl()
         {
             if (idleMode)
             {
@@ -309,18 +306,10 @@ namespace LEDControl
                 byte highByte;
                 byte lowByte;
 
-                if (yValue < 0.5f)
-                {
-                    // Первая половина диапазона: только первый байт увеличивается от 0 до 255
-                    highByte = (byte)((yValue / 0.5f) * 255.0f);
-                    lowByte = 0;
-                }
-                else
-                {
-                    // Вторая половина диапазона: первый байт фиксирован на 255, второй растет от 0 до 255
-                    highByte = 255;
-                    lowByte = (byte)(((yValue - 0.5f) / 0.5f) * 255.0f);
-                }
+                // Разделение значения на два байта
+                float combinedValue = yValue * 65535f; // Максимальное значение для 2 байт (2^16 -1)
+                highByte = (byte)(combinedValue / 256f); // Старший байт
+                lowByte = (byte)(combinedValue % 256f);   // Младший байт
 
                 WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, highByte);
                 WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, lowByte);
@@ -421,6 +410,7 @@ namespace LEDControl
         {
             Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
 
+            // Перебираем каждую ленту
             foreach (var strip in ledStrips)
             {
                 PreCalculatedDmxFrame[] frames = idleMode ? strip.preCalculatedIdleFrames : strip.preCalculatedNormalFrames;
@@ -435,14 +425,18 @@ namespace LEDControl
                 byte[] stripValues = frames[frameIndex].channelValues;
                 int offset = strip.dmxChannelOffset;  // Используем ручной offset
 
+                // Перебираем каналы DMX для этой ленты
                 for (int i = 0; i < stripValues.Length; i++)
                 {
-                    int globalChannel = offset + i;
+                    int globalChannel = offset + i; // Глобальный канал DMX
 
+                    // Проверяем, что канал в допустимом диапазоне и не является кинетическим
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
+                        // Применяем яркость
                         byte newValue = (byte)(stripValues[i] * brightness);
-                        FrameBuffer[globalChannel] = newValue; // Записываем новое значение напрямую
+                        // Записываем значение в буфер.  Перезаписываем напрямую, т.к. данные JSON уже с учетом яркости.
+                        WriteToDMXChannel(FrameBuffer, globalChannel, newValue);
                     }
                 }
             }
