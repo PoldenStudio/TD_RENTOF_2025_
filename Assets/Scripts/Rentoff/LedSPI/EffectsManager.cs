@@ -115,7 +115,7 @@ namespace LEDControl
         public void UpdateSpeed(float speed)
         {
             currentSpeed = speed * MultiplySpeed;
-            // Обновляем направление движения для всех комет на основе знака скорости
+/*            // Обновляем направление движения для всех комет на основе знака скорости
             foreach (var strip in stripComets)
             {
                 foreach (var comet in strip.Value)
@@ -130,7 +130,7 @@ namespace LEDControl
                     }
                         //comet.direction = currentSpeed >= 0 ? 1f : -1f;
                 }
-            }
+            }*/
         }
 
         public void UpdateComets(int stripIndex, StripDataManager stripManager)
@@ -162,18 +162,25 @@ namespace LEDControl
                 // Двигаем комету, если она движется
                 if (comet.isMoving)
                 {
-                    float directionMultiplier = comet.direction; // Используем направление кометы
-                    comet.position += currentSpeed * timeSinceLastUpdate * 30f * directionMultiplier;
+                    // Обновляем направление на каждый кадр
+                    if (startFromEnd)
+                    {
+                        comet.direction = currentSpeed >= 0 ? -1f : 1f;
+                    }
+                    else
+                    {
+                        comet.direction = currentSpeed >= 0 ? 1f : -1f;
+                    }
 
-                    // Если комета выходит за пределы ленты, перемещаем ее в начало или конец
+
+                        float directionMultiplier = comet.direction;
+                    comet.position += Mathf.Abs(currentSpeed) * timeSinceLastUpdate * 30f * directionMultiplier;
+
+                    // Обработка выхода за пределы
                     if (comet.position < 0)
-                    {
-                        comet.position += totalLEDs; // Перемещаем в конец ленты
-                    }
+                        comet.position += totalLEDs;
                     else if (comet.position >= totalLEDs)
-                    {
-                        comet.position -= totalLEDs; // Перемещаем в начало ленты
-                    }
+                        comet.position -= totalLEDs;
                 }
             }
         }
@@ -202,7 +209,11 @@ namespace LEDControl
             }
 
             // Определяем направление на основе текущей скорости
+            
             float direction = currentSpeed >= 0 ? 1f : -1f;
+
+
+
             stripComets[stripIndex].Add(new Comet(position, color, length, brightness, direction));
             lastTouchTimes[stripIndex] = Time.time; // Обновляем время последнего касания
         }
@@ -324,8 +335,15 @@ namespace LEDControl
 
                     if (currentLedIndex >= 0 && currentLedIndex < totalLEDs)
                     {
+
+                        float tailFalloff = 1f - ((float)j / (dynamicLedCount - 1));
+                        tailFalloff = Mathf.Clamp01(tailFalloff); // безопасная защита
+                        float brightnessFactor = tailFalloff * tailIntensity;
+
+
                         // Яркость уменьшается от головы к хвосту
-                        float brightnessFactor = comet.direction > 0 ? 1f - (float)j / dynamicLedCount * tailIntensity : 1f - (float)(dynamicLedCount - 1 - j) / dynamicLedCount * tailIntensity;
+                        //float brightnessFactor = Mathf.Pow(1f - (float)j / dynamicLedCount, 2f); // Голова — 1.0, хвост — ~0
+                        //float brightnessFactor = comet.direction > 0 ? 1f - (float)j / dynamicLedCount * tailIntensity : 1f - (float)(dynamicLedCount - 1 - j) / dynamicLedCount * tailIntensity;
                         byte r = (byte)Mathf.Clamp(comet.color.r * brightnessFactor * dynamicBrightness, 0, 255);
                         byte g = (byte)Mathf.Clamp(comet.color.g * brightnessFactor * dynamicBrightness, 0, 255);
                         byte b = (byte)Mathf.Clamp(comet.color.b * brightnessFactor * dynamicBrightness, 0, 255);

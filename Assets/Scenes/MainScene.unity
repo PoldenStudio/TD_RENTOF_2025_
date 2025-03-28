@@ -989,7 +989,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 447981336}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
   m_Name: 
@@ -1900,7 +1900,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   portName: COM6
   baudRate: 115200
-  debugMode: 0
+  debugMode: 1
   stripManager: {fileID: 770569964}
 --- !u!114 &770569963
 MonoBehaviour:
@@ -1914,12 +1914,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd463a62003821847914e5abaa37cd9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  synthLedCountBase: 20
+  synthLedCountBase: 40
   speedLedCountFactor: 2
   speedBrightnessFactor: 5
   tailIntensity: 0.05
   moveDirection: 1
-  startFromEnd: 0
+  startFromEnd: 1
   stationaryBrightnessFactor: 0.5
   warmSunSettings:
     pixelCount: 10
@@ -3279,10 +3279,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portNames:
-  - COM17
+  - COM18
   baudRate: 115200
   dataTimeout: 1
-  idleTimeout: 40
+  idleTimeout: 10000
   restartDelay: 1
   EnableDebug: 1
   curtainController: {fileID: 31414346}
@@ -3666,9 +3666,9 @@ MonoBehaviour:
   currentMode: 2
   ledStrips:
   - name: LED Strip
-    totalLEDs: 50
+    totalLEDs: 35
     ledsPerSegment: 1
-    dmxChannelOffset: 1
+    dmxChannelOffset: 0
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
     - {r: 0, g: 0, b: 0, a: 1}
@@ -3722,17 +3722,17 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
-    normalJsonPath: Idle_right_rgbw.json
-    idleJsonPath: Idle_right_rgbw.json
+    normalJsonPath: Active_left_rgbw.json
+    idleJsonPath: Active_left_rgbw.json
     jsonFormat: 1
     fullNormalJsonPath: 
     fullIdleJsonPath: 
     currentFrameActive: 0
     currentFrameIdle: 0
-  - name: "\u041B\u0435\u0432\u0430\u044F \u043B\u0435\u043D\u0442\u0430 (rgb)"
-    totalLEDs: 1
+  - name: LED Strip
+    totalLEDs: 35
     ledsPerSegment: 1
-    dmxChannelOffset: 210
+    dmxChannelOffset: 140
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
     - {r: 0, g: 0, b: 0, a: 1}
@@ -3786,9 +3786,9 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
-    normalJsonPath: Active_top_rgbwmix.json
-    idleJsonPath: Active_top_rgbwmix.json
-    jsonFormat: 3
+    normalJsonPath: Active_right_rgbw.json
+    idleJsonPath: Active_right_rgbw.json
+    jsonFormat: 1
     fullNormalJsonPath: 
     fullIdleJsonPath: 
     currentFrameActive: 0
@@ -3796,7 +3796,7 @@ MonoBehaviour:
   - name: LED Strip
     totalLEDs: 1
     ledsPerSegment: 1
-    dmxChannelOffset: 220
+    dmxChannelOffset: 400
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
     - {r: 0, g: 0, b: 0, a: 1}
@@ -3852,6 +3852,70 @@ MonoBehaviour:
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
     normalJsonPath: Active_bottom_rgbwmix.json
     idleJsonPath: Active_bottom_rgbwmix.json
+    jsonFormat: 3
+    fullNormalJsonPath: 
+    fullIdleJsonPath: 
+    currentFrameActive: 0
+    currentFrameIdle: 0
+  - name: "\u041B\u0435\u0432\u0430\u044F \u043B\u0435\u043D\u0442\u0430 (rgb)"
+    totalLEDs: 1
+    ledsPerSegment: 1
+    dmxChannelOffset: 405
+    globalColor: {r: 1, g: 1, b: 1, a: 1}
+    segmentColors:
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    - {r: 0, g: 0, b: 0, a: 1}
+    segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
+    normalJsonPath: Active_top_rgbwmix.json
+    idleJsonPath: Active_top_rgbwmix.json
     jsonFormat: 3
     fullNormalJsonPath: 
     fullIdleJsonPath: 
@@ -4032,7 +4096,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1712025732
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5546,7 +5610,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &4194070633512385018
 Transform:
   m_ObjectHideFlags: 0

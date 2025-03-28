@@ -278,8 +278,8 @@ namespace LEDControl
         {
             if (idleMode)
             {
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 0);
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 0);
+                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 8);
+                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 8);
             }
             else
             {
@@ -296,21 +296,26 @@ namespace LEDControl
                 float normalizedTime = elapsedTime / videoLength;
                 normalizedTime = normalizedTime % 1f;
 
-                float yValue = kineticControlCurve.Evaluate(normalizedTime);
-                yValue = Mathf.Clamp01(yValue);
+                float curveValue = kineticControlCurve.Evaluate(normalizedTime);
+                curveValue = Mathf.Clamp01(curveValue);
 
-                float minKineticValue = 8f;
-                float maxKineticValue = 210f;
-                float scaledValue = Mathf.Lerp(minKineticValue, maxKineticValue, yValue);
+                // Диапазон для 16-битного значения
+                float minCombinedValue = 0f;  // corresponds to 8, 8
+                float maxCombinedValue = (210f - 8f) * 256f + (210f - 8f);
 
-                // Преобразуем scaledValue в 16 битное значение
-                float combinedValue = scaledValue * 256f; // масштабируем, чтобы использовать 2 байта (8 бит + 8 бит)
+                // Преобразуем значение кривой в 16-битное значение
+                float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
 
-                byte highByte = (byte)(combinedValue / 256f);  // старший байт
-                byte lowByte = (byte)(combinedValue % 256f);   // младший байт
+                // Вычисляем значения для первого и второго байтов
+                float firstByteValue = Mathf.Floor(combinedValue / 256f) + 8f; // Старший байт
+                float secondByteValue = (combinedValue % 256f) + 8f;  // Младший байт
 
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, highByte);
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, lowByte);
+                // Ограничиваем значения байтов диапазоном [8, 210]
+                byte firstByte = (byte)Mathf.Clamp(firstByteValue, 8f, 210f);
+                byte secondByte = (byte)Mathf.Clamp(secondByteValue, 8f, 210f);
+
+                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, firstByte);
+                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, secondByte);
             }
         }
 

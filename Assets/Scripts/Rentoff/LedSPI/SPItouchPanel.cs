@@ -310,7 +310,7 @@ public class SPItouchPanel : MonoBehaviour
             fullData.Append(dataString);
         }
 
-        dataSender.SendDataToLEDStrip(fullData.ToString());
+        dataSender.EnqueueData(fullData.ToString());
     }
 
     // Публичные методы для внешнего управления

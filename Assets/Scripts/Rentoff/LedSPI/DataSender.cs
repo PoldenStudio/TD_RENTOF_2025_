@@ -4,6 +4,8 @@ using System.IO.Ports;
 using System.Text;
 using UnityEngine;
 using static StateManager;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace LEDControl
 {
@@ -18,10 +20,15 @@ namespace LEDControl
         private SerialPort serialPort;
 
         private float lastSendTime = 0f;
-        private float sendInterval = 0.028f; // Постоянная скорость передачи
+        private float sendInterval = 0.028f; // 28 мс
 
         private Dictionary<int, string> previousGlobalData = new();
         private Dictionary<int, string> previousSegmentData = new();
+
+        // Поля для многопоточности
+        private Thread portThread;
+        private volatile bool threadRunning = false;
+        private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
 
         void Awake()
         {
@@ -39,13 +46,21 @@ namespace LEDControl
             {
                 if (serialPort == null)
                 {
-                    serialPort = new SerialPort(portName, baudRate);
-                    serialPort.ReadTimeout = 1000;
-                    serialPort.WriteTimeout = 1000;
+                    serialPort = new SerialPort(portName, baudRate)
+                    {
+                        ReadTimeout = 1000,
+                        WriteTimeout = 1000
+                    };
                     serialPort.Open();
 
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
+
+                    // Запускаем поток
+                    threadRunning = true;
+                    portThread = new Thread(SerialThreadLoop);
+                    portThread.IsBackground = true;
+                    portThread.Start();
                 }
             }
             catch (Exception e)
@@ -54,21 +69,66 @@ namespace LEDControl
             }
         }
 
+        private void SerialThreadLoop()
+        {
+            while (threadRunning)
+            {
+                try
+                {
+                    if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out string dataString))
+                    {
+                        serialPort.Write(dataString);
+                        if (debugMode)
+                            Debug.Log($"[DataSender][Thread] Sent data: {dataString.Replace("\r\n", "\\r\\n")}");
+                    }
+                    else
+                    {
+                        Thread.Sleep(1); // чтобы не грузить процессор
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[DataSender][Thread] Serial port exception: {e.Message}");
+                    try { serialPort?.Close(); } catch { }
+
+                    Thread.Sleep(500);
+                    try { serialPort?.Open(); } catch { }
+                }
+            }
+        }
+
         public void CloseSerialPort()
         {
-            if (serialPort != null && serialPort.IsOpen)
+            threadRunning = false;
+
+            if (portThread != null && portThread.IsAlive)
             {
-                for (int i = 0; i < 4; i++)
+                portThread.Join(500);
+            }
+
+            if (serialPort != null)
+            {
+                try
                 {
-                    serialPort.Write(i + ":clear\r\n");
+                    if (serialPort.IsOpen)
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            serialPort.Write(i + ":clear\r\n");
+                        }
+                        serialPort.Close();
+                    }
                 }
-                serialPort.Close();
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[DataSender] Error closing port: {e.Message}");
+                }
                 serialPort.Dispose();
                 serialPort = null;
-
-                if (debugMode)
-                    Debug.Log("[DataSender] Serial port closed.");
             }
+
+            if (debugMode)
+                Debug.Log("[DataSender] Serial port closed and thread stopped.");
         }
 
         public bool IsPortOpen()
@@ -81,24 +141,12 @@ namespace LEDControl
             return Time.time - lastSendTime > sendInterval;
         }
 
-        public void SendDataToLEDStrip(string dataString)
+        public void EnqueueData(string dataString)
         {
             if (string.IsNullOrEmpty(dataString) || !IsPortOpen())
                 return;
 
-            try
-            {
-                serialPort.Write(dataString);
-
-                if (debugMode)
-                    Debug.Log("[DataSender] Sending data: " + dataString.Replace("\r\n", "\\r\\n"));
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[DataSender] Error writing to serial port: {e.Message}");
-                CloseSerialPort();
-                Initialize();
-            }
+            sendQueue.Enqueue(dataString);
 
             lastSendTime = Time.time;
         }
@@ -136,7 +184,7 @@ namespace LEDControl
             Color32 globalColor = stripManager.GetGlobalColorForStrip(stripIndex, mode);
             string pixelHex = mode switch
             {
-            DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
+                DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 DataMode.RGB => colorProcessor.ColorToHexRGB(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 DataMode.RGBW => colorProcessor.ColorToHexRGBW(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 _ => ""
@@ -243,7 +291,7 @@ namespace LEDControl
             {
                 string totalData = GenerateAllDataString(stripManager, effectsManager, colorProcessor, appState);
                 if (!string.IsNullOrEmpty(totalData))
-                    SendDataToLEDStrip(totalData);
+                    EnqueueData(totalData);
             }
         }
     }
