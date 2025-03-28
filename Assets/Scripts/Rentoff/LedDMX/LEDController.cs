@@ -441,9 +441,8 @@ namespace LEDControl
 
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
-                        byte currentValue = FrameBuffer[globalChannel];
                         byte newValue = (byte)(stripValues[i] * brightness);
-                        FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
+                        FrameBuffer[globalChannel] = newValue; // Записываем новое значение напрямую
                     }
                 }
             }
