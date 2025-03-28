@@ -59,6 +59,21 @@ namespace LEDControl
         [Range(1, 512)]
         public int kineticHeightDmxChannel2 = 2;
 
+
+        [Header("Second Kinetic Control Settings")]
+        [SerializeField] private AnimationCurve secondKineticControlCurve;
+
+        [Tooltip("DMX канал для второй кинетической скорости (первый байт)")]
+        [Range(1, 512)] public int secondKineticHeightDmxChannel1 = 3;
+
+        [Tooltip("DMX канал для второй кинетической высоты (второй байт)")]
+        [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
+
+        private int relocatedSecondKineticHeightChannel1;
+        private int relocatedSecondKineticHeightChannel2;
+
+
+
         private DMXCommunicator dmxCommunicator;
         private bool isDmxInitialized = false;
 
@@ -75,7 +90,7 @@ namespace LEDControl
         private int relocatedKineticHeightChannel2;
         private bool kineticChannelsRelocated = false;
         private bool confirmTime;
-
+        public bool wasIdled = false;
         public float DefaultGlobalBrightness => defaultGlobalBrightness;
 
         private void Awake()
@@ -121,14 +136,24 @@ namespace LEDControl
         {
             relocatedKineticHeightChannel1 = kineticHeightDmxChannel1;
             relocatedKineticHeightChannel2 = kineticHeightDmxChannel2;
+            relocatedSecondKineticHeightChannel1 = secondKineticHeightDmxChannel1;
+            relocatedSecondKineticHeightChannel2 = secondKineticHeightDmxChannel2;
             kineticChannelsRelocated = false;
+
+            int maxUsedChannel = totalLedChannels;
 
             if (kineticHeightDmxChannel1 <= totalLedChannels || kineticHeightDmxChannel2 <= totalLedChannels)
             {
-                relocatedKineticHeightChannel1 = totalLedChannels + 1;
-                relocatedKineticHeightChannel2 = totalLedChannels + 2;
-                kineticHeightDmxChannel1 = relocatedKineticHeightChannel1;
-                kineticHeightDmxChannel2 = relocatedKineticHeightChannel2;
+                relocatedKineticHeightChannel1 = maxUsedChannel + 1;
+                relocatedKineticHeightChannel2 = maxUsedChannel + 2;
+                kineticChannelsRelocated = true;
+                maxUsedChannel += 2;
+            }
+
+            if (secondKineticHeightDmxChannel1 <= maxUsedChannel || secondKineticHeightDmxChannel2 <= maxUsedChannel)
+            {
+                relocatedSecondKineticHeightChannel1 = maxUsedChannel + 1;
+                relocatedSecondKineticHeightChannel2 = maxUsedChannel + 2;
                 kineticChannelsRelocated = true;
             }
         }
@@ -179,6 +204,13 @@ namespace LEDControl
             {
                 InitializeDMX();
             }
+            //Debug.Log("test^ " + relocatedKineticHeightChannel1);WriteToDMXChannel(FrameBuffer, baseChannel, r);
+            Debug.Log("test1: " + FrameBuffer[509]);
+            Debug.Log("test2: " + FrameBuffer[510]);
+            Debug.Log("test3: " + FrameBuffer[511]);
+            Debug.Log("test4: " + FrameBuffer[512]);
+            Debug.Log("test5: " + FrameBuffer[509] + FrameBuffer[510] + FrameBuffer[511] + FrameBuffer[50]);
+
 
             float framesToAdvance = baseFramesPerSecond * currentSpeed * Time.fixedDeltaTime;
             currentFrameSkipCounter++;
@@ -240,7 +272,8 @@ namespace LEDControl
 
         private bool IsKineticChannel(int channel)
         {
-            return (channel == relocatedKineticHeightChannel1 || channel == relocatedKineticHeightChannel2);
+            return (channel == relocatedKineticHeightChannel1 || channel == relocatedKineticHeightChannel2
+                 || channel == relocatedSecondKineticHeightChannel1 || channel == relocatedSecondKineticHeightChannel2);
         }
 
         private void WriteToDMXChannel(byte[] buffer, int channel, byte value)
@@ -253,7 +286,7 @@ namespace LEDControl
 
         void UpdateFrameBuffer()
         {
-            Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
+            //Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
             switch (currentMode)
             {
                 case DisplayMode.GlobalColor:
@@ -278,8 +311,15 @@ namespace LEDControl
         {
             if (idleMode)
             {
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 8);
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 8);
+                if (wasIdled == true)
+                {
+                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 8);
+                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 8);
+                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel1, 8);
+                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel2, 8);
+                    wasIdled = false;
+                }
+
             }
             else
             {
@@ -293,30 +333,43 @@ namespace LEDControl
                 }
 
                 float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
-                float normalizedTime = elapsedTime / videoLength;
-                normalizedTime = normalizedTime % 1f;
+                float normalizedTime = (elapsedTime / videoLength) % 1f;
 
-                float curveValue = kineticControlCurve.Evaluate(normalizedTime);
-                curveValue = Mathf.Clamp01(curveValue);
+                // Первая кривая
+                ApplyKineticCurve(
+                    kineticControlCurve,
+                    normalizedTime,
+                    relocatedKineticHeightChannel1,
+                    relocatedKineticHeightChannel2
+                );
 
-                // Диапазон для 16-битного значения
-                float minCombinedValue = 0f;  // corresponds to 8, 8
-                float maxCombinedValue = (210f - 8f) * 256f + (210f - 8f);
-
-                // Преобразуем значение кривой в 16-битное значение
-                float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
-
-                // Вычисляем значения для первого и второго байтов
-                float firstByteValue = Mathf.Floor(combinedValue / 256f) + 8f; // Старший байт
-                float secondByteValue = (combinedValue % 256f) + 8f;  // Младший байт
-
-                // Ограничиваем значения байтов диапазоном [8, 210]
-                byte firstByte = (byte)Mathf.Clamp(firstByteValue, 8f, 210f);
-                byte secondByte = (byte)Mathf.Clamp(secondByteValue, 8f, 210f);
-
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, firstByte);
-                WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, secondByte);
+                // Вторая кривая
+                ApplyKineticCurve(
+                    secondKineticControlCurve,
+                    normalizedTime,
+                    relocatedSecondKineticHeightChannel1,
+                    relocatedSecondKineticHeightChannel2
+                );
             }
+        }
+
+        private void ApplyKineticCurve(AnimationCurve curve, float normalizedTime, int channel1, int channel2)
+        {
+            float curveValue = Mathf.Clamp01(curve.Evaluate(normalizedTime));
+
+            float minCombinedValue = 0f;  // corresponds to 8,8
+            float maxCombinedValue = (210f - 8f) * 256f + (210f - 8f);
+
+            float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
+
+            float firstByteValue = Mathf.Floor(combinedValue / 256f) + 8f;
+            float secondByteValue = (combinedValue % 256f) + 8f;
+
+            byte firstByte = (byte)Mathf.Clamp(firstByteValue, 8f, 210f);
+            byte secondByte = (byte)Mathf.Clamp(secondByteValue, 8f, 210f);
+
+            WriteToDMXChannel(FrameBuffer, channel1, firstByte);
+            WriteToDMXChannel(FrameBuffer, channel2, secondByte);
         }
 
         int GetChannelsPerLed(LEDStrip strip)

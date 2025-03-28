@@ -1898,8 +1898,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1f509732dd3f354d8aca1ebdf7485ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portName: COM6
-  baudRate: 115200
+  portName: COM19
+  baudRate: 921600
   debugMode: 1
   stripManager: {fileID: 770569964}
 --- !u!114 &770569963
@@ -2667,6 +2667,50 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 280193378}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1348448102
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1348448104}
+  - component: {fileID: 1348448103}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &1348448103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348448102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ae4bfeea2c28f14f8535e38aaac045e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1348448104
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1348448102}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -29.440002}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1378102206
 GameObject:
@@ -3637,7 +3681,7 @@ MonoBehaviour:
   baudRate: 250000
   baseFramesPerSecond: 60
   frameSkip: 1
-  globalBrightness: 2
+  globalBrightness: 1
   testModeCurve:
     serializedVersion: 2
     m_Curve:
@@ -3923,43 +3967,97 @@ MonoBehaviour:
     currentFrameIdle: 0
   debugText: {fileID: 0}
   autoCalculateOffsets: 0
-  enableFrameDebug: 1
+  enableFrameDebug: 0
   kineticControlCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: -0.0011901855
-      inSlope: 0.0013933879
-      outSlope: 0.0013933879
+      value: 1
+      inSlope: -18.461191
+      outSlope: -18.461191
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.054167688
+      value: 0
+      inSlope: Infinity
+      outSlope: Infinity
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 1
+      outWeight: 0.33333334
     - serializedVersion: 3
-      time: 0.5
+      time: 0.3
       value: 1
-      inSlope: 0.006953701
-      outSlope: 0.006953701
+      inSlope: Infinity
+      outSlope: Infinity
       tangentMode: 0
       weightedMode: 0
       inWeight: 0.33333334
-      outWeight: 1
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
-      value: 0
-      inSlope: 0.0014366444
-      outSlope: 0.0014366444
-      tangentMode: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
       weightedMode: 0
-      inWeight: 1
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
   kineticHeightDmxChannel1: 509
   kineticHeightDmxChannel2: 510
+  secondKineticControlCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -18.461191
+      outSlope: -18.461191
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.054167688
+      value: 0
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.3
+      value: 1
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  secondKineticHeightDmxChannel1: 511
+  secondKineticHeightDmxChannel2: 512
   idleMode: 1
+  wasIdled: 0
 --- !u!1 &1631245014
 GameObject:
   m_ObjectHideFlags: 0
@@ -6247,3 +6345,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 46665297}
   - {fileID: 280193378}
+  - {fileID: 1348448104}

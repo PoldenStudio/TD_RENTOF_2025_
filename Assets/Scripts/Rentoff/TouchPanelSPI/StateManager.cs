@@ -155,7 +155,9 @@ public class StateManager : MonoBehaviour
         Debug.Log("[StateManager] Starting transition to Idle.");
         playbackController.SetSwipeControlEnabled(false);
 
+        
         // LED переход: переключаем JSON на Idle (без fade-эффекта)
+        ledController.wasIdled = true;
         ledController.SwitchToIdleJSON();
 
         bool slideCompleted = false;
