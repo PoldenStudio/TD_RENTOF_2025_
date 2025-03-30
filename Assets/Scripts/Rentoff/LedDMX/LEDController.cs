@@ -16,7 +16,6 @@ namespace LEDControl
         [Header("DMX Settings")]
         public string comPortName = "COM3";
         public int baudRate = 250000;
-        private IMediaPlayer _mediaPlayer;
 
         [Header("Frame Rate Control")]
         public float baseFramesPerSecond = 120f;
@@ -52,27 +51,18 @@ namespace LEDControl
 
         [Header("Kinetic Control Settings")]
         [SerializeField] private AnimationCurve kineticControlCurve;
-        [Tooltip("DMX канал для кинетической скорости (исключительно для передачи первого байта высоты)")]
         [Range(1, 512)]
         public int kineticHeightDmxChannel1 = 1;
-        [Tooltip("DMX канал для кинетической высоты (в продолжении первого байта)")]
         [Range(1, 512)]
         public int kineticHeightDmxChannel2 = 2;
 
-
         [Header("Second Kinetic Control Settings")]
         [SerializeField] private AnimationCurve secondKineticControlCurve;
-
-        [Tooltip("DMX канал для второй кинетической скорости (первый байт)")]
         [Range(1, 512)] public int secondKineticHeightDmxChannel1 = 3;
-
-        [Tooltip("DMX канал для второй кинетической высоты (второй байт)")]
         [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
 
         private int relocatedSecondKineticHeightChannel1;
         private int relocatedSecondKineticHeightChannel2;
-
-
 
         private DMXCommunicator dmxCommunicator;
         private bool isDmxInitialized = false;
@@ -82,7 +72,6 @@ namespace LEDControl
         public bool idleMode = true;
 
         private IMediaPlayer mediaPlayer;
-        // Фиксируем время старта кинетики при переходе в active, чтобы данные всегда отправлялись с начала
         private float kineticStartTime = 0f;
 
         private int totalLedChannels = 0;
@@ -101,14 +90,12 @@ namespace LEDControl
             if (ledStrips.Count == 0)
                 ledStrips.Add(new LEDStrip());
 
-            // Пересчитываем смещения только если включен автоматический режим
             if (autoCalculateOffsets)
                 RecalculateOffsets();
 
             CalculateTotalLedChannels();
             RelocateKineticChannelsIfNeeded();
 
-            // Предзагрузка JSON для всех лент сразу (active и idle режимы)
             foreach (var strip in ledStrips)
             {
                 strip.InitializeSegmentArrays();
@@ -204,13 +191,6 @@ namespace LEDControl
             {
                 InitializeDMX();
             }
-            //Debug.Log("test^ " + relocatedKineticHeightChannel1);WriteToDMXChannel(FrameBuffer, baseChannel, r);
-            Debug.Log("test1: " + FrameBuffer[509]);
-            Debug.Log("test2: " + FrameBuffer[510]);
-            Debug.Log("test3: " + FrameBuffer[511]);
-            Debug.Log("test4: " + FrameBuffer[512]);
-            Debug.Log("test5: " + FrameBuffer[509] + FrameBuffer[510] + FrameBuffer[511] + FrameBuffer[50]);
-
 
             float framesToAdvance = baseFramesPerSecond * currentSpeed * Time.fixedDeltaTime;
             currentFrameSkipCounter++;
@@ -249,10 +229,6 @@ namespace LEDControl
             {
                 dmxCommunicator.SendFrame(FrameBuffer);
             }
-            else
-            {
-                // DMX communicator is not active. Frame buffer updated but not sent.
-            }
 
             if (enableFrameDebug)
             {
@@ -286,32 +262,45 @@ namespace LEDControl
 
         void UpdateFrameBuffer()
         {
-            //Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
             switch (currentMode)
             {
                 case DisplayMode.GlobalColor:
+                    ClearLEDChannels();
                     BuildGlobalColorBuffer(globalBrightness);
                     break;
                 case DisplayMode.SegmentColor:
+                    ClearLEDChannels();
                     BuildSegmentColorBuffer(globalBrightness);
                     break;
                 case DisplayMode.JsonDataSync:
+                    ClearLEDChannels();
                     BuildJsonDataSyncBuffer(globalBrightness);
                     break;
                 case DisplayMode.TestMode:
+                    ClearLEDChannels();
                     BuildTestModeBuffer(globalBrightness);
                     break;
             }
             UpdateKineticControl();
         }
 
+        /// <summary>
+        /// Очищает все каналы LED, оставляя нетронутыми кинетические каналы
+        /// </summary>
+        private void ClearLEDChannels()
+        {
+            for (int ch = 1; ch <= 512; ch++)
+            {
+                if (!IsKineticChannel(ch))
+                    FrameBuffer[ch] = 0;
+            }
+        }
 
-        //исправление логики вычисления кинетики
         void UpdateKineticControl()
         {
             if (idleMode)
             {
-                if (wasIdled == true)
+                if (wasIdled)
                 {
                     WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 8);
                     WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 8);
@@ -319,7 +308,6 @@ namespace LEDControl
                     WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel2, 8);
                     wasIdled = false;
                 }
-
             }
             else
             {
@@ -335,21 +323,8 @@ namespace LEDControl
                 float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
                 float normalizedTime = (elapsedTime / videoLength) % 1f;
 
-                // Первая кривая
-                ApplyKineticCurve(
-                    kineticControlCurve,
-                    normalizedTime,
-                    relocatedKineticHeightChannel1,
-                    relocatedKineticHeightChannel2
-                );
-
-                // Вторая кривая
-                ApplyKineticCurve(
-                    secondKineticControlCurve,
-                    normalizedTime,
-                    relocatedSecondKineticHeightChannel1,
-                    relocatedSecondKineticHeightChannel2
-                );
+                ApplyKineticCurve(kineticControlCurve, normalizedTime, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2);
+                ApplyKineticCurve(secondKineticControlCurve, normalizedTime, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2);
             }
         }
 
@@ -390,7 +365,7 @@ namespace LEDControl
             {
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int totLEDs = strip.totalLEDs;
-                int offset = strip.dmxChannelOffset;  // Используем ручной offset
+                int offset = strip.dmxChannelOffset;
                 Color color = strip.globalColor;
                 byte r = (byte)(color.r * brightness * 255);
                 byte g = (byte)(color.g * brightness * 255);
@@ -403,19 +378,25 @@ namespace LEDControl
                     if (baseChannel + channelsPerLed - 1 > 512)
                         break;
 
-                    WriteToDMXChannel(FrameBuffer, baseChannel, r);
-                    WriteToDMXChannel(FrameBuffer, baseChannel + 1, g);
-                    WriteToDMXChannel(FrameBuffer, baseChannel + 2, b);
+                    for (int j = 0; j < channelsPerLed; j++)
+                    {
+                        int absChannel = baseChannel + j;
+                        if (IsKineticChannel(absChannel)) continue;
 
-                    if (channelsPerLed >= 4)
-                    {
-                        byte w = (byte)(Mathf.Min(r, g, b) * 0.8f);
-                        WriteToDMXChannel(FrameBuffer, baseChannel + 3, w);
-                    }
-                    if (channelsPerLed >= 5)
-                    {
-                        byte cw = (byte)(Mathf.Min(b, g) * 0.8f);
-                        WriteToDMXChannel(FrameBuffer, baseChannel + 4, cw);
+                        switch (j)
+                        {
+                            case 0: WriteToDMXChannel(FrameBuffer, absChannel, r); break;
+                            case 1: WriteToDMXChannel(FrameBuffer, absChannel, g); break;
+                            case 2: WriteToDMXChannel(FrameBuffer, absChannel, b); break;
+                            case 3:
+                                byte w = (byte)(Mathf.Min(r, g, b) * 0.8f);
+                                WriteToDMXChannel(FrameBuffer, absChannel, w);
+                                break;
+                            case 4:
+                                byte cw = (byte)(Mathf.Min(b, g) * 0.8f);
+                                WriteToDMXChannel(FrameBuffer, absChannel, cw);
+                                break;
+                        }
                     }
                 }
             }
@@ -427,7 +408,7 @@ namespace LEDControl
             {
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int totLEDs = strip.totalLEDs;
-                int offset = strip.dmxChannelOffset;  // Используем ручной offset
+                int offset = strip.dmxChannelOffset;
                 int segments = strip.TotalSegments;
 
                 for (int seg = 0; seg < segments; seg++)
@@ -451,22 +432,26 @@ namespace LEDControl
                     if (baseChannel + channelsPerLed - 1 > 512)
                         break;
 
-                    WriteToDMXChannel(FrameBuffer, baseChannel, r);
-                    WriteToDMXChannel(FrameBuffer, baseChannel + 1, g);
-                    WriteToDMXChannel(FrameBuffer, baseChannel + 2, b);
-                    if (channelsPerLed >= 4)
-                        WriteToDMXChannel(FrameBuffer, baseChannel + 3, w);
-                    if (channelsPerLed >= 5)
-                        WriteToDMXChannel(FrameBuffer, baseChannel + 4, cw);
+                    for (int j = 0; j < channelsPerLed; j++)
+                    {
+                        int absChannel = baseChannel + j;
+                        if (IsKineticChannel(absChannel)) continue;
+
+                        switch (j)
+                        {
+                            case 0: WriteToDMXChannel(FrameBuffer, absChannel, r); break;
+                            case 1: WriteToDMXChannel(FrameBuffer, absChannel, g); break;
+                            case 2: WriteToDMXChannel(FrameBuffer, absChannel, b); break;
+                            case 3: WriteToDMXChannel(FrameBuffer, absChannel, w); break;
+                            case 4: WriteToDMXChannel(FrameBuffer, absChannel, cw); break;
+                        }
+                    }
                 }
             }
         }
 
         void BuildJsonDataSyncBuffer(float brightness)
         {
-            // Очищаем буфер только один раз перед началом обработки всех лент
-            Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
-
             foreach (var strip in ledStrips)
             {
                 PreCalculatedDmxFrame[] frames = idleMode ? strip.preCalculatedIdleFrames : strip.preCalculatedNormalFrames;
@@ -478,16 +463,14 @@ namespace LEDControl
                 int frameIndex = Mathf.FloorToInt(currentFrame);
                 frameIndex = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
 
-                // Получаем предрассчитанные значения для текущей ленты
                 byte[] stripValues = frames[frameIndex].channelValues;
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
-                    int globalChannel = i + 1; // DMX каналы начинаются с 1
+                    int globalChannel = i + 1;
 
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
-                        // Суммируем значения (наложение данных от всех лент)
                         byte currentValue = FrameBuffer[globalChannel];
                         byte newValue = (byte)(stripValues[i] * brightness);
                         FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
@@ -508,7 +491,7 @@ namespace LEDControl
             foreach (var strip in ledStrips)
             {
                 int totLEDs = strip.totalLEDs;
-                int offset = strip.dmxChannelOffset;  // Используем ручной offset
+                int offset = strip.dmxChannelOffset;
                 int channelsPerLed = GetChannelsPerLed(strip);
 
                 for (int i = 0; i < totLEDs; i++)
@@ -550,7 +533,9 @@ namespace LEDControl
         {
             if (dmxCommunicator == null || !dmxCommunicator.IsActive)
                 return;
-            Array.Clear(FrameBuffer, 1, FrameBuffer.Length - 1);
+
+            // Обнуляем ТОЛЬКО led-каналы, кинетика не трогаем
+            ClearLEDChannels();
             dmxCommunicator.SendFrame(FrameBuffer);
         }
 
@@ -586,8 +571,8 @@ namespace LEDControl
             {
                 strip.ResetFrames();
             }
-            // При переходе в active сбрасываем время для кинетики, чтобы начинать отправку данных с начала
             kineticStartTime = Time.time;
+            confirmTime = false; // сбросим, чтобы обновился videoLength
         }
 
         public void SwitchToIdleJSON()
@@ -597,9 +582,10 @@ namespace LEDControl
             {
                 strip.ResetFrames();
             }
+            wasIdled = true;
+            confirmTime = false;
         }
 
-        // Метод для перезагрузки JSON данных после изменения смещений
         public void ReloadJsonData()
         {
             foreach (var strip in ledStrips)
