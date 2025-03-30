@@ -20,6 +20,7 @@ public class SPItouchPanel : MonoBehaviour
     private bool dataChanged = true;
     private float transitionStartTime = 0f;
     private bool isTransitioning = false;
+    private bool initialCometSpawned = false; // Флаг для отслеживания создания первой кометы в Transition
 
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>(); // Подсвеченные сегменты для каждой ленты
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>(); // Время последнего свайпа для каждой ленты
@@ -82,9 +83,11 @@ public class SPItouchPanel : MonoBehaviour
                 activeSegments.Clear(); // Сбрасываем подсвеченные сегменты
                 lastSwipeTime.Clear(); // Сбрасываем время последнего свайпа
                 lastSwipeDirection.Clear(); // Сбрасываем направление последнего свайпа
+                initialCometSpawned = false; // Сбрасываем флаг при переходе в Idle
                 break;
             case StateManager.AppState.Active:
                 dataChanged = true;
+                initialCometSpawned = false; // Сбрасываем флаг при переходе в Active
                 break;
             case StateManager.AppState.Transition:
                 transitionStartTime = Time.time;
@@ -93,6 +96,7 @@ public class SPItouchPanel : MonoBehaviour
                 activeSegments.Clear(); // Сбрасываем подсвеченные сегменты
                 lastSwipeTime.Clear(); // Сбрасываем время последнего свайпа
                 lastSwipeDirection.Clear(); // Сбрасываем направление последнего свайпа
+                initialCometSpawned = false; // Сбрасываем флаг при переходе в Transition
                 break;
         }
     }
@@ -135,9 +139,9 @@ public class SPItouchPanel : MonoBehaviour
     {
         if (dataChanged && dataSender.ShouldSendData())
         {
-            if (stateManager.CurrentState == StateManager.AppState.Transition && Time.time - transitionStartTime >= 1f && isTransitioning)
+            if (stateManager.CurrentState == StateManager.AppState.Transition && Time.time - transitionStartTime >= 1f && isTransitioning && !initialCometSpawned)
             {
-                // Создаем первую комету в режиме Transition
+                // Создаем первую комету в режиме Transition только через секунду
                 for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
                 {
                     if (stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
@@ -147,12 +151,12 @@ public class SPItouchPanel : MonoBehaviour
                         effectsManager.AddComet(stripIndex, 0, stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
                     }
                 }
-                isTransitioning = false;
+                initialCometSpawned = true; // Устанавливаем флаг, чтобы больше не создавать комету в этом Transition
+                isTransitioning = false; // Отключаем флаг isTransitioning после создания первой кометы
             }
-
-            if (stateManager.CurrentState == StateManager.AppState.Transition && !isTransitioning)
+            else if (stateManager.CurrentState == StateManager.AppState.Transition && !isTransitioning && initialCometSpawned)
             {
-                // Проверяем, достигли ли все кометы конца ленты
+                // Проверяем, достигли ли все кометы конца ленты после первоначального спавна
                 bool allCometsFinished = true;
                 for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
                 {
@@ -169,6 +173,14 @@ public class SPItouchPanel : MonoBehaviour
                 {
                     stateManager.StartTransitionToIdle();
                 }
+            }
+            else if (stateManager.CurrentState == StateManager.AppState.Transition && isTransitioning)
+            {
+                // Ничего не делаем, ждем секунду
+            }
+            else
+            {
+                isTransitioning = false; // Гарантируем, что флаг выключен в других состояниях
             }
 
             if (stripDataManager.currentDisplayModes.Contains(DisplayMode.SpeedSynthMode))

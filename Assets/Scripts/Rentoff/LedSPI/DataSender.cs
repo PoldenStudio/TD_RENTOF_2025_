@@ -31,6 +31,8 @@ namespace LEDControl
         private volatile bool threadRunning = false;
         private ConcurrentQueue<byte[]> sendQueue = new ConcurrentQueue<byte[]>();
 
+        private const int MaxPacketSize = 2048; // Максимальный размер пакета для отправки
+
         void Awake()
         {
             Initialize();
@@ -75,25 +77,45 @@ namespace LEDControl
             {
                 try
                 {
-                    if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out byte[] data))
+                    if (serialPort != null && serialPort.IsOpen)
                     {
-                        serialPort.Write(data, 0, data.Length);
-                        if (debugMode)
-                            Debug.Log($"[DataSender][Thread] Sent data: {BitConverter.ToString(data).Replace("-", "")}");
+                        if (sendQueue.TryDequeue(out byte[] data))
+                        {
+                            serialPort.Write(data, 0, data.Length);
+                            if (debugMode)
+                                Debug.Log($"[DataSender][Thread] Sent data: {BitConverter.ToString(data).Replace("-", "")}");
+                        }
+                        else
+                        {
+                            Thread.Sleep(1); // чтобы не грузить процессор
+                        }
                     }
                     else
                     {
-                        Thread.Sleep(1); // чтобы не грузить процессор
+                        Thread.Sleep(100); // Пауза, если порт закрыт
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.LogError($"[DataSender][Thread] Serial port exception: {e.Message}");
-                    try { serialPort?.Close(); } catch { }
-
-                    Thread.Sleep(500);
-                    try { serialPort?.Open(); } catch { }
+                    TryReconnectSerialPort();
                 }
+            }
+        }
+
+        private void TryReconnectSerialPort()
+        {
+            try
+            {
+                serialPort?.Close();
+                Thread.Sleep(500);
+                serialPort?.Open();
+                if (debugMode)
+                    Debug.Log($"[DataSender][Thread] Serial port {portName} reconnected successfully.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[DataSender][Thread] Failed to reconnect serial port {portName}: {e.Message}");
             }
         }
 
@@ -112,7 +134,7 @@ namespace LEDControl
                 {
                     if (serialPort.IsOpen)
                     {
-                        for (int i = 0; i < 4; i++)
+                        for (int i = 0; i < stripDataManager.totalLEDsPerStrip.Count; i++)
                         {
                             serialPort.Write(Encoding.ASCII.GetBytes(i + ":clear\r\n"), 0, Encoding.ASCII.GetBytes(i + ":clear\r\n").Length);
                         }
@@ -317,43 +339,49 @@ namespace LEDControl
             return dataString;
         }
 
-        public byte[] GenerateAllDataString(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
-        {
-            int totalLength = 0;
-            for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; ++i)
-            {
-                byte[] stripData = GenerateDataString(i, stripManager, effectsManager, colorProcessor, appState);
-                if (stripData != null)
-                {
-                    totalLength += stripData.Length;
-                }
-            }
-
-            if (totalLength == 0)
-                return null;
-
-            byte[] fullData = new byte[totalLength];
-            int offset = 0;
-            for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; ++i)
-            {
-                byte[] stripData = GenerateDataString(i, stripManager, effectsManager, colorProcessor, appState);
-                if (stripData != null)
-                {
-                    Buffer.BlockCopy(stripData, 0, fullData, offset, stripData.Length);
-                    offset += stripData.Length;
-                }
-            }
-
-            return fullData;
-        }
-
         public void SendAllData(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             if (ShouldSendData())
             {
-                byte[] totalData = GenerateAllDataString(stripManager, effectsManager, colorProcessor, appState);
-                if (totalData != null && totalData.Length > 0)
-                    EnqueueData(totalData);
+                int totalLength = 0;
+                List<byte[]> dataPackets = new List<byte[]>();
+                for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; ++i)
+                {
+                    if (!stripManager.stripEnabled[i]) continue;
+                    byte[] stripData = GenerateDataString(i, stripManager, effectsManager, colorProcessor, appState);
+                    if (stripData != null && stripData.Length > 0)
+                    {
+                        dataPackets.Add(stripData);
+                        totalLength += stripData.Length;
+                    }
+                }
+
+                if (totalLength > 0)
+                {
+                    byte[] combinedData = new byte[Mathf.Min(totalLength, MaxPacketSize)];
+                    int offset = 0;
+                    foreach (byte[] packet in dataPackets)
+                    {
+                        int bytesToCopy = Mathf.Min(packet.Length, combinedData.Length - offset);
+                        if (bytesToCopy > 0)
+                        {
+                            Buffer.BlockCopy(packet, 0, combinedData, offset, bytesToCopy);
+                            offset += bytesToCopy;
+                            if (offset >= combinedData.Length)
+                            {
+                                EnqueueData(combinedData);
+                                combinedData = new byte[Mathf.Min(totalLength - offset, MaxPacketSize)];
+                                offset = 0;
+                            }
+                        }
+                    }
+                    if (offset > 0)
+                    {
+                        byte[] finalPacket = new byte[offset];
+                        Buffer.BlockCopy(combinedData, 0, finalPacket, 0, offset);
+                        EnqueueData(finalPacket);
+                    }
+                }
             }
         }
     }
