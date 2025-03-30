@@ -24,8 +24,7 @@ namespace LEDControl
         private float currentSpeed = 1f;
 
         [Range(0f, 3f)]
-        [Tooltip("Глобальная яркость для всех режимов")]
-        [SerializeField] public float globalBrightness = 1.0f;
+        public float globalBrightness = 1.0f;
         private float defaultGlobalBrightness;
 
         [Header("Test Mode Settings")]
@@ -36,25 +35,17 @@ namespace LEDControl
         public DisplayMode currentMode = DisplayMode.JsonDataSync;
         public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode }
 
-        [Tooltip("Список LED лент")]
         [SerializeField] private List<LEDStrip> ledStrips = new();
-
-        [Tooltip("Текст отладки (необязательно)")]
         [SerializeField] private Text debugText;
-
-        [Tooltip("Автоматически рассчитывать DMX-смещения")]
         [SerializeField] private bool autoCalculateOffsets = false;
 
         [Header("Debug Options")]
-        [Tooltip("Включить вывод данных отправленного DMX кадра в консоль")]
         public bool enableFrameDebug = false;
 
         [Header("Kinetic Control Settings")]
         [SerializeField] private AnimationCurve kineticControlCurve;
-        [Range(1, 512)]
-        public int kineticHeightDmxChannel1 = 1;
-        [Range(1, 512)]
-        public int kineticHeightDmxChannel2 = 2;
+        [Range(1, 512)] public int kineticHeightDmxChannel1 = 1;
+        [Range(1, 512)] public int kineticHeightDmxChannel2 = 2;
 
         [Header("Second Kinetic Control Settings")]
         [SerializeField] private AnimationCurve secondKineticControlCurve;
@@ -81,6 +72,14 @@ namespace LEDControl
         private bool confirmTime;
         public bool wasIdled = false;
         public float DefaultGlobalBrightness => defaultGlobalBrightness;
+
+        private int kineticTargetIndex = 0;
+        private float kineticCurrentValue = 0f;
+        private float kineticTargetValue = 0f;
+
+        private int secondKineticTargetIndex = 0;
+        private float secondKineticCurrentValue = 0f;
+        private float secondKineticTargetValue = 0f;
 
         private void Awake()
         {
@@ -188,9 +187,7 @@ namespace LEDControl
         void FixedUpdate()
         {
             if (!isDmxInitialized)
-            {
                 InitializeDMX();
-            }
 
             float framesToAdvance = baseFramesPerSecond * currentSpeed * Time.fixedDeltaTime;
             currentFrameSkipCounter++;
@@ -255,9 +252,7 @@ namespace LEDControl
         private void WriteToDMXChannel(byte[] buffer, int channel, byte value)
         {
             if (channel >= 1 && channel <= 512)
-            {
                 buffer[channel] = value;
-            }
         }
 
         void UpdateFrameBuffer()
@@ -281,12 +276,10 @@ namespace LEDControl
                     BuildTestModeBuffer(globalBrightness);
                     break;
             }
+
             UpdateKineticControl();
         }
 
-        /// <summary>
-        /// Очищает все каналы LED, оставляя нетронутыми кинетические каналы
-        /// </summary>
         private void ClearLEDChannels()
         {
             for (int ch = 1; ch <= 512; ch++)
@@ -317,22 +310,61 @@ namespace LEDControl
                 {
                     videoLength = mediaPlayer.DurationSeconds;
                     kineticStartTime = Time.time;
+
+                    // Сбросим индексы и текущие значения кинетики
+                    kineticTargetIndex = 0;
+                    secondKineticTargetIndex = 0;
+                    kineticCurrentValue = 0f;
+                    secondKineticCurrentValue = 0f;
+
                     confirmTime = true;
                 }
 
                 float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
                 float normalizedTime = (elapsedTime / videoLength) % 1f;
 
-                ApplyKineticCurve(kineticControlCurve, normalizedTime, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2);
-                ApplyKineticCurve(secondKineticControlCurve, normalizedTime, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2);
+                UpdateStepwiseKinetic(kineticControlCurve, ref kineticTargetIndex, ref kineticCurrentValue, ref kineticTargetValue, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2, normalizedTime);
+                UpdateStepwiseKinetic(secondKineticControlCurve, ref secondKineticTargetIndex, ref secondKineticCurrentValue, ref secondKineticTargetValue, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2, normalizedTime);
             }
         }
 
-        private void ApplyKineticCurve(AnimationCurve curve, float normalizedTime, int channel1, int channel2)
+        /// <summary>
+        /// Плавное приближение к целевому значению
+        /// </summary>
+        private float SmoothApproach(float current, float target, float speed)
         {
-            float curveValue = Mathf.Clamp01(curve.Evaluate(normalizedTime));
+            return Mathf.MoveTowards(current, target, speed * Time.fixedDeltaTime);
+        }
 
-            float minCombinedValue = 0f;  // corresponds to 8,8
+        /// <summary>
+        /// Обработка ступенчатой кинетики по кривой
+        /// </summary>
+        private void UpdateStepwiseKinetic(AnimationCurve curve, ref int targetIndex, ref float currentValue, ref float targetValue, int channel1, int channel2, float normalizedTime)
+        {
+            if (curve.length == 0)
+                return;
+
+            // ищем следующую ключевую точку, если время прошло целевую
+            while (targetIndex < curve.length && normalizedTime >= curve.keys[targetIndex].time)
+            {
+                targetIndex++;
+            }
+
+            // если вышли за пределы — начинаем заново
+            if (targetIndex >= curve.length)
+            {
+                targetIndex = 0;
+            }
+
+            targetValue = curve.Evaluate(curve.keys[targetIndex].time);
+
+            // плавно двигаем к целевому уровню
+            currentValue = SmoothApproach(currentValue, targetValue, 2f); // скорость плавности
+
+            float curveValue = Mathf.Clamp01(currentValue);
+
+            // переводим в два байта
+            float minCombinedValue = 0f;
             float maxCombinedValue = (210f - 8f) * 256f + (210f - 8f);
 
             float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
@@ -374,7 +406,6 @@ namespace LEDControl
                 for (int i = 0; i < totLEDs; i++)
                 {
                     int baseChannel = offset + i * channelsPerLed;
-
                     if (baseChannel + channelsPerLed - 1 > 512)
                         break;
 
@@ -407,9 +438,8 @@ namespace LEDControl
             foreach (var strip in ledStrips)
             {
                 int channelsPerLed = GetChannelsPerLed(strip);
-                int totLEDs = strip.totalLEDs;
-                int offset = strip.dmxChannelOffset;
                 int segments = strip.TotalSegments;
+                int offset = strip.dmxChannelOffset;
 
                 for (int seg = 0; seg < segments; seg++)
                 {
@@ -428,7 +458,6 @@ namespace LEDControl
 
                     int i = seg * strip.ledsPerSegment;
                     int baseChannel = offset + i * channelsPerLed;
-
                     if (baseChannel + channelsPerLed - 1 > 512)
                         break;
 
@@ -467,7 +496,7 @@ namespace LEDControl
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
-                    int globalChannel = i + 1;
+                    int globalChannel = i + 1; // DMX-каналы от 1 до 512
 
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
@@ -497,7 +526,6 @@ namespace LEDControl
                 for (int i = 0; i < totLEDs; i++)
                 {
                     int baseChannel = offset + i * channelsPerLed;
-
                     if (baseChannel + channelsPerLed - 1 > 512)
                         break;
 
@@ -534,7 +562,6 @@ namespace LEDControl
             if (dmxCommunicator == null || !dmxCommunicator.IsActive)
                 return;
 
-            // Обнуляем ТОЛЬКО led-каналы, кинетика не трогаем
             ClearLEDChannels();
             dmxCommunicator.SendFrame(FrameBuffer);
         }
@@ -571,8 +598,9 @@ namespace LEDControl
             {
                 strip.ResetFrames();
             }
+
             kineticStartTime = Time.time;
-            confirmTime = false; // сбросим, чтобы обновился videoLength
+            confirmTime = false;
         }
 
         public void SwitchToIdleJSON()
