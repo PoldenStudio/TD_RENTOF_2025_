@@ -12,6 +12,7 @@ namespace LEDControl
             // Инициализация гамма-таблицы не нужна здесь, так как она будет создаваться для каждой ленты
         }
 
+
         private void InitializeGammaTable(float gammaValue)
         {
             for (int i = 0; i < 256; ++i)

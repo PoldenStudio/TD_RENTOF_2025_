@@ -1954,19 +1954,19 @@ MonoBehaviour:
   ledsPerSegment: 1
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 00000000000000000000000002000000
+  currentDisplayModes: 00000000000000000000000000000000
   currentSunModes: 00000000000000000000000000000000
   stripSettings: []
   monochromeStripSettings:
   - globalColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4278190080
     synthColor:
       serializedVersion: 2
       rgba: 4294967295
   - globalColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4278190080
     synthColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -1979,7 +1979,7 @@ MonoBehaviour:
       rgba: 4292424246
   - globalColor:
       serializedVersion: 2
-      rgba: 4278190080
+      rgba: 4294967295
     synthColor:
       serializedVersion: 2
       rgba: 4294967295

@@ -313,77 +313,84 @@ public class SPItouchPanel : MonoBehaviour
         dataSender.EnqueueData(fullData.ToString());
     }
 
-    // Публичные методы для внешнего управления
-    public void SetSegmentColor(int stripIndex, int segmentIndex, Color32 color)
-    {
-        stripDataManager.SetSegmentColor(stripIndex, segmentIndex, color, debugMode);
-        dataChanged = true;
-    }
-
-    public Color32 GetSegmentColor(int stripIndex, int segmentIndex)
-    {
-        return stripDataManager.GetSegmentColor(stripIndex, segmentIndex);
-    }
-
-    public List<Color32> GetSegmentColors(int stripIndex)
-    {
-        return stripDataManager.GetSegmentColors(stripIndex);
-    }
-
-    public void SetGlobalColorMonochrome(int stripIndex, Color32 color)
-    {
-        stripDataManager.SetGlobalColorMonochrome(stripIndex, color, debugMode);
-        dataChanged = true;
-    }
-
-    public Color32 GetGlobalColorMonochrome(int stripIndex)
-    {
-        return stripDataManager.GetGlobalColorMonochrome(stripIndex);
-    }
-
-    public void SetGlobalColorRGB(int stripIndex, Color32 color)
-    {
-        stripDataManager.SetGlobalColorRGB(stripIndex, color, debugMode);
-        dataChanged = true;
-    }
-
-    public Color32 GetGlobalColorRGB(int stripIndex)
-    {
-        return stripDataManager.GetGlobalColorRGB(stripIndex);
-    }
-
-    public void SetDisplayMode(int stripIndex, int modeIndex)
-    {
-        stripDataManager.SetDisplayMode(stripIndex, modeIndex, debugMode);
-        dataChanged = true;
-    }
-
-    public void SetDataMode(int stripIndex, int modeIndex)
-    {
-        stripDataManager.SetDataMode(stripIndex, modeIndex, debugMode);
-        dataChanged = true;
-    }
-
-    public void SetStripEnabled(int stripIndex, bool enabled)
-    {
-        stripDataManager.SetStripEnabled(stripIndex, enabled, debugMode);
-        dataChanged = true;
-    }
 
     public void UpdateSynthParameters(float speed)
     {
         effectsManager.UpdateSpeed(speed);
         dataChanged = true;
     }
-
-    public bool IsPortOpen()
-    {
-        return dataSender.IsPortOpen();
-    }
-
-    public void SetSunMode(int stripIndex, SunMode mode)
-    {
-        stripDataManager.SetSunMode(stripIndex, mode, debugMode);
-        dataChanged = true;
-    }
 }
+
+
+
+
+
+
+
+/*// Публичные методы для внешнего управления
+public void SetSegmentColor(int stripIndex, int segmentIndex, Color32 color)
+{
+    stripDataManager.SetSegmentColor(stripIndex, segmentIndex, color, debugMode);
+    dataChanged = true;
+}
+
+public Color32 GetSegmentColor(int stripIndex, int segmentIndex)
+{
+    return stripDataManager.GetSegmentColor(stripIndex, segmentIndex);
+}
+
+public List<Color32> GetSegmentColors(int stripIndex)
+{
+    return stripDataManager.GetSegmentColors(stripIndex);
+}
+
+public void SetGlobalColorMonochrome(int stripIndex, Color32 color)
+{
+    stripDataManager.SetGlobalColorMonochrome(stripIndex, color, debugMode);
+    dataChanged = true;
+}
+
+public Color32 GetGlobalColorMonochrome(int stripIndex)
+{
+    return stripDataManager.GetGlobalColorMonochrome(stripIndex);
+}
+
+public void SetGlobalColorRGB(int stripIndex, Color32 color)
+{
+    stripDataManager.SetGlobalColorRGB(stripIndex, color, debugMode);
+    dataChanged = true;
+}
+
+public Color32 GetGlobalColorRGB(int stripIndex)
+{
+    return stripDataManager.GetGlobalColorRGB(stripIndex);
+}
+
+public void SetDisplayMode(int stripIndex, int modeIndex)
+{
+    stripDataManager.SetDisplayMode(stripIndex, modeIndex, debugMode);
+    dataChanged = true;
+}
+
+public void SetDataMode(int stripIndex, int modeIndex)
+{
+    stripDataManager.SetDataMode(stripIndex, modeIndex, debugMode);
+    dataChanged = true;
+}
+
+public void SetStripEnabled(int stripIndex, bool enabled)
+{
+    stripDataManager.SetStripEnabled(stripIndex, enabled, debugMode);
+    dataChanged = true;
+}
+
+public bool IsPortOpen()
+{
+    return dataSender.IsPortOpen();
+}
+
+public void SetSunMode(int stripIndex, SunMode mode)
+{
+    stripDataManager.SetSunMode(stripIndex, mode, debugMode);
+    dataChanged = true;
+}*/
