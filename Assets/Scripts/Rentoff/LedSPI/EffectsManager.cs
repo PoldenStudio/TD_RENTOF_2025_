@@ -2,6 +2,7 @@
 using System.Text;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LEDControl
 {
@@ -110,7 +111,11 @@ namespace LEDControl
         private SunMovementSettings previousColdSunSettings;
         [SerializeField] private StripDataManager stripDataManager;
 
-        private byte[] tempBuffer = new byte[1024]; // Временный буфер для формирования данных
+        private Dictionary<int, Queue<Comet>> cometPools = new Dictionary<int, Queue<Comet>>();
+        private int poolCapacity = 20; // Примерная максимальная потребность в кометах
+
+        private Dictionary<int, byte[]> previousSpeedSynthData = new Dictionary<int, byte[]>();
+        private Dictionary<int, byte[]> previousSunMovementData = new Dictionary<int, byte[]>();
 
         public void UpdateSpeed(float speed)
         {
@@ -135,7 +140,12 @@ namespace LEDControl
             for (int i = comets.Count - 1; i >= 0; i--)
             {
                 Comet comet = comets[i];
-                if (!comet.isActive) continue;
+                if (!comet.isActive)
+                {
+                    stripComets[stripIndex].RemoveAt(i);
+                    ReturnCometToPool(stripIndex, comet);
+                    continue;
+                }
 
                 // Если прошло достаточно времени, комета начинает двигаться
                 if (canMove && !comet.isMoving)
@@ -172,9 +182,53 @@ namespace LEDControl
         {
             if (stripComets.ContainsKey(stripIndex))
             {
+                foreach (var comet in stripComets[stripIndex])
+                {
+                    ReturnCometToPool(stripIndex, comet);
+                }
                 stripComets[stripIndex].Clear();
+                previousSpeedSynthData.Remove(stripIndex);
             }
             lastTouchTimes.Remove(stripIndex); // Сбрасываем время последнего касания
+        }
+
+        public Comet GetCometFromPool(int stripIndex, float position, Color32 color, float length, float brightness, float direction)
+        {
+            if (!cometPools.ContainsKey(stripIndex))
+            {
+                cometPools[stripIndex] = new Queue<Comet>(poolCapacity);
+            }
+
+            if (cometPools[stripIndex].Count > 0)
+            {
+                var comet = cometPools[stripIndex].Dequeue();
+                comet.position = position;
+                comet.color = color;
+                comet.length = length;
+                comet.brightness = brightness;
+                comet.direction = direction;
+                comet.isActive = true;
+                comet.startTime = Time.time;
+                comet.isMoving = false;
+                return comet;
+            }
+            else
+            {
+                return new Comet(position, color, length, brightness, direction);
+            }
+        }
+
+        public void ReturnCometToPool(int stripIndex, Comet comet)
+        {
+            if (!cometPools.ContainsKey(stripIndex))
+            {
+                cometPools[stripIndex] = new Queue<Comet>(poolCapacity);
+            }
+            comet.isActive = false;
+            if (cometPools[stripIndex].Count < poolCapacity)
+            {
+                cometPools[stripIndex].Enqueue(comet);
+            }
         }
 
         public void AddComet(int stripIndex, float position, Color32 color, float length, float brightness)
@@ -194,7 +248,7 @@ namespace LEDControl
             // Определяем направление на основе текущей скорости
             float direction = currentSpeed >= 0 ? 1f : -1f;
 
-            stripComets[stripIndex].Add(new Comet(position, color, length, brightness, direction));
+            stripComets[stripIndex].Add(GetCometFromPool(stripIndex, position, color, length, brightness, direction));
             lastTouchTimes[stripIndex] = Time.time; // Обновляем время последнего касания
         }
 
@@ -268,6 +322,15 @@ namespace LEDControl
 
         public byte[] GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
+            if (!stripComets.ContainsKey(stripIndex) || stripComets[stripIndex].Count == 0)
+            {
+                if (previousSpeedSynthData.ContainsKey(stripIndex))
+                {
+                    previousSpeedSynthData.Remove(stripIndex);
+                }
+                return null;
+            }
+
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
             int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
             byte[] hexData = new byte[totalLEDs * hexPerPixel];
@@ -277,16 +340,8 @@ namespace LEDControl
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
 
-            if (!stripComets.ContainsKey(stripIndex) || stripComets[stripIndex].Count == 0)
-            {
-                return null;
-            }
-
-            List<Color32> pixelColors = new List<Color32>(new Color32[totalLEDs]);
-            for (int i = 0; i < totalLEDs; i++)
-            {
-                pixelColors[i] = blackColor;
-            }
+            Span<Color32> pixelColors = new Span<Color32>(new Color32[totalLEDs]);
+            pixelColors.Fill(blackColor);
 
             foreach (Comet comet in stripComets[stripIndex])
             {
@@ -332,21 +387,29 @@ namespace LEDControl
             for (int i = 0; i < totalLEDs; ++i)
             {
                 Color32 pixelColor = pixelColors[i];
+                Span<byte> pixelHex = stackalloc byte[hexPerPixel];
                 if (mode == DataMode.RGBW)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else
                 {
-                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
+                pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
+            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel]);
+            if (previousSpeedSynthData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.AsSpan().SequenceEqual(prevHex))
+            {
+                return null;
+            }
+            previousSpeedSynthData[stripIndex] = optimizedHex;
+            return optimizedHex;
         }
 
         public byte[] GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
@@ -403,22 +466,29 @@ namespace LEDControl
                         );
                     }
                 }
-
+                Span<byte> pixelHex = stackalloc byte[hexPerPixel];
                 if (mode == DataMode.RGBW)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else
                 {
-                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
+                pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
+            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel]);
+            if (previousSunMovementData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.AsSpan().SequenceEqual(prevHex))
+            {
+                return null;
+            }
+            previousSunMovementData[stripIndex] = optimizedHex;
+            return optimizedHex;
         }
 
         public byte[] GetHexDataForSegmentMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
@@ -442,46 +512,44 @@ namespace LEDControl
                     (byte)(segmentColor.b * stripBrightness),
                     255
                 );
-
+                Span<byte> pixelHex = stackalloc byte[hexPerPixel];
                 if (mode == DataMode.RGBW)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
                 else
                 {
-                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
+                    colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
+                pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
+            return OptimizeHexData(hexData, new byte[hexPerPixel]);
         }
 
-        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex, int hexPerPixel)
+        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex)
         {
+            int hexPerPixel = blackHex.Length;
             int totalPixels = hexData.Length / hexPerPixel;
-            int lastSentPixel = 0;
-            while (totalPixels > 0)
+            int lastSentPixel = totalPixels;
+            while (lastSentPixel > 0)
             {
-                int startIndex = (totalPixels - 1) * hexPerPixel;
-                bool isBlack = true;
-                for (int j = 0; j < hexPerPixel; j++)
+                int startIndex = (lastSentPixel - 1) * hexPerPixel;
+                if (new Span<byte>(hexData, startIndex, hexPerPixel).SequenceEqual(blackHex))
                 {
-                    if (hexData[startIndex + j] != blackHex[j])
-                    {
-                        isBlack = false;
-                        break;
-                    }
+                    lastSentPixel--;
                 }
-                if (!isBlack)
+                else
+                {
                     break;
-                totalPixels--;
+                }
             }
-            byte[] optimizedData = new byte[totalPixels * hexPerPixel];
-            Array.Copy(hexData, optimizedData, optimizedData.Length);
+            byte[] optimizedData = new byte[lastSentPixel * hexPerPixel];
+            Buffer.BlockCopy(hexData, 0, optimizedData, 0, optimizedData.Length);
             return optimizedData;
         }
 
