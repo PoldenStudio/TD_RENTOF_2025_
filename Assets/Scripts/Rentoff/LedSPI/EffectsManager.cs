@@ -110,12 +110,20 @@ namespace LEDControl
         private SunMovementSettings previousWarmSunSettings;
         private SunMovementSettings previousColdSunSettings;
         [SerializeField] private StripDataManager stripDataManager;
-
+        [SerializeField] public ColorProcessor colorProcessor;
         private Dictionary<int, Queue<Comet>> cometPools = new Dictionary<int, Queue<Comet>>();
         private int poolCapacity = 20; // Примерная максимальная потребность в кометах
 
         private Dictionary<int, byte[]> previousSpeedSynthData = new Dictionary<int, byte[]>();
-        private Dictionary<int, byte[]> previousSunMovementData = new Dictionary<int, byte[]>();
+        private Dictionary<int, Dictionary<float, byte[]>> precalculatedSunDataWarm = new Dictionary<int, Dictionary<float, byte[]>>();
+        private Dictionary<int, Dictionary<float, byte[]>> precalculatedSunDataCold = new Dictionary<int, Dictionary<float, byte[]>>();
+        private const float PrecalculationSpeedStep = 0.1f; // Шаг для предварительного вычисления скорости
+        private const float MaxPrecalculationSpeed = 5f; // Максимальная скорость для предварительного вычисления
+
+        public void Awake()
+        {
+            PrecalculateSunMovementData();
+        }
 
         public void UpdateSpeed(float speed)
         {
@@ -257,10 +265,28 @@ namespace LEDControl
             lastTouchTimes[stripIndex] = Time.time; // Обновляем время последнего касания без создания кометы
         }
 
+        public void PrecalculateSunMovementData()
+        {
+            if (stripDataManager == null) return;
+
+            for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+            {
+                precalculatedSunDataWarm[stripIndex] = new Dictionary<float, byte[]>();
+                precalculatedSunDataCold[stripIndex] = new Dictionary<float, byte[]>();
+                int hexPerPixel = (stripDataManager.currentDataModes[stripIndex] == DataMode.RGBW ? 4 : stripDataManager.currentDataModes[stripIndex] == DataMode.RGB ? 3 : 1);
+
+                for (float speed = 0f; speed <= MaxPrecalculationSpeed; speed += PrecalculationSpeedStep)
+                {
+                    precalculatedSunDataWarm[stripIndex][speed] = GenerateSunMovementHexDataInternal(stripIndex, SunMode.Warm, speed, hexPerPixel);
+                    precalculatedSunDataCold[stripIndex][speed] = GenerateSunMovementHexDataInternal(stripIndex, SunMode.Cold, speed, hexPerPixel);
+                }
+            }
+        }
+
         public void UpdateSunMovementPhase()
         {
-            SunMovementSettings settings = warmSunSettings; // По умолчанию, можно использовать coldSunSettings
-            float cycleTime = settings.cycleLength / Mathf.Max(0.1f, currentSpeed);
+            SunMovementSettings settings = warmSunSettings; // Используется только для расчета фазы
+            float cycleTime = settings.cycleLength / Mathf.Max(0.1f, 1f); // Фаза не зависит от currentSpeed
             sunMovementPhase += Time.fixedDeltaTime / cycleTime;
             if (sunMovementPhase >= 1f)
                 sunMovementPhase = 0f;
@@ -403,7 +429,7 @@ namespace LEDControl
                 pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel]);
+            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
             if (previousSpeedSynthData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.AsSpan().SequenceEqual(prevHex))
             {
                 return null;
@@ -414,17 +440,54 @@ namespace LEDControl
 
         public byte[] GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
-            int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
+            if (stripDataManager == null || stripIndex < 0 || stripIndex >= stripManager.totalLEDsPerStrip.Count)
+            {
+                return null;
+            }
+
+            float roundedSpeed = Mathf.Round(currentSpeed / PrecalculationSpeedStep) * PrecalculationSpeedStep;
+            roundedSpeed = Mathf.Clamp(roundedSpeed, 0f, MaxPrecalculationSpeed);
             int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
+            SunMode currentSunMode = stripManager.GetSunMode(stripIndex);
+
+            if (currentSunMode == SunMode.Warm)
+            {
+                if (precalculatedSunDataWarm.ContainsKey(stripIndex) && precalculatedSunDataWarm[stripIndex].ContainsKey(roundedSpeed))
+                {
+                    return precalculatedSunDataWarm[stripIndex][roundedSpeed];
+                }
+                else
+                {
+                    return GenerateSunMovementHexDataInternal(stripIndex, currentSunMode, currentSpeed, hexPerPixel); // Fallback, если нет предзапеченных данных
+                }
+            }
+            else if (currentSunMode == SunMode.Cold)
+            {
+                if (precalculatedSunDataCold.ContainsKey(stripIndex) && precalculatedSunDataCold[stripIndex].ContainsKey(roundedSpeed))
+                {
+                    return precalculatedSunDataCold[stripIndex][roundedSpeed];
+                }
+                else
+                {
+                    return GenerateSunMovementHexDataInternal(stripIndex, currentSunMode, currentSpeed, hexPerPixel); // Fallback
+                }
+            }
+
+            return null;
+        }
+
+        private byte[] GenerateSunMovementHexDataInternal(int stripIndex, SunMode sunMode, float speed, int hexPerPixel)
+        {
+            int totalLEDs = stripDataManager.totalLEDsPerStrip[stripIndex];
             byte[] hexData = new byte[totalLEDs * hexPerPixel];
-            Color32 sunColor = stripManager.GetSunMode(stripIndex) == SunMode.Warm ? new Color32(255, 147, 41, 255) : new Color32(173, 216, 230, 255);
+            Color32 sunColor = sunMode == SunMode.Warm ? new Color32(255, 147, 41, 255) : new Color32(173, 216, 230, 255);
             Color32 blackColor = new Color32(0, 0, 0, 255);
 
-            float stripBrightness = stripManager.GetStripBrightness(stripIndex);
-            float stripGamma = stripManager.GetStripGamma(stripIndex);
-            bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
+            float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
+            float stripGamma = stripDataManager.GetStripGamma(stripIndex);
+            bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
 
-            SunMovementSettings settings = stripManager.GetSunMode(stripIndex) == SunMode.Warm ? warmSunSettings : coldSunSettings;
+            SunMovementSettings settings = sunMode == SunMode.Warm ? warmSunSettings : coldSunSettings;
             float currentCycleTime = sunMovementPhase * settings.cycleLength;
             bool isActive = currentCycleTime >= settings.startTime && currentCycleTime <= settings.endTime;
 
@@ -467,11 +530,11 @@ namespace LEDControl
                     }
                 }
                 Span<byte> pixelHex = stackalloc byte[hexPerPixel];
-                if (mode == DataMode.RGBW)
+                if (stripDataManager.currentDataModes[stripIndex] == DataMode.RGBW)
                 {
                     colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
-                else if (mode == DataMode.RGB)
+                else if (stripDataManager.currentDataModes[stripIndex] == DataMode.RGB)
                 {
                     colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled, pixelHex);
                 }
@@ -482,13 +545,7 @@ namespace LEDControl
                 pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel]);
-            if (previousSunMovementData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.AsSpan().SequenceEqual(prevHex))
-            {
-                return null;
-            }
-            previousSunMovementData[stripIndex] = optimizedHex;
-            return optimizedHex;
+            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
         }
 
         public byte[] GetHexDataForSegmentMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
@@ -528,12 +585,11 @@ namespace LEDControl
                 pixelHex.CopyTo(new Span<byte>(hexData, i * hexPerPixel, hexPerPixel));
             }
 
-            return OptimizeHexData(hexData, new byte[hexPerPixel]);
+            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
         }
 
-        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex)
+        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex, int hexPerPixel)
         {
-            int hexPerPixel = blackHex.Length;
             int totalPixels = hexData.Length / hexPerPixel;
             int lastSentPixel = totalPixels;
             while (lastSentPixel > 0)
@@ -552,6 +608,8 @@ namespace LEDControl
             Buffer.BlockCopy(hexData, 0, optimizedData, 0, optimizedData.Length);
             return optimizedData;
         }
+
+
 
         public void HandleTouchInput(int stripIndex, int touchCol, StripDataManager stripManager, StateManager.AppState appState)
         {
