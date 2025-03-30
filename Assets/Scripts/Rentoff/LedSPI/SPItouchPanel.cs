@@ -144,7 +144,6 @@ public class SPItouchPanel : MonoBehaviour
                     {
                         float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(effectsManager.synthLedCountBase + Mathf.Abs(effectsManager.currentSpeed) * effectsManager.speedLedCountFactor));
                         float dynamicBrightness = Mathf.Clamp01(stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(effectsManager.currentSpeed) * effectsManager.speedBrightnessFactor);
-                        // Убрано isCircular, так как круговое движение теперь стандартное
                         effectsManager.AddComet(stripIndex, 0, stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
                     }
                 }
@@ -190,6 +189,43 @@ public class SPItouchPanel : MonoBehaviour
 
             SendDataToLEDStrip();
             dataChanged = false;
+        }
+    }
+
+    private void SendDataToLEDStrip()
+    {
+        byte[] fullData = new byte[1024]; // Временный буфер
+        int offset = 0;
+
+        for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+        {
+            if (!stripDataManager.stripEnabled[stripIndex]) continue;
+
+            if (stripDataManager.currentDataModes[stripIndex] == DataMode.Monochrome1Color &&
+                stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+            {
+                Debug.LogWarning("[SPItouchPanel] Monochrome1Color не поддерживает SpeedSynthMode.");
+                continue;
+            }
+
+            byte[] dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, effectsManager, colorProcessor, stateManager.CurrentState);
+            if (dataString != null && dataString.Length > 0)
+            {
+                if (offset + dataString.Length > fullData.Length)
+                {
+                    // Увеличиваем буфер, если не хватает места
+                    Array.Resize(ref fullData, fullData.Length * 2);
+                }
+                Array.Copy(dataString, 0, fullData, offset, dataString.Length);
+                offset += dataString.Length;
+            }
+        }
+
+        if (offset > 0)
+        {
+            byte[] finalData = new byte[offset];
+            Array.Copy(fullData, finalData, offset);
+            dataSender.EnqueueData(finalData);
         }
     }
 
@@ -290,29 +326,6 @@ public class SPItouchPanel : MonoBehaviour
             }
         }
     }
-
-    private void SendDataToLEDStrip()
-    {
-        StringBuilder fullData = new StringBuilder();
-
-        for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
-        {
-            if (!stripDataManager.stripEnabled[stripIndex]) continue;
-
-            if (stripDataManager.currentDataModes[stripIndex] == DataMode.Monochrome1Color &&
-                stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-            {
-                Debug.LogWarning("[SPItouchPanel] Monochrome1Color не поддерживает SpeedSynthMode.");
-                continue;
-            }
-
-            string dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, effectsManager, colorProcessor, stateManager.CurrentState);
-            fullData.Append(dataString);
-        }
-
-        dataSender.EnqueueData(fullData.ToString());
-    }
-
     // Публичные методы для внешнего управления
     public void SetSegmentColor(int stripIndex, int segmentIndex, Color32 color)
     {

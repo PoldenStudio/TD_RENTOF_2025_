@@ -6,6 +6,7 @@ using UnityEngine;
 using static StateManager;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace LEDControl
 {
@@ -15,20 +16,21 @@ namespace LEDControl
         [SerializeField] private string portName = "COM6";
         [SerializeField] private int baudRate = 115200;
         [SerializeField] private bool debugMode = false;
-        [SerializeField] private StripDataManager stripManager;
+        [SerializeField] private StripDataManager stripDataManager;
 
         private SerialPort serialPort;
 
         private float lastSendTime = 0f;
         private float sendInterval = 0.028f; // 28 мс
 
-        private Dictionary<int, string> previousGlobalData = new();
-        private Dictionary<int, string> previousSegmentData = new();
+        private Dictionary<int, byte[]> previousGlobalData = new();
+        private Dictionary<int, byte[]> previousSegmentData = new();
 
-        // Поля для многопоточности
         private Thread portThread;
         private volatile bool threadRunning = false;
-        private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
+        private ConcurrentQueue<byte[]> sendQueue = new ConcurrentQueue<byte[]>();
+
+        private byte[] tempBuffer = new byte[1024]; // Временный буфер для формирования данных
 
         void Awake()
         {
@@ -56,7 +58,6 @@ namespace LEDControl
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
 
-                    // Запускаем поток
                     threadRunning = true;
                     portThread = new Thread(SerialThreadLoop);
                     portThread.IsBackground = true;
@@ -75,11 +76,11 @@ namespace LEDControl
             {
                 try
                 {
-                    if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out string dataString))
+                    if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out byte[] data))
                     {
-                        serialPort.Write(dataString);
+                        serialPort.Write(data, 0, data.Length);
                         if (debugMode)
-                            Debug.Log($"[DataSender][Thread] Sent data: {dataString.Replace("\r\n", "\\r\\n")}");
+                            Debug.Log($"[DataSender][Thread] Sent data: {BitConverter.ToString(data).Replace("-", "")}");
                     }
                     else
                     {
@@ -141,74 +142,86 @@ namespace LEDControl
             return Time.time - lastSendTime > sendInterval;
         }
 
-        public void EnqueueData(string dataString)
+        public void EnqueueData(byte[] data)
         {
-            if (string.IsNullOrEmpty(dataString) || !IsPortOpen())
+            if (data == null || data.Length == 0 || !IsPortOpen())
                 return;
 
-            sendQueue.Enqueue(dataString);
-
+            sendQueue.Enqueue(data);
             lastSendTime = Time.time;
         }
 
-        private string GetPrefixForDataMode(DataMode mode)
+        private byte[] GetPrefixForDataMode(DataMode mode)
         {
-            return ((int)mode).ToString() + ":";
+            return Encoding.ASCII.GetBytes(((int)mode).ToString() + ":");
         }
 
-        private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel, int totalPixels, ref int lastSentPixel)
+        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex, int hexPerPixel, int totalPixels, ref int lastSentPixel)
         {
             int changedPixels = totalPixels;
             for (int i = totalPixels - 1; i >= lastSentPixel; i--)
             {
-                string pixelHex = hexString.Substring(i * hexPerPixel, hexPerPixel);
-                if (!pixelHex.Equals(blackHex, StringComparison.OrdinalIgnoreCase))
+                int startIndex = i * hexPerPixel;
+                bool isBlack = true;
+                for (int j = 0; j < hexPerPixel; j++)
+                {
+                    if (hexData[startIndex + j] != blackHex[j])
+                    {
+                        isBlack = false;
+                        break;
+                    }
+                }
+                if (!isBlack)
                 {
                     changedPixels = i + 1;
                     break;
                 }
             }
             lastSentPixel = changedPixels;
-            return hexString.Substring(0, changedPixels * hexPerPixel);
+            byte[] optimizedData = new byte[changedPixels * hexPerPixel];
+            Array.Copy(hexData, optimizedData, optimizedData.Length);
+            return optimizedData;
         }
 
-        public string GetHexDataForGlobalColor(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
+        public byte[] GetHexDataForGlobalColor(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int pixelsToGenerate = Mathf.Max(stripManager.GetTotalSegments(stripIndex), 1);
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
+            int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
 
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
 
             Color32 globalColor = stripManager.GetGlobalColorForStrip(stripIndex, mode);
-            string pixelHex = mode switch
+            byte[] pixelHex = mode switch
             {
                 DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 DataMode.RGB => colorProcessor.ColorToHexRGB(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 DataMode.RGBW => colorProcessor.ColorToHexRGBW(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
-                _ => ""
+                _ => new byte[hexPerPixel]
             };
 
-            StringBuilder sb = new StringBuilder(pixelsToGenerate * hexPerPixel);
+            byte[] hexData = new byte[pixelsToGenerate * hexPerPixel];
             for (int i = 0; i < pixelsToGenerate; i++)
-                sb.Append(pixelHex);
+            {
+                Array.Copy(pixelHex, 0, hexData, i * hexPerPixel, hexPerPixel);
+            }
 
             int lastSentPixel = 0;
-            string optimizedHex = OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel, pixelsToGenerate, ref lastSentPixel);
+            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel, pixelsToGenerate, ref lastSentPixel);
 
-            if (previousGlobalData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
-                return "";
+            if (previousGlobalData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.SequenceEqual(prevHex))
+                return null;
 
             previousGlobalData[stripIndex] = optimizedHex;
             return optimizedHex;
         }
 
-        public string GetHexDataForSegmentColors(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
+        public byte[] GetHexDataForSegmentColors(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
             int ledsPerSegment = stripManager.ledsPerSegment;
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
+            int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
             var segmentColors = stripManager.GetSegmentColors(stripIndex);
             int totalPixels = segmentColors.Count * ledsPerSegment;
 
@@ -216,38 +229,41 @@ namespace LEDControl
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
 
-            StringBuilder sb = new StringBuilder(totalPixels * hexPerPixel);
+            byte[] hexData = new byte[totalPixels * hexPerPixel];
 
-            foreach (Color32 color in segmentColors)
+            for (int i = 0; i < segmentColors.Count; i++)
             {
-                string pixelHex = mode switch
+                Color32 color = segmentColors[i];
+                byte[] pixelHex = mode switch
                 {
                     DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(color, stripBrightness, stripGamma, stripGammaEnabled),
                     DataMode.RGB => colorProcessor.ColorToHexRGB(color, stripBrightness, stripGamma, stripGammaEnabled),
                     DataMode.RGBW => colorProcessor.ColorToHexRGBW(color, stripBrightness, stripGamma, stripGammaEnabled),
-                    _ => ""
+                    _ => new byte[hexPerPixel]
                 };
 
                 for (int j = 0; j < ledsPerSegment; j++)
-                    sb.Append(pixelHex);
+                {
+                    Array.Copy(pixelHex, 0, hexData, (i * ledsPerSegment + j) * hexPerPixel, hexPerPixel);
+                }
             }
 
             int lastSentPixel = 0;
-            string optimizedHex = OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel, totalPixels, ref lastSentPixel);
+            byte[] optimizedHex = OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel, totalPixels, ref lastSentPixel);
 
-            if (previousSegmentData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
-                return "";
+            if (previousSegmentData.TryGetValue(stripIndex, out byte[] prevHex) && optimizedHex.SequenceEqual(prevHex))
+                return null;
 
             previousSegmentData[stripIndex] = optimizedHex;
             return optimizedHex;
         }
 
-        public string GenerateDataString(int stripIndex, StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public byte[] GenerateDataString(int stripIndex, StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             if (stripIndex < 0 || stripIndex >= stripManager.totalLEDsPerStrip.Count)
             {
                 Debug.LogError($"[DataSender] Invalid strip index: {stripIndex}");
-                return "";
+                return null;
             }
 
             DataMode dataMode = stripManager.currentDataModes[stripIndex];
@@ -256,11 +272,11 @@ namespace LEDControl
             // В режиме Idle и SpeedSynthMode ничего не отправляем
             if (appState == AppState.Idle && displayMode == DisplayMode.SpeedSynthMode)
             {
-                return "";
+                return null;
             }
 
-            string prefix = GetPrefixForDataMode(dataMode);
-            string colorData = displayMode switch
+            byte[] prefix = GetPrefixForDataMode(dataMode);
+            byte[] colorData = displayMode switch
             {
                 DisplayMode.GlobalColor => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor),
                 DisplayMode.SegmentColor => GetHexDataForSegmentColors(stripIndex, dataMode, stripManager, colorProcessor),
@@ -270,27 +286,54 @@ namespace LEDControl
                 _ => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor)
             };
 
-            return string.IsNullOrEmpty(colorData) ? "" : $"{prefix}{colorData}\r\n";
+            if (colorData == null || colorData.Length == 0)
+                return null;
+
+            byte[] dataString = new byte[prefix.Length + colorData.Length + 2]; // +2 для \r\n
+            Array.Copy(prefix, 0, dataString, 0, prefix.Length);
+            Array.Copy(colorData, 0, dataString, prefix.Length, colorData.Length);
+            dataString[dataString.Length - 2] = (byte)'\r';
+            dataString[dataString.Length - 1] = (byte)'\n';
+
+            return dataString;
         }
 
-        public string GenerateAllDataString(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public byte[] GenerateAllDataString(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; i++)
+            int totalLength = 0;
+            foreach (int stripIndex in stripDataManager.totalLEDsPerStrip) // Исправлено обращение к элементам списка
             {
-                string stripData = GenerateDataString(i, stripManager, effectsManager, colorProcessor, appState);
-                if (!string.IsNullOrEmpty(stripData))
-                    sb.Append(stripData);
+                byte[] stripData = GenerateDataString(stripIndex, stripManager, effectsManager, colorProcessor, appState);
+                if (stripData != null)
+                {
+                    totalLength += stripData.Length;
+                }
             }
-            return sb.Length > 0 ? sb.ToString() : "";
+
+            if (totalLength == 0)
+                return null;
+
+            byte[] fullData = new byte[totalLength];
+            int offset = 0;
+            foreach (int stripIndex in stripDataManager.totalLEDsPerStrip) // Исправлено обращение к элементам списка
+            {
+                byte[] stripData = GenerateDataString(stripIndex, stripManager, effectsManager, colorProcessor, appState);
+                if (stripData != null)
+                {
+                    Array.Copy(stripData, 0, fullData, offset, stripData.Length);
+                    offset += stripData.Length;
+                }
+            }
+
+            return fullData;
         }
 
         public void SendAllData(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             if (ShouldSendData())
             {
-                string totalData = GenerateAllDataString(stripManager, effectsManager, colorProcessor, appState);
-                if (!string.IsNullOrEmpty(totalData))
+                byte[] totalData = GenerateAllDataString(stripManager, effectsManager, colorProcessor, appState);
+                if (totalData != null && totalData.Length > 0)
                     EnqueueData(totalData);
             }
         }

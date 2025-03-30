@@ -110,27 +110,11 @@ namespace LEDControl
         private SunMovementSettings previousColdSunSettings;
         [SerializeField] private StripDataManager stripDataManager;
 
-
+        private byte[] tempBuffer = new byte[1024]; // Временный буфер для формирования данных
 
         public void UpdateSpeed(float speed)
         {
             currentSpeed = speed * MultiplySpeed;
-/*            // Обновляем направление движения для всех комет на основе знака скорости
-            foreach (var strip in stripComets)
-            {
-                foreach (var comet in strip.Value)
-                {
-                    if (currentSpeed < 0)
-                    {
-                        comet.direction = -1f;
-                    }
-                    else
-                    {
-                        comet.direction = 1f;
-                    }
-                        //comet.direction = currentSpeed >= 0 ? 1f : -1f;
-                }
-            }*/
         }
 
         public void UpdateComets(int stripIndex, StripDataManager stripManager)
@@ -172,8 +156,7 @@ namespace LEDControl
                         comet.direction = currentSpeed >= 0 ? 1f : -1f;
                     }
 
-
-                        float directionMultiplier = comet.direction;
+                    float directionMultiplier = comet.direction;
                     comet.position += Mathf.Abs(currentSpeed) * timeSinceLastUpdate * 30f * directionMultiplier;
 
                     // Обработка выхода за пределы
@@ -209,10 +192,7 @@ namespace LEDControl
             }
 
             // Определяем направление на основе текущей скорости
-            
             float direction = currentSpeed >= 0 ? 1f : -1f;
-
-
 
             stripComets[stripIndex].Add(new Comet(position, color, length, brightness, direction));
             lastTouchTimes[stripIndex] = Time.time; // Обновляем время последнего касания
@@ -286,11 +266,11 @@ namespace LEDControl
             };
         }
 
-        public string GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
+        public byte[] GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-            StringBuilder sb = new StringBuilder(totalLEDs * hexPerPixel);
+            int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
+            byte[] hexData = new byte[totalLEDs * hexPerPixel];
             Color32 blackColor = new Color32(0, 0, 0, 255);
 
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);
@@ -299,7 +279,7 @@ namespace LEDControl
 
             if (!stripComets.ContainsKey(stripIndex) || stripComets[stripIndex].Count == 0)
             {
-                return "";
+                return null;
             }
 
             List<Color32> pixelColors = new List<Color32>(new Color32[totalLEDs]);
@@ -335,15 +315,11 @@ namespace LEDControl
 
                     if (currentLedIndex >= 0 && currentLedIndex < totalLEDs)
                     {
-
                         float tailFalloff = 1f - ((float)j / (dynamicLedCount - 1));
                         tailFalloff = Mathf.Clamp01(tailFalloff); // безопасная защита
                         float brightnessFactor = tailFalloff * tailIntensity;
 
-
                         // Яркость уменьшается от головы к хвосту
-                        //float brightnessFactor = Mathf.Pow(1f - (float)j / dynamicLedCount, 2f); // Голова — 1.0, хвост — ~0
-                        //float brightnessFactor = comet.direction > 0 ? 1f - (float)j / dynamicLedCount * tailIntensity : 1f - (float)(dynamicLedCount - 1 - j) / dynamicLedCount * tailIntensity;
                         byte r = (byte)Mathf.Clamp(comet.color.r * brightnessFactor * dynamicBrightness, 0, 255);
                         byte g = (byte)Mathf.Clamp(comet.color.g * brightnessFactor * dynamicBrightness, 0, 255);
                         byte b = (byte)Mathf.Clamp(comet.color.b * brightnessFactor * dynamicBrightness, 0, 255);
@@ -358,26 +334,26 @@ namespace LEDControl
                 Color32 pixelColor = pixelColors[i];
                 if (mode == DataMode.RGBW)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else
                 {
-                    sb.Append(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
             }
 
-            return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
+            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
         }
 
-        public string GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
+        public byte[] GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-            StringBuilder sb = new StringBuilder(totalLEDs * hexPerPixel);
+            int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
+            byte[] hexData = new byte[totalLEDs * hexPerPixel];
             Color32 sunColor = stripManager.GetSunMode(stripIndex) == SunMode.Warm ? new Color32(255, 147, 41, 255) : new Color32(173, 216, 230, 255);
             Color32 blackColor = new Color32(0, 0, 0, 255);
 
@@ -430,27 +406,27 @@ namespace LEDControl
 
                 if (mode == DataMode.RGBW)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else
                 {
-                    sb.Append(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
             }
 
-            return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
+            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
         }
 
-        public string GetHexDataForSegmentMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
+        public byte[] GetHexDataForSegmentMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
             int ledsPerSegment = stripManager.ledsPerSegment;
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-            StringBuilder sb = new StringBuilder(totalLEDs * hexPerPixel);
+            int hexPerPixel = (mode == DataMode.RGBW ? 4 : mode == DataMode.RGB ? 3 : 1);
+            byte[] hexData = new byte[totalLEDs * hexPerPixel];
 
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);
             float stripGamma = stripManager.GetStripGamma(stripIndex);
@@ -469,33 +445,44 @@ namespace LEDControl
 
                 if (mode == DataMode.RGBW)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGBW(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else if (mode == DataMode.RGB)
                 {
-                    sb.Append(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexRGB(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
                 else
                 {
-                    sb.Append(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled));
+                    Array.Copy(colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 0, hexData, i * hexPerPixel, hexPerPixel);
                 }
             }
 
-            return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
+            return OptimizeHexData(hexData, new byte[hexPerPixel], hexPerPixel);
         }
 
-        private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
+        private byte[] OptimizeHexData(byte[] hexData, byte[] blackHex, int hexPerPixel)
         {
-            int totalPixels = hexString.Length / hexPerPixel;
+            int totalPixels = hexData.Length / hexPerPixel;
+            int lastSentPixel = 0;
             while (totalPixels > 0)
             {
-                string lastPixel = hexString.Substring((totalPixels - 1) * hexPerPixel, hexPerPixel);
-                if (lastPixel.Equals(blackHex, StringComparison.OrdinalIgnoreCase))
-                    totalPixels--;
-                else
+                int startIndex = (totalPixels - 1) * hexPerPixel;
+                bool isBlack = true;
+                for (int j = 0; j < hexPerPixel; j++)
+                {
+                    if (hexData[startIndex + j] != blackHex[j])
+                    {
+                        isBlack = false;
+                        break;
+                    }
+                }
+                if (!isBlack)
                     break;
+                totalPixels--;
             }
-            return hexString.Substring(0, totalPixels * hexPerPixel);
+            byte[] optimizedData = new byte[totalPixels * hexPerPixel];
+            Array.Copy(hexData, optimizedData, optimizedData.Length);
+            return optimizedData;
         }
 
         public void HandleTouchInput(int stripIndex, int touchCol, StripDataManager stripManager, StateManager.AppState appState)
