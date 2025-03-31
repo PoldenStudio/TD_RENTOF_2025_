@@ -1701,7 +1701,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   touchSound: {fileID: 8300000, guid: 4ed9a84d410857544a68936b0dfcd809, type: 3}
   baseFrequency: 220
-  frequencyStep: 100
+  frequencyStep: 10
   maxFrequency: 880
   frequencyDecayTime: 0.5
   _swipeDetector: {fileID: 1585652908}
@@ -1898,7 +1898,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1f509732dd3f354d8aca1ebdf7485ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portName: COM19
+  portName: COM22
   baudRate: 921600
   debugMode: 1
   stripManager: {fileID: 770569964}
@@ -1927,17 +1927,25 @@ MonoBehaviour:
     startTime: 38
     endTime: 230
     brightnessMultiplier: 1
+    fadeTime: 5
+    invCycleLength: 0
+    invFadeTime: 0
+    bakedCycleLength: 0
   coldSunSettings:
     pixelCount: 10
     cycleLength: 241
     startTime: 38
     endTime: 230
     brightnessMultiplier: 1
+    fadeTime: 5
+    invCycleLength: 0
+    invFadeTime: 0
+    bakedCycleLength: 0
   toggleTouchMode: 1
   cometMoveDelay: 0.2
+  stripDataManager: {fileID: 770569964}
   currentSpeed: 1
   MultiplySpeed: 2
-  stripDataManager: {fileID: 770569964}
 --- !u!114 &770569964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1952,7 +1960,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 01010101
+  stripEnabled: 00000001
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 00000000000000000000000000000000
   currentSunModes: 00000000000000000000000000000000
@@ -3265,7 +3273,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rows: 1
-  cols: 60
+  cols: 12
+  panels: 1
+  segments: 12
+  segmentsPerPanel: 12
   sampleRate: 0.05
   swipeTimeThreshold: 0.2
   speedMultiplier: 2
@@ -3323,7 +3334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portNames:
-  - COM18
+  - COM12
   baudRate: 115200
   dataTimeout: 1
   idleTimeout: 10000
@@ -3677,7 +3688,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stateManager: {fileID: 1585652921}
-  comPortName: COM15
+  comPortName: COM151
   baudRate: 250000
   baseFramesPerSecond: 60
   frameSkip: 1

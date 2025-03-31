@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using static StateManager;
 
@@ -43,7 +42,7 @@ public class SwipeDetector : MonoBehaviour
     [SerializeField] private StateManager stateManager;
 
     private bool _isSmoothDragSequence = false;
-    private List<int> _processedIndices = new List<int>(); // Keep track of processed indices
+    private List<int> _processedIndices = new List<int>();
 
     public void OnInputReceived(bool[] panelStates)
     {
@@ -56,46 +55,34 @@ public class SwipeDetector : MonoBehaviour
             {
                 anyPressed = true;
 
-                _playbackController.OnPanelPressed(i, true);
-
                 if (!_currentlyPressedPanels.Contains(i))
                 {
                     _currentlyPressedPanels.Add(i);
                     _panelHoldStartTimes[i] = currentTime;
 
-                    if (_activationHistory.Count > 0 &&
-                        _activationHistory[_activationHistory.Count - 1].index == i)
-                    {
-                        continue;
-                    }
-
                     _activationHistory.Add(new PanelActivation { index = i, time = currentTime });
                     _lastTouchTime = currentTime;
 
+                    _playbackController.OnPanelPressed(i, true);
+                    PanelPressed?.Invoke(i, true);
+
                     if (_activationHistory.Count >= 2 && !_isSwipeInProgress)
                     {
-                        float timeDiffBetweenFirstTwo = _activationHistory[1].time - _activationHistory[0].time;
-                        _isSmoothDragSequence = timeDiffBetweenFirstTwo > 0.2f;
+                        float timeDiff = _activationHistory[1].time - _activationHistory[0].time;
+                        _isSmoothDragSequence = timeDiff > 0.2f;
                         _isSwipeInProgress = true;
+
                         if (stateManager.CurrentState == AppState.Active)
-                        {
                             TryDetectSwipe(true);
-                        }
                         else if (stateManager.CurrentState == AppState.Idle)
-                        {
                             TryDetectRelativeSwipe();
-                        }
                     }
                     else if (_isSwipeInProgress && _activationHistory.Count > 2)
                     {
                         if (stateManager.CurrentState == AppState.Active)
-                        {
                             TryDetectSwipe(true);
-                        }
                         else if (stateManager.CurrentState == AppState.Idle)
-                        {
                             TryDetectRelativeSwipe();
-                        }
                     }
                 }
             }
@@ -106,6 +93,7 @@ public class SwipeDetector : MonoBehaviour
                     _currentlyPressedPanels.Remove(i);
                     _panelHoldStartTimes.Remove(i);
                     _playbackController.OnPanelPressed(i, false);
+                    PanelPressed?.Invoke(i, false);
                 }
             }
         }
@@ -127,13 +115,10 @@ public class SwipeDetector : MonoBehaviour
             if (_isSwipeInProgress)
             {
                 if (stateManager.CurrentState == AppState.Active)
-                {
                     TryDetectSwipe(false);
-                }
                 else if (stateManager.CurrentState == AppState.Idle)
-                {
                     TryDetectRelativeSwipe();
-                }
+
                 _isSwipeInProgress = false;
             }
             ResetSwipeData();
@@ -143,18 +128,16 @@ public class SwipeDetector : MonoBehaviour
             if (_isSwipeInProgress)
             {
                 if (stateManager.CurrentState == AppState.Active)
-                {
                     TryDetectSwipe(false);
-                }
                 else if (stateManager.CurrentState == AppState.Idle)
-                {
                     TryDetectRelativeSwipe();
-                }
+
                 _isSwipeInProgress = false;
             }
             ResetSwipeData();
         }
     }
+
     private void ResetSwipeData()
     {
         _activationHistory.Clear();
@@ -164,16 +147,13 @@ public class SwipeDetector : MonoBehaviour
 
     private void TryDetectSwipe(bool isInProgress = false)
     {
-        if (_activationHistory.Count < 3)
-            return;
+        if (_activationHistory.Count < 3) return;
 
         _activationHistory.Sort((a, b) => a.time.CompareTo(b.time));
-
         PanelActivation first = _activationHistory[0];
         PanelActivation last = _activationHistory[_activationHistory.Count - 1];
 
-        if (first.index == last.index && _activationHistory.Count <= 2)
-            return;
+        if (first.index == last.index && _activationHistory.Count <= 2) return;
 
         Vector2 posFirst = GetPanelPos(first.index);
         Vector2 posLast = GetPanelPos(last.index);
@@ -212,8 +192,8 @@ public class SwipeDetector : MonoBehaviour
         if (_activationHistory.Count < 2) return;
 
         _activationHistory.Sort((a, b) => a.time.CompareTo(b.time));
-
         List<int> uniqueIndices = new List<int>();
+
         foreach (var activation in _activationHistory)
         {
             if (!uniqueIndices.Contains(activation.index))
@@ -222,18 +202,14 @@ public class SwipeDetector : MonoBehaviour
             }
         }
 
-        if (uniqueIndices.Count < 2) return; // Need at least two *different* panels
+        if (uniqueIndices.Count < 2) return;
 
-        // --- Forward Swipe Detection (same as before) ---
         for (int i = 0; i < uniqueIndices.Count - 1; i++)
         {
             int startIndex = uniqueIndices[i];
             int endIndex = uniqueIndices[i + 1];
 
-            if (_processedIndices.Contains(startIndex))
-            {
-                continue;
-            }
+            if (_processedIndices.Contains(startIndex)) continue;
 
             int shift = endIndex - startIndex;
             shift = shift > 0 ? 1 : -1;
@@ -244,44 +220,28 @@ public class SwipeDetector : MonoBehaviour
                 shift = shift
             };
 
-            Debug.Log($"Relative Swipe: Start={startIndex}, Shift={shift}");
             RelativeSwipeDetected?.Invoke(data);
             _playbackController.OnRelativeSwipeDetected(data);
-
             _processedIndices.Add(startIndex);
         }
-        
-        for (int i = uniqueIndices.Count - 1; i > 0; i--)
-        {
-            int startIndex = uniqueIndices[i];
-            int endIndex = uniqueIndices[i - 1];  
-
-            if (_processedIndices.Contains(endIndex))
-            {
-                continue; 
-            }
-
-            int shift = endIndex - startIndex;
-            shift = shift > 0 ? 1 : -1;
-
-            RelativeSwipeData data = new RelativeSwipeData
-            {
-                startIndex = endIndex, 
-                shift = shift
-            };
-
-            Debug.Log($"Relative Swipe (Reverse): Start={endIndex}, Shift={shift}");
-            RelativeSwipeDetected?.Invoke(data);
-            _playbackController.OnRelativeSwipeDetected(data);
-            _processedIndices.Add(endIndex);
-
-        }
     }
+
     private Vector2 GetPanelPos(int index)
     {
         int cols = Settings.Instance.cols;
-        int row = index / cols;
-        int col = index % cols;
-        return new Vector2(col, -row);
+        int rows = Settings.Instance.rows;
+        int segments = Settings.Instance.segments;
+
+        int panelsPerSegment = rows * cols;
+        int segment = index / panelsPerSegment;
+        int localIndex = index % panelsPerSegment;
+
+        int row = localIndex / cols;
+        int col = localIndex % cols;
+
+        float x = segment * cols + col;
+        float y = -row;
+
+        return new Vector2(x, y);
     }
 }
