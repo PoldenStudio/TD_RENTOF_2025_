@@ -28,11 +28,13 @@ namespace LEDControl
         public float fadeTime = 5.0f;
         public float invCycleLength;
         public float invFadeTime;
+        public float bakedCycleLength; // Новое поле для "запеченного" значения
 
         public void Initialize()
         {
             invCycleLength = 1f / cycleLength;
             invFadeTime = 1f / fadeTime;
+            bakedCycleLength = cycleLength; // Сохраняем оригинальное значение
         }
     }
 
@@ -63,32 +65,16 @@ namespace LEDControl
     [BurstCompile]
     public struct UpdateCometsJob : IJobParallelFor
     {
-        [ReadOnly] public NativeArray<Comet> comets;
-        public NativeArray<Comet> updatedComets;
+        public NativeArray<Comet> comets;
         [ReadOnly] public float deltaTime;
         [ReadOnly] public float currentSpeed;
-        [ReadOnly] public float cometMoveDelay;
         [ReadOnly] public bool startFromEnd;
-        [ReadOnly] public NativeArray<float> lastTouchTimes;
-        public NativeArray<bool> canMoveArray;
-        public float time;
+        [ReadOnly] public int totalLEDs;
 
         public void Execute(int index)
         {
             Comet comet = comets[index];
-            if (!comet.isActive)
-            {
-                updatedComets[index] = comet;
-                return;
-            }
-
-            bool canMove = time - lastTouchTimes[0] >= cometMoveDelay;
-            canMoveArray[0] = canMove;
-
-            if (canMove && !comet.isMoving)
-            {
-                comet.isMoving = true;
-            }
+            if (!comet.isActive) return;
 
             if (comet.isMoving)
             {
@@ -98,12 +84,12 @@ namespace LEDControl
                 comet.position += Mathf.Abs(currentSpeed) * deltaTime * 30f * directionMultiplier;
 
                 if (comet.position < 0)
-                    comet.position += updatedComets.Length;
-                else if (comet.position >= updatedComets.Length)
-                    comet.position -= updatedComets.Length;
+                    comet.position += totalLEDs;
+                else if (comet.position >= totalLEDs)
+                    comet.position -= totalLEDs;
             }
 
-            updatedComets[index] = comet;
+            comets[index] = comet;
         }
     }
 
@@ -190,7 +176,8 @@ namespace LEDControl
             int pixelIndex = index / hexPerPixel;
             Color32 pixelColor = new Color32(0, 0, 0, 255);
 
-            float currentCycleTime = sunMovementPhase * settings.cycleLength;
+            // Используем "запеченное" значение cycleLength
+            float currentCycleTime = sunMovementPhase * settings.bakedCycleLength;
             bool isActive = currentCycleTime >= settings.startTime && currentCycleTime <= settings.endTime;
 
             float fadeInFactor = 1.0f;
@@ -253,11 +240,11 @@ namespace LEDControl
         [Header("Sun Movement Settings")]
         [SerializeField] private SunMovementSettings warmSunSettings = new SunMovementSettings();
         [SerializeField] private SunMovementSettings coldSunSettings = new SunMovementSettings();
-        [SerializeField] private StripDataManager stripDataManager;
+
         [Header("Touch Panel Settings")]
         [SerializeField] public bool toggleTouchMode = false;
         [SerializeField] private float cometMoveDelay = 0.2f;
-
+        [SerializeField] public StripDataManager stripDataManager;
         public float currentSpeed = 1f;
         public float MultiplySpeed = 2f;
         private float sunMovementPhase = 0f;
@@ -287,40 +274,32 @@ namespace LEDControl
             List<Comet> comets = stripComets[stripIndex];
 
             NativeArray<Comet> nativeComets = new NativeArray<Comet>(comets.ToArray(), Allocator.TempJob);
-            NativeArray<Comet> updatedComets = new NativeArray<Comet>(comets.Count, Allocator.TempJob);
-            NativeArray<float> lastTouchTimesArray = new NativeArray<float>(1, Allocator.TempJob);
-            NativeArray<bool> canMoveArray = new NativeArray<bool>(1, Allocator.TempJob);
-
-            lastTouchTimesArray[0] = lastTouchTimes.ContainsKey(stripIndex) ? lastTouchTimes[stripIndex] : 0f;
 
             UpdateCometsJob job = new UpdateCometsJob
             {
                 comets = nativeComets,
-                updatedComets = updatedComets,
                 deltaTime = timeSinceLastUpdate,
                 currentSpeed = currentSpeed,
-                cometMoveDelay = cometMoveDelay,
                 startFromEnd = startFromEnd,
-                lastTouchTimes = lastTouchTimesArray,
-                canMoveArray = canMoveArray,
-                time = Time.time
+                totalLEDs = totalLEDs
             };
 
             JobHandle handle = job.Schedule(comets.Count, 64);
             handle.Complete();
 
             comets.Clear();
-            comets.AddRange(updatedComets.ToArray());
+            comets.AddRange(nativeComets.ToArray());
+/*            nativeComets.Dispose();
 
             if (canMoveArray[0])
             {
                 lastTouchTimes[stripIndex] = Time.time;
             }
 
-            nativeComets.Dispose();
-            updatedComets.Dispose();
+            nativeComets.Dispose();*/
+/*            updatedComets.Dispose();
             lastTouchTimesArray.Dispose();
-            canMoveArray.Dispose();
+            canMoveArray.Dispose();*/
         }
 
         public void ResetComets(int stripIndex)
