@@ -19,7 +19,7 @@ namespace jp.kshoji.unity.midi
             Debug.Log($"[MIDI] RtpMidiPlugin port set to: {port}");
         }
 
-        public void InitializeMidi(Action onInitialized)
+/*        public void InitializeMidi(Action onInitialized)
         {
             try
             {
@@ -39,7 +39,7 @@ namespace jp.kshoji.unity.midi
                 Debug.LogError($"[MIDI] RtpMidiPlugin initialization error: {ex.Message}");
             }
         }
-
+*/
         private bool InitializeNetwork(int port)
         {
             Debug.Log($"[MIDI] Attempting to connect to RTP-MIDI network on port: {port}");
@@ -117,9 +117,11 @@ namespace jp.kshoji.unity.midi
         /// Initializes MIDI Plugin system
         /// </summary>
         /// <param name="initializeCompletedAction"></param>
-/*        public void InitializeMidi(Action initializeCompletedAction)
+        
+        public void InitializeMidi(Action initializeCompletedAction)
         {
-        }*/
+            initializeCompletedAction?.Invoke();
+        }
 
         /// <summary>
         /// Terminates MIDI Plugin system

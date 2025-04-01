@@ -7,9 +7,7 @@ public class Settings : MonoBehaviour
     [Header("Grid Settings")]
     public int rows = 5;
     public int cols = 5;
-    public int panels = 5;
     public int segments = 12;
-    public int segmentsPerPanel = 12;
 
     [Header("Input Settings")]
     public float sampleRate = 0.05f; 

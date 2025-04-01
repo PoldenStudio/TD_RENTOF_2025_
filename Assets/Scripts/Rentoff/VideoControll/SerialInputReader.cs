@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using UnityEngine;
 using InitializationFramework;
+using System.Collections.Generic;
+using System.Globalization;
 
 public class SerialInputReader : InputReader
 {
@@ -247,40 +249,56 @@ public class SerialInputReader : InputReader
                 int segments = Settings.Instance.segments;
                 int rows = Settings.Instance.rows;
                 int cols = Settings.Instance.cols;
-                int panelsPerSegment = rows * cols;
+                int panelsPerSegment = rows * cols; // Количество панелей в сегменте (должно быть 12, исходя из списка значений)
                 int totalPanels = panelsPerSegment * segments * portNames.Length;
 
                 bool[] panelStates = new bool[totalPanels];
 
                 for (int segmentIndex = 0; segmentIndex < segmentValues.Length; segmentIndex++)
                 {
-                    if (int.TryParse(segmentValues[segmentIndex], out int touchStatus))
+                    if (int.TryParse(segmentValues[segmentIndex], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int touchStatus))
                     {
                         if (touchStatus != 0)
                         {
                             _lastNonZeroTouchTime = Time.time;
                         }
 
-                        for (int bitIndex = 0; bitIndex < 32; bitIndex++) 
+                        // Декодируем сумму в индексы нажатых панелей
+                        List<int> pressedPanelIndices = DecodeTouchStatus(touchStatus);
+
+                        // Обрабатываем каждый индекс нажатой панели
+                        foreach (int localPanelIndex in pressedPanelIndices)
                         {
-                            if (((touchStatus >> bitIndex) & 1) == 1)
+                            // Инвертируем индекс внутри сегмента
+                            int flippedIndex = panelsPerSegment - 1 - localPanelIndex;
+
+                            if (flippedIndex >= 0 && flippedIndex < panelsPerSegment)
                             {
-                                int localPanelIndex = bitIndex;
+                                // Вычисляем глобальный индекс
+                                int globalIndex = portIndex * segments * panelsPerSegment
+                                                + segmentIndex * panelsPerSegment
+                                                + flippedIndex;
 
-                                int flippedIndex = panelsPerSegment - 1 - localPanelIndex;
-
-                                if (flippedIndex >= 0 && flippedIndex < panelsPerSegment)
+                                if (globalIndex < panelStates.Length)
                                 {
-                                    int globalIndex = portIndex * segments * panelsPerSegment
-                                                    + segmentIndex * panelsPerSegment
-                                                    + flippedIndex;
-
-                                    if (globalIndex < panelStates.Length)
-                                    {
-                                        panelStates[globalIndex] = true;
-                                    }
+                                    panelStates[globalIndex] = true;
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Логирование индексов нажатых панелей
+                if (EnableDebug)
+                {
+                    for (int i = 0; i < panelStates.Length; i++)
+                    {
+                        if (panelStates[i])
+                        {
+                            int portIdx = i / (segments * panelsPerSegment); // Вычисляем индекс порта
+                            int segmentIdx = (i % (segments * panelsPerSegment)) / panelsPerSegment; // Вычисляем индекс сегмента
+                            int localIdx = i % panelsPerSegment; // Локальный индекс внутри сегмента
+                            Debug.Log($"[SerialInputReader] Panel pressed at global index: {i}, Port: {portNames[portIdx]}, Segment: {segmentIdx}, Local index: {localIdx}");
                         }
                     }
                 }
@@ -293,6 +311,40 @@ public class SerialInputReader : InputReader
             }
         }
     }
+
+    // Вспомогательная функция для декодирования суммы в индексы нажатых панелей
+    private List<int> DecodeTouchStatus(int touchStatus)
+    {
+        // Список значений, соответствующих индексам панелей
+        int[] panelValues = { 1001, 1002, 4, 8, 10, 20, 40, 80, 100, 200, 400, 800 };
+        List<int> pressedIndices = new List<int>();
+
+        // Если touchStatus равен 0, значит ничего не нажато
+        if (touchStatus == 0)
+        {
+            return pressedIndices;
+        }
+
+        // Проверяем каждую панель, начиная с конца (чтобы правильно обрабатывать большие значения)
+        for (int i = panelValues.Length - 1; i >= 0; i--)
+        {
+            if (touchStatus >= panelValues[i])
+            {
+                pressedIndices.Add(i); // Добавляем индекс панели
+                touchStatus -= panelValues[i]; // Вычитаем значение панели из суммы
+            }
+        }
+
+        // Если остаток не равен 0, значит данные некорректны
+        if (touchStatus != 0)
+        {
+            Debug.LogWarning($"[SerialInputReader] Unable to fully decode touch status. Remaining value: {touchStatus}");
+        }
+
+        return pressedIndices;
+    }
+    
+
 
     private void CloseSerialPorts()
     {
@@ -378,9 +430,26 @@ public class SerialInputReader : InputReader
         var port = _serialPorts[portIndex];
         return (port != null && port.IsOpen);
     }
-
-    private void OnInputReceived(bool[] panelStates)
+    private new void OnInputReceived(bool[] panelStates)
     {
         swipeDetector?.OnInputReceived(panelStates);
     }
 }
+
+
+//сейчас у нас неправильно обрабатываются нажатые индексы, нужно чтобы они корректно вычислялись
+//каждый сегмент получает данные о нажатых панелях.Вот индексы панелей по порядку 1001, 1002, 4, 8, 10, 20, 40, 80, 100, 200, 400, 800
+// также есть суммы панелей, например если нажата 1 и 2 панель, то выведется 1003, если 11 и 12, то C00, важно правильно вычислять нажатые индексы.
+//также помни что они должны быть инвертированы в конце вычислений для кажого сегмента
+
+//сейчас принажатии на первую панель, почему то выводит и фиксирует нажатия
+//[SerialInputReader] Panel pressed at global index: 0, Port: COM12, Segment: 0, Local index: 0
+//[SerialInputReader] Panel pressed at global index: 1, Port: COM12, Segment: 0, Local index: 1
+//[SerialInputReader] Panel pressed at global index: 2, Port: COM12, Segment: 0, Local index: 2
+//[SerialInputReader] Panel pressed at global index: 3, Port: COM12, Segment: 0, Local index: 3
+//[SerialInputReader] Panel pressed at global index: 4, Port: COM12, Segment: 0, Local index: 4
+//[SerialInputReader] Panel pressed at global index: 5, Port: COM12, Segment: 0, Local index: 5
+//[SerialInputReader] Panel pressed at global index: 6, Port: COM12, Segment: 0, Local index: 6
+//[SerialInputReader] Panel pressed at global index: 7, Port: COM12, Segment: 0, Local index: 7
+//[SerialInputReader] Panel pressed at global index: 8, Port: COM12, Segment: 0, Local index: 8
+//[SerialInputReader] Panel pressed at global index: 9, Port: COM12, Segment: 0, Local index: 9

@@ -18,6 +18,7 @@ public class MIDISoundManager : MonoBehaviour
 
     [Header("Speed Parameters")]
     public float neutralSpeed = 1f;
+    public float neutralbackSpeed = -1f;
     public float activationThreshold = 0.05f;
     public bool muteWhenNeutral = true;
 
@@ -54,22 +55,20 @@ public class MIDISoundManager : MonoBehaviour
 
     private Queue<int> activeNotes = new();
 
-
-
-
-
     private void Awake()
     {
         MidiManager.Instance.RegisterEventHandleObject(gameObject);
 
-        foreach (var midiPlugin in MidiManager.Instance.midiPlugins)
-        {
-            if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
-            {
-                Debug.Log($"[MIDI] Setting RtpMidiPlugin port to: {rtpMidiPort}");
-                rtpMidiPlugin.SetPort(rtpMidiPort);
-            }
-        }
+        /*        foreach (var midiPlugin in MidiManager.Instance.midiPlugins)
+                {
+                    if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
+                    {
+                        Debug.Log($"[MIDI] Setting RtpMidiPlugin port to: {rtpMidiPort}");
+                        rtpMidiPlugin.SetPort(rtpMidiPort);
+                    }
+                }*/
+
+        //tpMidiPlugin.SetPort(rtpMidiPort);
 
         MidiManager.Instance.InitializeMidi(() =>
         {
@@ -111,14 +110,15 @@ public class MIDISoundManager : MonoBehaviour
 
         float deltaTime = Time.fixedDeltaTime;
         float interval = Mathf.Lerp(minInterval, maxInterval, 1f / Mathf.Clamp(currentSpeed, 0.5f, 5f));
-        bool isActive = Mathf.Abs(currentSpeed - neutralSpeed) > activationThreshold;
+        bool isForwardActive = Mathf.Abs(currentSpeed - neutralSpeed) > activationThreshold;
+        bool isBackActive = Mathf.Abs(currentSpeed - neutralbackSpeed) < activationThreshold;
 
-        if (!isActive && muteWhenNeutral) return;
+        if ((!isForwardActive || !isBackActive) && muteWhenNeutral) return;
 
         lastNoteTime += deltaTime;
         lastCCSendTime += deltaTime;
 
-        if (isActive && lastNoteTime >= interval)
+        if ((!isForwardActive || !isBackActive) && lastNoteTime >= interval)
         {
             GenerateNote();
             lastNoteTime = 0f;

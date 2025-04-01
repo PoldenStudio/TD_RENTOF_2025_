@@ -161,10 +161,9 @@ namespace jp.kshoji.unity.midi
             {
                 Debug.Log($"[MIDI] Initializing plugin: {midiPlugin.GetType().Name}");
 
-                // Настройка порта для RtpMidiPlugin
                 if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
                 {
-                    rtpMidiPlugin.SetPort(5004); // Установка стандартного порта
+                    rtpMidiPlugin.SetPort(5004);
                 }
 
                 initializedPlugins[midiPlugin] = false;
@@ -184,7 +183,6 @@ namespace jp.kshoji.unity.midi
 
             StartCoroutine(InitializeCompletedWatcher());
 
-            // Инициализация всех плагинов
             foreach (var midiPlugin in midiPlugins)
             {
                 midiPlugin.InitializeMidi(() =>

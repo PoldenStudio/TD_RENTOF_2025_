@@ -110,7 +110,7 @@ public class MainController : MonoBehaviour
 
 
         if (panelGridVisualizer != null)
-            panelGridVisualizer.Init(Settings.Instance.rows, Settings.Instance.cols, Settings.Instance.panels);
+            panelGridVisualizer.Init(Settings.Instance.rows, Settings.Instance.cols, Settings.Instance.segments);
 
         string mediaPath = System.IO.Path.Combine(Application.streamingAssetsPath, _mediaUrl);
         Debug.Log("[MainController] Opening media at path: " + mediaPath);
