@@ -13,6 +13,9 @@ public class MIDISoundManager : MonoBehaviour
     public string loopMidiDeviceId;
     [Range(0, 15)] public int midiChannel = 0;
 
+    [Header("RTP-MIDI Settings")]
+    public int rtpMidiPort = 5004;
+
     [Header("Speed Parameters")]
     public float neutralSpeed = 1f;
     public float activationThreshold = 0.05f;
@@ -51,9 +54,22 @@ public class MIDISoundManager : MonoBehaviour
 
     private Queue<int> activeNotes = new();
 
-    private void Start()
+
+
+
+
+    private void Awake()
     {
         MidiManager.Instance.RegisterEventHandleObject(gameObject);
+
+        foreach (var midiPlugin in MidiManager.Instance.midiPlugins)
+        {
+            if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
+            {
+                Debug.Log($"[MIDI] Setting RtpMidiPlugin port to: {rtpMidiPort}");
+                rtpMidiPlugin.SetPort(rtpMidiPort);
+            }
+        }
 
         MidiManager.Instance.InitializeMidi(() =>
         {
@@ -82,6 +98,12 @@ public class MIDISoundManager : MonoBehaviour
             }
         });
     }
+
+    private void OnDestroy()
+    {
+        MidiManager.Instance.TerminateMidi();
+    }
+
 
     private void FixedUpdate()
     {

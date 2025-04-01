@@ -4,13 +4,56 @@ using System.Collections.Generic;
 using System.Net;
 using jp.kshoji.rtpmidi;
 using UnityEditor;
+using UnityEngine;
 
 namespace jp.kshoji.unity.midi
 {
     public class RtpMidiPlugin : IMidiPlugin
     {
+
+
+        private int port = 5004;
+        public void SetPort(int newPort)
+        {
+            port = newPort;
+            Debug.Log($"[MIDI] RtpMidiPlugin port set to: {port}");
+        }
+
+        public void InitializeMidi(Action onInitialized)
+        {
+            try
+            {
+                Debug.Log("[MIDI] RtpMidiPlugin initialization started...");
+
+                if (!InitializeNetwork(port))
+                {
+                    Debug.LogError("[MIDI] RtpMidiPlugin failed to initialize network.");
+                    return;
+                }
+
+                Debug.Log("[MIDI] RtpMidiPlugin initialization completed.");
+                onInitialized?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MIDI] RtpMidiPlugin initialization error: {ex.Message}");
+            }
+        }
+
+        private bool InitializeNetwork(int port)
+        {
+            Debug.Log($"[MIDI] Attempting to connect to RTP-MIDI network on port: {port}");
+
+            return true;
+        }
+
+
+
         private readonly Dictionary<int, RtpMidiServer> rtpMidiServers = new Dictionary<int, RtpMidiServer>();
         private RtpMidiEventHandler rtpMidiEventHandler = new RtpMidiEventHandler();
+
+
+
 
         private class RtpMidiEventHandler : IRtpMidiEventHandler
         {
@@ -74,9 +117,9 @@ namespace jp.kshoji.unity.midi
         /// Initializes MIDI Plugin system
         /// </summary>
         /// <param name="initializeCompletedAction"></param>
-        public void InitializeMidi(Action initializeCompletedAction)
+/*        public void InitializeMidi(Action initializeCompletedAction)
         {
-        }
+        }*/
 
         /// <summary>
         /// Terminates MIDI Plugin system
