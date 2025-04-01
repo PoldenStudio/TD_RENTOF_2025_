@@ -15,17 +15,14 @@ namespace LEDControl
     }
 
     [Serializable]
-    public class SunMovementSettings
+    public struct SunMovementSettings
     {
-        public int pixelCount = 10;
-        public float cycleLength = 241f;
-        public float startTime = 38f;
-        public float endTime = 230f;
-        [Range(0f, 1f)]
-        public float brightnessMultiplier = 1f;
-
-        // Предварительно рассчитанные значения
-        public float fadeTime = 5.0f;
+        public int pixelCount;
+        public float cycleLength;
+        public float startTime;
+        public float endTime;
+        public float brightnessMultiplier;
+        public float fadeTime;
         public float invCycleLength;
         public float invFadeTime;
         public float bakedCycleLength; // Новое поле для "запеченного" значения
@@ -176,6 +173,12 @@ namespace LEDControl
             int pixelIndex = index / hexPerPixel;
             Color32 pixelColor = new Color32(0, 0, 0, 255);
 
+            // Ensure the pixelIndex is within bounds
+            if (pixelIndex >= totalLEDs)
+            {
+                return; // Skip this iteration if out of bounds
+            }
+
             // Используем "запеченное" значение cycleLength
             float currentCycleTime = sunMovementPhase * settings.bakedCycleLength;
             bool isActive = currentCycleTime >= settings.startTime && currentCycleTime <= settings.endTime;
@@ -214,13 +217,22 @@ namespace LEDControl
                 }
             }
 
-            // Запись HEX-значений
-            hexData[index] = (byte)(pixelColor.r >> 4 | 0x30);
-            hexData[index + 1] = (byte)(pixelColor.r & 0x0F | 0x30);
-            hexData[index + 2] = (byte)(pixelColor.g >> 4 | 0x30);
-            hexData[index + 3] = (byte)(pixelColor.g & 0x0F | 0x30);
-            hexData[index + 4] = (byte)(pixelColor.b >> 4 | 0x30);
-            hexData[index + 5] = (byte)(pixelColor.b & 0x0F | 0x30);
+            // Calculate the start index for the current pixel
+            int startIndex = pixelIndex * hexPerPixel;
+
+            // Ensure the startIndex is within bounds
+            if (startIndex + hexPerPixel > hexData.Length)
+            {
+                return; // Skip this iteration if out of bounds
+            }
+
+            // Запись HEX-значений только для текущего индекса
+            hexData[startIndex] = (byte)(pixelColor.r >> 4 | 0x30);
+            hexData[startIndex + 1] = (byte)(pixelColor.r & 0x0F | 0x30);
+            hexData[startIndex + 2] = (byte)(pixelColor.g >> 4 | 0x30);
+            hexData[startIndex + 3] = (byte)(pixelColor.g & 0x0F | 0x30);
+            hexData[startIndex + 4] = (byte)(pixelColor.b >> 4 | 0x30);
+            hexData[startIndex + 5] = (byte)(pixelColor.b & 0x0F | 0x30);
         }
     }
 
@@ -289,17 +301,7 @@ namespace LEDControl
 
             comets.Clear();
             comets.AddRange(nativeComets.ToArray());
-/*            nativeComets.Dispose();
-
-            if (canMoveArray[0])
-            {
-                lastTouchTimes[stripIndex] = Time.time;
-            }
-
-            nativeComets.Dispose();*/
-/*            updatedComets.Dispose();
-            lastTouchTimesArray.Dispose();
-            canMoveArray.Dispose();*/
+            nativeComets.Dispose();
         }
 
         public void ResetComets(int stripIndex)
