@@ -4,6 +4,7 @@ using TMPro;
 using static SwipeDetector;
 using LEDControl;
 using static StateManager;
+using System.Collections.Generic;
 
 public class VideoPlaybackController : MonoBehaviour
 {
@@ -87,7 +88,11 @@ public class VideoPlaybackController : MonoBehaviour
     private float _holdZeroTime = 0f;
     private bool _isHolding = false;
 
-
+    private List<int> _currentPressedPanels = new List<int>();
+    private float _stablePanelsStartTime = 0f;
+    private bool _isPanelsStable = false;
+    private const float STABLE_PANELS_THRESHOLD = 1.0f; // Порог в секундах
+    private const float PANELS_TOLERANCE = 0.1f; // Допустимое время небольших изменений
 
     private void FixedUpdate()
     {
@@ -281,33 +286,44 @@ public class VideoPlaybackController : MonoBehaviour
 
         if (isPressed)
         {
-            if (Time.time - _lastPanelReleaseTime < HOLD_SAFETY_TIMEOUT)
-                return;
-
-            // Блокируем повторное начало удержания для одной и той же панели
-            if (_isPanelHoldActive && _heldPanelIndex == panelIndex)
+            if (!_currentPressedPanels.Contains(panelIndex))
             {
-                return; // Удержание уже активно, не обновляем время
+                _currentPressedPanels.Add(panelIndex);
+                CheckPanelsStability();
             }
-
-            Debug.Log($"Вызывается");
-            _heldPanelIndex = panelIndex;
-            _holdStartTime = Time.time; // Запись времени начала удержания
-            _holdDuration = 0f; // Сброс (пересчитывается в Update)
-            _isPanelHoldActive = true;
-            _reachedZero = false;
-            _holdZeroTime = 0f;
-            _isHolding = true;
         }
         else
         {
-            _lastPanelReleaseTime = Time.time;
-            Debug.Log($"Вызывается1");
-            HandleReleaseAfterHold();
-            _heldPanelIndex = -1;
-            _isPanelHoldActive = false;
-            _isHolding = false;
+            _currentPressedPanels.Remove(panelIndex);
+            if (_currentPressedPanels.Count == 0)
+            {
+                ResetPanelsStability();
+                HandleReleaseAfterHold();
+            }
+            else
+            {
+                CheckPanelsStability();
+            }
         }
+    }
+
+    private void CheckPanelsStability()
+    {
+        if (!_isPanelsStable)
+        {
+            _stablePanelsStartTime = Time.time;
+            _isPanelsStable = true;
+        }
+    }
+
+    private void ResetPanelsStability()
+    {
+        _isPanelsStable = false;
+        _stablePanelsStartTime = 0f;
+        _currentPressedPanels.Clear();
+        _heldPanelIndex = -1;
+        _isPanelHoldActive = false;
+        _isHolding = false;
     }
 
     private void HandleReleaseAfterHold()
@@ -358,15 +374,45 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void Update()
     {
-        //Debug.Log("Текущий state" + _state);
+        if (_isPanelsStable && _currentPressedPanels.Count > 0)
+        {
+            float stableTime = Time.time - _stablePanelsStartTime;
+
+            if (stableTime >= STABLE_PANELS_THRESHOLD)
+            {
+                if (_state != PlaybackState.HoldAccelerating)
+                {
+                    _heldPanelIndex = _currentPressedPanels[0]; // Используем первый индекс
+                    _holdStartTime = _stablePanelsStartTime;
+                    _holdDuration = stableTime;
+                    _isPanelHoldActive = true;
+                    _isHolding = true;
+
+                    // Переход в состояние удержания
+                    _previousState = _state;
+                    _state = PlaybackState.HoldAccelerating;
+                    _effectStartSpeed = _currentSpeed;
+                    _targetAccelerationSpeed = 0f;
+                    _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
+                    _phaseTimer = 0f;
+                    _reachedZero = false;
+                    _holdZeroTime = 0f;
+                }
+            }
+        }
+
         UpdateMediaPlayer();
         if (_mediaPlayer == null || (!_swipeControlEnabled && _state == PlaybackState.Normal))
             return;
 
         _previousSpeed = _currentSpeed;
-        HandleHoldAcceleration();
         UpdatePlaybackState();
         UpdateDebugText();
+    }
+
+    private bool IsTemporaryChange()
+    {
+        return (Time.time - _stablePanelsStartTime) < PANELS_TOLERANCE;
     }
 
     private void HandleHoldAcceleration()
@@ -602,3 +648,105 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 }
+
+
+
+/*
+
+private List<int> _currentPressedPanels = new List<int>();
+    private float _stablePanelsStartTime = 0f;
+    private bool _isPanelsStable = false;
+    private const float STABLE_PANELS_THRESHOLD = 1.0f; // Порог в секундах
+    private const float PANELS_TOLERANCE = 0.1f; // Допустимое время небольших изменений
+
+public void OnPanelPressed(int panelIndex, bool isPressed)
+{
+    if (_mediaPlayer == null || !_swipeControlEnabled)
+        return;
+
+    if (isPressed)
+    {
+        if (!_currentPressedPanels.Contains(panelIndex))
+        {
+            _currentPressedPanels.Add(panelIndex);
+            CheckPanelsStability();
+        }
+    }
+    else
+    {
+        _currentPressedPanels.Remove(panelIndex);
+        if (_currentPressedPanels.Count == 0)
+        {
+            ResetPanelsStability();
+            HandleReleaseAfterHold();
+        }
+        else
+        {
+            CheckPanelsStability();
+        }
+    }
+}
+
+private void CheckPanelsStability()
+{
+    if (!_isPanelsStable)
+    {
+        _stablePanelsStartTime = Time.time;
+        _isPanelsStable = true;
+    }
+}
+
+private void ResetPanelsStability()
+{
+    _isPanelsStable = false;
+    _stablePanelsStartTime = 0f;
+    _currentPressedPanels.Clear();
+    _heldPanelIndex = -1;
+    _isPanelHoldActive = false;
+    _isHolding = false;
+}
+
+private void Update()
+{
+    if (_isPanelsStable && _currentPressedPanels.Count > 0)
+    {
+        float stableTime = Time.time - _stablePanelsStartTime;
+
+        if (stableTime >= STABLE_PANELS_THRESHOLD)
+        {
+            if (_state != PlaybackState.HoldAccelerating)
+            {
+                _heldPanelIndex = _currentPressedPanels[0]; // Используем первый индекс
+                _holdStartTime = _stablePanelsStartTime;
+                _holdDuration = stableTime;
+                _isPanelHoldActive = true;
+                _isHolding = true;
+
+                // Переход в состояние удержания
+                _previousState = _state;
+                _state = PlaybackState.HoldAccelerating;
+                _effectStartSpeed = _currentSpeed;
+                _targetAccelerationSpeed = 0f;
+                _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
+                _phaseTimer = 0f;
+                _reachedZero = false;
+                _holdZeroTime = 0f;
+            }
+        }
+    }
+
+    UpdateMediaPlayer();
+    if (_mediaPlayer == null || (!_swipeControlEnabled && _state == PlaybackState.Normal))
+        return;
+
+    _previousSpeed = _currentSpeed;
+    UpdatePlaybackState();
+    UpdateDebugText();
+}
+
+// Добавим метод для проверки кратковременных изменений
+private bool IsTemporaryChange()
+{
+    // Если изменения длятся меньше порога толерантности, считаем их временными
+    return (Time.time - _stablePanelsStartTime) < PANELS_TOLERANCE;
+}*/

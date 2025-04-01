@@ -44,26 +44,6 @@ public class StateManager : MonoBehaviour
             StartCoroutine(TransitionToIdleCoroutine());
         }
 
-        // Проверяем, достигли ли все кометы конца ленты в режиме Transition
-        if (CurrentState == AppState.Transition)
-        {
-            bool allCometsFinished = true;
-            for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
-            {
-                if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-                {
-                    spiTouchPanel.effectsManager.UpdateComets(stripIndex, spiTouchPanel.stripDataManager);
-                    if (spiTouchPanel.effectsManager.stripComets.ContainsKey(stripIndex) && spiTouchPanel.effectsManager.stripComets[stripIndex].Count > 0)
-                    {
-                        allCometsFinished = false;
-                    }
-                }
-            }
-            if (allCometsFinished)
-            {
-                //StartCoroutine(CompleteTransitionToIdle());
-            }
-        }
     }
 
     private void OnCurtainFull()
@@ -147,6 +127,14 @@ public class StateManager : MonoBehaviour
 
     private IEnumerator TransitionToIdleCoroutine()
     {
+        for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+        {
+            if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+            {
+                spiTouchPanel.effectsManager.UpdateComets(stripIndex, spiTouchPanel.stripDataManager);
+            }
+        }
+
         AppState previousState = CurrentState;
         CurrentState = AppState.Transition;
         OnPreviousStateChanged?.Invoke(previousState);
@@ -167,10 +155,11 @@ public class StateManager : MonoBehaviour
 
         soundManager?.StartFadeOut(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
-
-        // Здесь мы не завершаем переход в Idle сразу, а ждем, пока все кометы дойдут до конца ленты
-        // (логика завершения перехода перенесена в FixedUpdate)
+        
+        StartCoroutine(
+                    CompleteTransitionToIdle());
     }
+
 
     private IEnumerator CompleteTransitionToIdle()
     {
