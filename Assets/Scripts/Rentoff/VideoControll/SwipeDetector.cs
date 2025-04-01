@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using static StateManager;
 
@@ -31,84 +30,119 @@ public class SwipeDetector : MonoBehaviour
         public float time;
     }
 
-    private List<PanelActivation> _activationHistory = new List<PanelActivation>();
+    private List<PanelActivation> _activationHistory = new();
+    private Dictionary<int, float> _panelHoldStartTimes = new();
+    private HashSet<int> _currentlyPressedPanels = new();
+
     [SerializeField] private float swipeFinishDelay = 0.3f;
     [SerializeField] private float maxSwipeDuration = 2.0f;
-    private float _lastTouchTime = 0f;
-    private bool _isSwipeInProgress = false;
 
-    private Dictionary<int, float> _panelHoldStartTimes = new Dictionary<int, float>();
-    public HashSet<int> _currentlyPressedPanels = new HashSet<int>();
     [SerializeField] private VideoPlaybackController _playbackController;
     [SerializeField] private StateManager stateManager;
 
+    private float _lastTouchTime;
+    private bool _isSwipeInProgress = false;
     private bool _isSmoothDragSequence = false;
-    private List<int> _processedIndices = new List<int>();
+    private List<int> _processedIndices = new();
 
     public void OnInputReceived(bool[] panelStates)
     {
         float currentTime = Time.time;
         bool anyPressed = false;
-        int segmentsPerPanel = Settings.Instance.segments;
 
-        for (int i = 0; i < panelStates.Length; i++)
+        int segmentsCount = Settings.Instance.segments;
+        int rows = Settings.Instance.rows;
+        int cols = Settings.Instance.cols;
+        int panelsPerSegment = rows * cols;
+
+        int segmentsPerPort = segmentsCount;
+        int segmentSize = panelsPerSegment;
+
+        int panelsPerPort = segmentsPerPort * segmentSize;
+        int portsCount = panelStates.Length / panelsPerPort;
+
+        int virtualPanelsCount = portsCount * panelsPerSegment;
+
+        // Создаем массив для агрегированной информации о виртуальных панелях
+        bool[] virtualPanelStates = new bool[virtualPanelsCount];
+
+        // Проходим по всем портам
+        for (int port = 0; port < portsCount; port++)
         {
-            // Convert segmented index to virtual panel index
-            int virtualPanelIndex = i / segmentsPerPanel;
+            // Для каждой виртуальной панели
+            for (int panelIdx = 0; panelIdx < panelsPerSegment; panelIdx++)
+            {
+                bool isPressed = false;
 
-            if (panelStates[i])
+                // Для каждого сегмента в порту
+                for (int segment = 0; segment < segmentsPerPort; segment++)
+                {
+                    int segmentOffset = port * panelsPerPort + segment * segmentSize;
+                    int idx = segmentOffset + panelIdx;
+
+                    if (panelStates[idx])
+                    {
+                        isPressed = true;
+                        break; // хотя бы один сегмент нажат — вся виртуальная панель считается нажатой
+                    }
+                }
+
+                int virtualPanelIndex = port * panelsPerSegment + panelIdx;
+                virtualPanelStates[virtualPanelIndex] = isPressed;
+            }
+        }
+
+        // Теперь работаем с виртуальными панелями
+        for (int virtualIndex = 0; virtualIndex < virtualPanelsCount; virtualIndex++)
+        {
+            bool isPressed = virtualPanelStates[virtualIndex];
+
+            if (isPressed)
             {
                 anyPressed = true;
-                _playbackController.OnPanelPressed(virtualPanelIndex, true);
+                _playbackController.OnPanelPressed(virtualIndex, true);
 
-                if (!_currentlyPressedPanels.Contains(virtualPanelIndex))
+                if (!_currentlyPressedPanels.Contains(virtualIndex))
                 {
-                    _currentlyPressedPanels.Add(virtualPanelIndex);
-                    _panelHoldStartTimes[virtualPanelIndex] = currentTime;
+                    _currentlyPressedPanels.Add(virtualIndex);
+                    _panelHoldStartTimes[virtualIndex] = currentTime;
 
                     if (_activationHistory.Count > 0 &&
-                        _activationHistory[_activationHistory.Count - 1].index == virtualPanelIndex)
+                        _activationHistory[_activationHistory.Count - 1].index == virtualIndex)
                     {
                         continue;
                     }
 
-                    _activationHistory.Add(new PanelActivation { index = virtualPanelIndex, time = currentTime });
+                    _activationHistory.Add(new PanelActivation { index = virtualIndex, time = currentTime });
                     _lastTouchTime = currentTime;
 
                     if (_activationHistory.Count >= 2 && !_isSwipeInProgress)
                     {
-                        float timeDiffBetweenFirstTwo = _activationHistory[1].time - _activationHistory[0].time;
-                        _isSmoothDragSequence = timeDiffBetweenFirstTwo > 0.2f;
+                        float dt = _activationHistory[1].time - _activationHistory[0].time;
+                        _isSmoothDragSequence = dt > 0.2f;
                         _isSwipeInProgress = true;
+
                         if (stateManager.CurrentState == AppState.Active)
-                        {
                             TryDetectSwipe(true);
-                        }
                         else if (stateManager.CurrentState == AppState.Idle)
-                        {
                             TryDetectRelativeSwipe();
-                        }
                     }
                     else if (_isSwipeInProgress && _activationHistory.Count > 2)
                     {
                         if (stateManager.CurrentState == AppState.Active)
-                        {
                             TryDetectSwipe(true);
-                        }
                         else if (stateManager.CurrentState == AppState.Idle)
-                        {
                             TryDetectRelativeSwipe();
-                        }
                     }
                 }
             }
             else
             {
-                if (_currentlyPressedPanels.Contains(virtualPanelIndex))
+                if (_currentlyPressedPanels.Contains(virtualIndex))
                 {
-                    _currentlyPressedPanels.Remove(virtualPanelIndex);
-                    _panelHoldStartTimes.Remove(virtualPanelIndex);
-                    _playbackController.OnPanelPressed(virtualPanelIndex, false);
+                    _currentlyPressedPanels.Remove(virtualIndex);
+                    _panelHoldStartTimes.Remove(virtualIndex);
+                    _playbackController.OnPanelPressed(virtualIndex, false);
                 }
             }
         }
@@ -173,15 +207,15 @@ public class SwipeDetector : MonoBehaviour
 
         _activationHistory.Sort((a, b) => a.time.CompareTo(b.time));
 
-        PanelActivation first = _activationHistory[0];
-        PanelActivation last = _activationHistory[_activationHistory.Count - 1];
+        var first = _activationHistory[0];
+        var last = _activationHistory[_activationHistory.Count - 1];
 
         if (first.index == last.index && _activationHistory.Count <= 2)
             return;
 
         Vector2 posFirst = GetPanelPos(first.index);
         Vector2 posLast = GetPanelPos(last.index);
-        Vector2 swipeDirection = (posLast - posFirst).normalized;
+        Vector2 swipeDir = (posLast - posFirst).normalized;
 
         float totalDt = 0f;
         int steps = 0;
@@ -196,12 +230,12 @@ public class SwipeDetector : MonoBehaviour
         }
 
         float avgDt = steps == 0 ? 0f : totalDt / steps;
-        float computedSpeed = avgDt <= 0f ? 0f : 1f / avgDt;
+        float speed = avgDt <= 0f ? 0f : 1f / avgDt;
 
         SwipeData data = new SwipeData
         {
-            direction = swipeDirection,
-            speed = computedSpeed,
+            direction = swipeDir,
+            speed = speed,
             panelsCount = _activationHistory.Count,
             avgTimeBetween = avgDt,
             isSmoothDrag = _isSmoothDragSequence && avgDt > 0.2f
@@ -217,13 +251,11 @@ public class SwipeDetector : MonoBehaviour
 
         _activationHistory.Sort((a, b) => a.time.CompareTo(b.time));
 
-        List<int> uniqueIndices = new List<int>();
-        foreach (var activation in _activationHistory)
+        List<int> uniqueIndices = new();
+        foreach (var a in _activationHistory)
         {
-            if (!uniqueIndices.Contains(activation.index))
-            {
-                uniqueIndices.Add(activation.index);
-            }
+            if (!uniqueIndices.Contains(a.index))
+                uniqueIndices.Add(a.index);
         }
 
         if (uniqueIndices.Count < 2) return;
@@ -234,14 +266,12 @@ public class SwipeDetector : MonoBehaviour
             int endIndex = uniqueIndices[i + 1];
 
             if (_processedIndices.Contains(startIndex))
-            {
                 continue;
-            }
 
             int shift = endIndex - startIndex;
             shift = shift > 0 ? 1 : -1;
 
-            RelativeSwipeData data = new RelativeSwipeData
+            var data = new RelativeSwipeData
             {
                 startIndex = startIndex,
                 shift = shift
@@ -260,14 +290,12 @@ public class SwipeDetector : MonoBehaviour
             int endIndex = uniqueIndices[i - 1];
 
             if (_processedIndices.Contains(endIndex))
-            {
                 continue;
-            }
 
             int shift = endIndex - startIndex;
             shift = shift > 0 ? 1 : -1;
 
-            RelativeSwipeData data = new RelativeSwipeData
+            var data = new RelativeSwipeData
             {
                 startIndex = endIndex,
                 shift = shift
@@ -280,11 +308,21 @@ public class SwipeDetector : MonoBehaviour
         }
     }
 
-    private Vector2 GetPanelPos(int index)
+    private Vector2 GetPanelPos(int virtualIndex)
     {
-        int cols = Settings.Instance.cols * Settings.Instance.rows * Settings.Instance.segments;
-        int row = index / cols;
-        int col = index % cols;
-        return new Vector2(col, -row);
+        int cols = Settings.Instance.cols;
+        int rows = Settings.Instance.rows;
+
+        int totalPanelsPerPort = rows * cols;
+        int portCount = (60 / (Settings.Instance.segments * rows * cols));
+        int panelsPerPort = totalPanelsPerPort;
+
+        int portIndex = virtualIndex / panelsPerPort;
+        int panelIndexInPort = virtualIndex % panelsPerPort;
+
+        int y = panelIndexInPort / cols;
+        int x = panelIndexInPort % cols;
+
+        return new Vector2(x + portIndex * cols, -y);
     }
 }

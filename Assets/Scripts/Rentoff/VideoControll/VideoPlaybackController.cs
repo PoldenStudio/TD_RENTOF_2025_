@@ -4,7 +4,6 @@ using TMPro;
 using static SwipeDetector;
 using LEDControl;
 using static StateManager;
-using System.Collections.Generic;
 
 public class VideoPlaybackController : MonoBehaviour
 {
@@ -69,7 +68,7 @@ public class VideoPlaybackController : MonoBehaviour
     private const float COUNTER_DIRECTION_MULTIPLIER = 1.5f;
 
     private float _lastPanelReleaseTime = 0f;
-    private const float HOLD_SAFETY_TIMEOUT = 0.5f;
+    private const float HOLD_SAFETY_TIMEOUT = 0.4f;
 
     [SerializeField] private SoundManager _SoundManager;
     [SerializeField] private MIDISoundManager _MIDISoundManager;
@@ -88,11 +87,7 @@ public class VideoPlaybackController : MonoBehaviour
     private float _holdZeroTime = 0f;
     private bool _isHolding = false;
 
-    private List<int> _currentPressedPanels = new List<int>();
-    private float _stablePanelsStartTime = 0f;
-    private bool _isPanelsStable = false;
-    private const float STABLE_PANELS_THRESHOLD = 1.0f; // Порог в секундах
-    private const float PANELS_TOLERANCE = 0.1f; // Допустимое время небольших изменений
+
 
     private void FixedUpdate()
     {
@@ -279,12 +274,6 @@ public class VideoPlaybackController : MonoBehaviour
         return baseDuration + additionalTime;
     }
 
-    private const float HOLD_STABILITY_THRESHOLD = 0.1f; // Допустимое отклонение
-    private const float HOLD_STABILITY_TIME = 1.0f; // Время стабильности
-
-    private float _lastPanelStabilityCheckTime = 0f;
-    private List<int> _previousPressedPanels = new List<int>();
-
     public void OnPanelPressed(int panelIndex, bool isPressed)
     {
         if (_mediaPlayer == null || !_swipeControlEnabled)
@@ -292,105 +281,33 @@ public class VideoPlaybackController : MonoBehaviour
 
         if (isPressed)
         {
-            // Добавляем индекс панели в список нажатых
-            if (!_currentPressedPanels.Contains(panelIndex))
+            if (Time.time - _lastPanelReleaseTime < HOLD_SAFETY_TIMEOUT)
+                return;
+
+            // Блокируем повторное начало удержания для одной и той же панели
+            if (_isPanelHoldActive && _heldPanelIndex == panelIndex)
             {
-                _currentPressedPanels.Add(panelIndex);
+                return; // Удержание уже активно, не обновляем время
             }
 
-            // Первое нажатие
-            if (_currentPressedPanels.Count == 1)
-            {
-                _lastPanelStabilityCheckTime = Time.time;
-                _previousPressedPanels = new List<int>(_currentPressedPanels);
-            }
+            Debug.Log($"Вызывается");
+            _heldPanelIndex = panelIndex;
+            _holdStartTime = Time.time; // Запись времени начала удержания
+            _holdDuration = 0f; // Сброс (пересчитывается в Update)
+            _isPanelHoldActive = true;
+            _reachedZero = false;
+            _holdZeroTime = 0f;
+            _isHolding = true;
         }
         else
         {
-            // Удаляем индекс панели из списка
-            _currentPressedPanels.Remove(panelIndex);
-
-            // Полное освобождение
-            if (_currentPressedPanels.Count == 0)
-            {
-                HandleReleaseAfterHold();
-                _lastPanelStabilityCheckTime = 0f;
-                _previousPressedPanels.Clear();
-            }
+            _lastPanelReleaseTime = Time.time;
+            Debug.Log($"Вызывается1");
+            HandleReleaseAfterHold();
+            _heldPanelIndex = -1;
+            _isPanelHoldActive = false;
+            _isHolding = false;
         }
-
-        // Проверка стабильности удержания
-        CheckHoldStability();
-    }
-
-    private void CheckHoldStability()
-    {
-        // Если панели нажаты
-        if (_currentPressedPanels.Count > 0)
-        {
-            // Проверяем стабильность
-            bool isStable = IsHoldStable();
-
-            // Если прошло достаточно времени и панели стабильны
-            if (Time.time - _lastPanelStabilityCheckTime >= HOLD_STABILITY_TIME && isStable)
-            {
-                Debug.Log("Запустили удержание");
-                HandleHoldAcceleration();
-            }
-        }
-    }
-
-    private bool IsHoldStable()
-    {
-        // Сравниваем текущие и предыдущие панели
-        if (_currentPressedPanels.Count != _previousPressedPanels.Count)
-            return false;
-
-        // Проверяем близость индексов
-        for (int i = 0; i < _currentPressedPanels.Count; i++)
-        {
-            if (Mathf.Abs(_currentPressedPanels[i] - _previousPressedPanels[i]) > HOLD_STABILITY_THRESHOLD)
-                return false;
-        }
-
-        // Обновляем предыдущие панели
-        _previousPressedPanels = new List<int>(_currentPressedPanels);
-        return true;
-    }
-
-    private void TriggerHoldAcceleration()
-    {
-        if (_state != PlaybackState.HoldAccelerating)
-        {
-            Debug.Log("Transitioning to HoldAccelerating state");
-            _previousState = _state;
-            _state = PlaybackState.HoldAccelerating;
-            _effectStartSpeed = _currentSpeed;
-            _targetAccelerationSpeed = 0f;
-            _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
-            _phaseTimer = 0f;
-            _reachedZero = false;
-            _holdZeroTime = 0f;
-        }
-    }
-
-    private void CheckPanelsStability()
-    {
-        if (!_isPanelsStable)
-        {
-            _stablePanelsStartTime = Time.time;
-            _isPanelsStable = true;
-        }
-    }
-
-    private void ResetPanelsStability()
-    {
-        _isPanelsStable = false;
-        _stablePanelsStartTime = 0f;
-        _currentPressedPanels.Clear();
-        _heldPanelIndex = -1;
-        _isPanelHoldActive = false;
-        _isHolding = false;
     }
 
     private void HandleReleaseAfterHold()
@@ -441,45 +358,15 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void Update()
     {
-        if (_isPanelsStable && _currentPressedPanels.Count > 0)
-        {
-            float stableTime = Time.time - _stablePanelsStartTime;
-
-            if (stableTime >= STABLE_PANELS_THRESHOLD)
-            {
-                if (_state != PlaybackState.HoldAccelerating)
-                {
-                    _heldPanelIndex = _currentPressedPanels[0]; // Используем первый индекс
-                    _holdStartTime = _stablePanelsStartTime;
-                    _holdDuration = stableTime;
-                    _isPanelHoldActive = true;
-                    _isHolding = true;
-
-                    // Переход в состояние удержания
-                    _previousState = _state;
-                    _state = PlaybackState.HoldAccelerating;
-                    _effectStartSpeed = _currentSpeed;
-                    _targetAccelerationSpeed = 0f;
-                    _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
-                    _phaseTimer = 0f;
-                    _reachedZero = false;
-                    _holdZeroTime = 0f;
-                }
-            }
-        }
-
+        //Debug.Log("Текущий state" + _state);
         UpdateMediaPlayer();
         if (_mediaPlayer == null || (!_swipeControlEnabled && _state == PlaybackState.Normal))
             return;
 
         _previousSpeed = _currentSpeed;
+        HandleHoldAcceleration();
         UpdatePlaybackState();
         UpdateDebugText();
-    }
-
-    private bool IsTemporaryChange()
-    {
-        return (Time.time - _stablePanelsStartTime) < PANELS_TOLERANCE;
     }
 
     private void HandleHoldAcceleration()
@@ -715,105 +602,3 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 }
-
-
-
-/*
-
-private List<int> _currentPressedPanels = new List<int>();
-    private float _stablePanelsStartTime = 0f;
-    private bool _isPanelsStable = false;
-    private const float STABLE_PANELS_THRESHOLD = 1.0f; // Порог в секундах
-    private const float PANELS_TOLERANCE = 0.1f; // Допустимое время небольших изменений
-
-public void OnPanelPressed(int panelIndex, bool isPressed)
-{
-    if (_mediaPlayer == null || !_swipeControlEnabled)
-        return;
-
-    if (isPressed)
-    {
-        if (!_currentPressedPanels.Contains(panelIndex))
-        {
-            _currentPressedPanels.Add(panelIndex);
-            CheckPanelsStability();
-        }
-    }
-    else
-    {
-        _currentPressedPanels.Remove(panelIndex);
-        if (_currentPressedPanels.Count == 0)
-        {
-            ResetPanelsStability();
-            HandleReleaseAfterHold();
-        }
-        else
-        {
-            CheckPanelsStability();
-        }
-    }
-}
-
-private void CheckPanelsStability()
-{
-    if (!_isPanelsStable)
-    {
-        _stablePanelsStartTime = Time.time;
-        _isPanelsStable = true;
-    }
-}
-
-private void ResetPanelsStability()
-{
-    _isPanelsStable = false;
-    _stablePanelsStartTime = 0f;
-    _currentPressedPanels.Clear();
-    _heldPanelIndex = -1;
-    _isPanelHoldActive = false;
-    _isHolding = false;
-}
-
-private void Update()
-{
-    if (_isPanelsStable && _currentPressedPanels.Count > 0)
-    {
-        float stableTime = Time.time - _stablePanelsStartTime;
-
-        if (stableTime >= STABLE_PANELS_THRESHOLD)
-        {
-            if (_state != PlaybackState.HoldAccelerating)
-            {
-                _heldPanelIndex = _currentPressedPanels[0]; // Используем первый индекс
-                _holdStartTime = _stablePanelsStartTime;
-                _holdDuration = stableTime;
-                _isPanelHoldActive = true;
-                _isHolding = true;
-
-                // Переход в состояние удержания
-                _previousState = _state;
-                _state = PlaybackState.HoldAccelerating;
-                _effectStartSpeed = _currentSpeed;
-                _targetAccelerationSpeed = 0f;
-                _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
-                _phaseTimer = 0f;
-                _reachedZero = false;
-                _holdZeroTime = 0f;
-            }
-        }
-    }
-
-    UpdateMediaPlayer();
-    if (_mediaPlayer == null || (!_swipeControlEnabled && _state == PlaybackState.Normal))
-        return;
-
-    _previousSpeed = _currentSpeed;
-    UpdatePlaybackState();
-    UpdateDebugText();
-}
-
-// Добавим метод для проверки кратковременных изменений
-private bool IsTemporaryChange()
-{
-    // Если изменения длятся меньше порога толерантности, считаем их временными
-    return (Time.time - _stablePanelsStartTime) < PANELS_TOLERANCE;
-}*/

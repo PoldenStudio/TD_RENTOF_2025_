@@ -1929,25 +1929,17 @@ MonoBehaviour:
     startTime: 38
     endTime: 230
     brightnessMultiplier: 1
-    fadeTime: 5
-    invCycleLength: 0
-    invFadeTime: 0
-    bakedCycleLength: 0
   coldSunSettings:
     pixelCount: 10
     cycleLength: 241
     startTime: 38
     endTime: 230
     brightnessMultiplier: 1
-    fadeTime: 5
-    invCycleLength: 0
-    invFadeTime: 0
-    bakedCycleLength: 0
   toggleTouchMode: 1
   cometMoveDelay: 0.2
-  stripDataManager: {fileID: 770569964}
   currentSpeed: 1
   MultiplySpeed: 2
+  stripDataManager: {fileID: 770569964}
 --- !u!114 &770569964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1962,21 +1954,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 01010101
+  stripEnabled: 00000001
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 00000000000000000000000000000000
+  currentDisplayModes: 03000000030000000200000002000000
   currentSunModes: 00000000000000000000000000000000
   stripSettings: []
   monochromeStripSettings:
   - globalColor:
       serializedVersion: 2
-      rgba: 4278190080
+      rgba: 4294967295
     synthColor:
       serializedVersion: 2
       rgba: 4294967295
   - globalColor:
       serializedVersion: 2
-      rgba: 4278190080
+      rgba: 4294967295
     synthColor:
       serializedVersion: 2
       rgba: 4294967295
