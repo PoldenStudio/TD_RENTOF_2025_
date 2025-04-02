@@ -678,7 +678,7 @@ namespace jp.kshoji.unity.midi.sample
                     {
                         if (GUILayout.Button("Start RTP MIDI Server"))
                         {
-                            MidiManager.Instance.StartRtpMidiServer("RtpMidiSession", 5004);
+                            MidiManager.Instance.StartRtpMidiServer("Rentoff", 5004);
                         }
 
                         GUILayout.Space(20f);
@@ -688,7 +688,7 @@ namespace jp.kshoji.unity.midi.sample
                         port = GUILayout.TextField(port);
                         if (GUILayout.Button("Connect to RTP MIDI Server"))
                         {
-                            MidiManager.Instance.ConnectToRtpMidiServer("RtpMidiSession", 5004, new IPEndPoint(IPAddress.Parse(ipAddress), int.Parse(port)));
+                            MidiManager.Instance.ConnectToRtpMidiServer("Rentoff", 5004, new IPEndPoint(IPAddress.Parse(ipAddress), int.Parse(port)));
                         }
                     }
 #endif

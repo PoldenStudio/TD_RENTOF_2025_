@@ -37,6 +37,7 @@ public class SwipeDetector : MonoBehaviour
 
     [SerializeField] private float swipeFinishDelay = 0.3f;
     [SerializeField] private float maxSwipeDuration = 2.0f;
+    [SerializeField] private float maxTimeBetweenPresses = 0.5f; // NEW: Max time between presses to consider it a swipe
 
     [SerializeField] private VideoPlaybackController _playbackController;
     [SerializeField] private StateManager stateManager;
@@ -101,32 +102,28 @@ public class SwipeDetector : MonoBehaviour
                     _currentlyPressedPanels.Add(virtualIndex);
                     _panelHoldStartTimes[virtualIndex] = currentTime;
 
+                    //Important change here: only add to history if the time difference is small enough
                     if (_activationHistory.Count > 0 &&
-                        _activationHistory.Last().index == virtualIndex)
+                        (currentTime - _activationHistory.Last().time) > maxTimeBetweenPresses)
                     {
-                        continue;
+                        //If the time difference is too large, reset the swipe data to start fresh
+                        ResetSwipeData();
+                        Debug.Log("Resetting Swipe Data due to time gap");
                     }
 
+                    // Add the activation to the history
                     _activationHistory.Add(new PanelActivation { index = virtualIndex, time = currentTime });
                     _lastTouchTime = currentTime;
 
-                    if (_activationHistory.Count >= 2 && !_isSwipeInProgress)
-                    {
-                        float dt = _activationHistory[1].time - _activationHistory[0].time;
-                        _isSmoothDragSequence = dt > 0.2f;
-                        _isSwipeInProgress = true;
+                    _isSwipeInProgress = true;  // Immediately consider it a swipe in progress
 
-                        if (stateManager.CurrentState == AppState.Active)
-                            TryDetectSwipe();
-                        else if (stateManager.CurrentState == AppState.Idle)
-                            TryDetectRelativeSwipe();
-                    }
-                    else if (_isSwipeInProgress && _activationHistory.Count > 2)
+                    if (stateManager.CurrentState == AppState.Active)
                     {
-                        if (stateManager.CurrentState == AppState.Active)
-                            TryDetectSwipe();
-                        else if (stateManager.CurrentState == AppState.Idle)
-                            TryDetectRelativeSwipe();
+                        TryDetectSwipe(false);
+                    }
+                    else if (stateManager.CurrentState == AppState.Idle)
+                    {
+                        TryDetectRelativeSwipe();
                     }
                 }
             }
@@ -154,6 +151,7 @@ public class SwipeDetector : MonoBehaviour
     {
         float currentTime = Time.time;
 
+        //Check for timeout to finish swipe
         if (_activationHistory.Count > 0 && (currentTime - _lastTouchTime) >= swipeFinishDelay)
         {
             if (_isSwipeInProgress)
@@ -170,18 +168,13 @@ public class SwipeDetector : MonoBehaviour
             }
             ResetSwipeData();
         }
+        //Check for swipe duration timeout
         else if (_activationHistory.Count > 0 && (currentTime - _activationHistory[0].time) > maxSwipeDuration)
         {
             if (_isSwipeInProgress)
             {
-                if (stateManager.CurrentState == AppState.Active)
-                {
-                    TryDetectSwipe(false);
-                }
-                else if (stateManager.CurrentState == AppState.Idle)
-                {
-                    TryDetectRelativeSwipe();
-                }
+                TryDetectSwipe(false);  // Detect and send the swipe one last time
+                TryDetectRelativeSwipe();  // Detect and send relative swipe one last time
                 _isSwipeInProgress = false;
             }
             ResetSwipeData();
@@ -299,6 +292,8 @@ public class SwipeDetector : MonoBehaviour
         int y = localIndex / cols;
         int x = localIndex % cols;
 
-        return new Vector2(x + portIndex * cols, -y);
+        Vector2 pos = new Vector2(x + portIndex * cols, -y);
+        Debug.Log($"GetPanelPos: virtualIndex={virtualIndex}, portIndex={portIndex}, localIndex={localIndex}, x_local={x}, y_local={y}, calculated_pos={pos}");
+        return pos;
     }
 }

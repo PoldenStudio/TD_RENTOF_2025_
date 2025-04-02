@@ -172,7 +172,7 @@ MonoBehaviour:
   slideSpeed: 0.1
   instantMove: 0
   targetProgressThreshold: 1
-  swipeProgressMultiplier: 2
+  swipeProgressMultiplier: 3
   inactivityCloseDelay: 4
   oppositeSwipeTolerance: 2
 --- !u!114 &31414347
@@ -1955,7 +1955,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 01000001
+  stripEnabled: 00010001
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 03000000030000000000000000000000
   currentSunModes: 0000000001000000
@@ -3451,6 +3451,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   swipeFinishDelay: 0.4
   maxSwipeDuration: 5
+  maxTimeBetweenPresses: 0.5
   _playbackController: {fileID: 1585652913}
   stateManager: {fileID: 1585652921}
 --- !u!114 &1585652910
