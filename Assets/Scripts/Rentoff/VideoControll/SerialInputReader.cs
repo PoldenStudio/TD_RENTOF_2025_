@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.IO.Ports;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using UnityEngine;
-using InitializationFramework;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -19,6 +17,7 @@ public class SerialInputReader : InputReader
     [SerializeField] private float idleTimeout = 20.0f;
     [SerializeField] private float restartDelay = 1.0f;
     [SerializeField] private bool EnableDebug = false;
+    [SerializeField] private bool MultipleTouchPerSegmentAsHexBitmask = false;
 
     [Header("References")]
     [SerializeField] private CurtainController curtainController;
@@ -30,13 +29,10 @@ public class SerialInputReader : InputReader
     private volatile bool[] _isPortRunning;
     private ConcurrentQueue<(int portIndex, string message)> _messageQueue = new ConcurrentQueue<(int, string)>();
 
-    private List<int> mainPanelsCode = new() { 1001, 1002, 4, 8, 10, 20, 40, 80, 100, 200, 400, 800 };
-    private Dictionary<int, int> touchStatusToIndexMap;
-    
-    //private Dictionary<string, int> touchStatusToIndexMap;
+    //private readonly List<int> singleTouchPanelCodes = new() { 1001, 1002, 4, 8, 10, 20, 40, 80, 100, 200, 400, 800 };
+    private readonly List<int> singleTouchPanelCodes = new() { 1001, 1003, 1002, 1006, 4, 12, 8, 18, 10, 30, 20, 60, 40, 120, 80, 180, 100, 300, 200, 600, 400, 1200, 800 };
 
-    //private List<string> mainPanelsCode = new() { "1001", "1002", "4", "8", "10", "20", "40", "80", "100", "200", "400", "800" };
-
+    private Dictionary<int, int> touchCodeToIndexMap;
 
     private float _lastDataReceivedTime;
     private float _lastNonZeroTouchTime;
@@ -44,6 +40,8 @@ public class SerialInputReader : InputReader
     private bool _expectingData = false;
     private string disableRow = "0";
     private int PanelsPerSegment;
+    private int SegmentsPerPort;
+    private int PanelsPerPort;
     private int TotalPanels;
 
     public event Action<int> OnPortDisconnected;
@@ -61,8 +59,8 @@ public class SerialInputReader : InputReader
 
     private void Start()
     {
-        DisableRow();
         TotalPanelsCalculate();
+        DisableRow();
         InitializeTouchStatusMap();
     }
 
@@ -199,7 +197,8 @@ public class SerialInputReader : InputReader
         int segments = Settings.Instance.segments;
         string[] zeros = Enumerable.Repeat("0", segments).ToArray();
         disableRow = "touch_status: " + string.Join(" ", zeros);
-        Debug.Log("DisableRow generated: " + disableRow);
+        if (EnableDebug)
+            Debug.Log("[SerialInputReader] DisableRow generated: " + disableRow);
     }
 
     private void ReadSerialPort(int portIndex)
@@ -238,12 +237,14 @@ public class SerialInputReader : InputReader
 
     private void TotalPanelsCalculate()
     {
-        int segments = Settings.Instance.segments;
+        SegmentsPerPort = Settings.Instance.segments;
         int rows = Settings.Instance.rows;
         int cols = Settings.Instance.cols;
         PanelsPerSegment = rows * cols;
-        TotalPanels = PanelsPerSegment * segments * portNames.Length;
-        Debug.Log("total: " + TotalPanels);
+        PanelsPerPort = PanelsPerSegment * SegmentsPerPort;
+        TotalPanels = PanelsPerPort * portNames.Length;
+        if (EnableDebug)
+            Debug.Log($"[SerialInputReader] PanelsPerSegment: {PanelsPerSegment}, SegmentsPerPort: {SegmentsPerPort}, PanelsPerPort: {PanelsPerPort}, TotalPanels: {TotalPanels}");
     }
 
     private void ProcessMessageQueue()
@@ -259,136 +260,143 @@ public class SerialInputReader : InputReader
 
             if (touchStatusIndex < 0)
             {
-                Debug.Log($"[SerialInputReader] Unhandled message: {message} from {portNames[messageData.portIndex]}");
+                if (EnableDebug)
+                    Debug.Log($"[SerialInputReader] Unhandled message: {message} from {portNames[messageData.portIndex]}");
                 continue;
             }
 
-            string data = message.Substring(touchStatusIndex + 13).Trim();
-            int rows = Settings.Instance.rows;
-            int cols = Settings.Instance.cols;
-            int panelsPerSegment = rows * cols;
+            string data = message.Substring(touchStatusIndex + "touch_status:".Length).Trim();
             bool[] panelStates = new bool[TotalPanels];
+            string[] segmentValues = data.Split(' ');
 
-            int startIndex = 0;
-            int segmentIndex = 0;
-            int spaceIndex;
-
-            while ((spaceIndex = data.IndexOf(' ', startIndex)) >= 0 && segmentIndex < Settings.Instance.segments)
+            for (int segIndex = 0; segIndex < Math.Min(segmentValues.Length, SegmentsPerPort); segIndex++)
             {
-                string touchStatusStr = data.Substring(startIndex, spaceIndex - startIndex);
-                startIndex = spaceIndex + 1;
-
+                string touchStatusStr = segmentValues[segIndex];
                 if (touchStatusStr != "0")
                 {
-                    if (int.TryParse(touchStatusStr, out int touchStatus))
+                    _lastNonZeroTouchTime = Time.time;
+                    if (MultipleTouchPerSegmentAsHexBitmask)
                     {
-                        _lastNonZeroTouchTime = Time.time;
-
-                        if (touchStatusToIndexMap.TryGetValue(touchStatus, out int panelIndex))
-                        {
-                            int flippedIndex = panelsPerSegment - panelIndex;
-                            int globalIndex = segmentIndex * panelsPerSegment + flippedIndex;
-
-                            if (globalIndex < panelStates.Length)
-                            {
-                                panelStates[globalIndex] = true;
-
-                                if (EnableDebug)
-                                {
-                                    Debug.Log($"touchStatus {globalIndex}");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            return; 
-                            //List<int> Panels = DecodeTouchStatus();
-                        }
+                        ProcessMultiTouchStatus(touchStatusStr, messageData.portIndex, segIndex, panelStates);
                     }
-                }
-
-                segmentIndex++;
-            }
-
-            // Обработка последнего сегмента, если есть
-            if (startIndex < data.Length && segmentIndex < Settings.Instance.segments)
-            {
-                string touchStatusStr = data.Substring(startIndex);
-
-                if (touchStatusStr != "0")
-                {
-                    if (int.TryParse(touchStatusStr, out int touchStatus))
+                    else
                     {
-                        _lastNonZeroTouchTime = Time.time;
-
-                        if (touchStatusToIndexMap.TryGetValue(touchStatus, out int panelIndex))
+                        if (int.TryParse(touchStatusStr, out int touchStatus))
                         {
-                            int flippedIndex = panelsPerSegment - panelIndex;
-                            int globalIndex = segmentIndex * panelsPerSegment + flippedIndex;
-
-                            if (globalIndex < panelStates.Length)
-                            {
-                                panelStates[globalIndex] = true;
-
-                                if (EnableDebug)
-                                {
-                                    Debug.Log($"touchStatus {globalIndex}");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            return;
+                            ProcessSingleTouchStatus(touchStatus, messageData.portIndex, segIndex, panelStates);
                         }
                     }
                 }
             }
 
-            // Логирование только если включен дебаг
             if (EnableDebug)
             {
-                LogPressedPanels(panelStates, panelsPerSegment);
+                LogPressedPanels(panelStates);
             }
 
             OnInputReceived(panelStates);
         }
     }
 
-    // Вынесено в отдельный метод для улучшения читаемости
-    private void LogPressedPanels(bool[] panelStates, int panelsPerSegment)
+    private void ProcessSingleTouchStatus(int touchStatus, int portIndex, int segmentIndex, bool[] panelStates)
+    {
+        if (touchCodeToIndexMap.TryGetValue(touchStatus, out int panelLocalIdZeroBased))
+        {
+            // The flip handles hardware reporting order vs internal representation
+            int flippedLocalIndex = (PanelsPerSegment - 1) - panelLocalIdZeroBased;
+
+            int globalIndex = portIndex * PanelsPerPort +
+                              segmentIndex * PanelsPerSegment +
+                              flippedLocalIndex;
+
+            if (globalIndex >= 0 && globalIndex < panelStates.Length)
+            {
+                panelStates[globalIndex] = true;
+                if (EnableDebug)
+                {
+                    Debug.Log($"[SerialInputReader SINGLE] Port {portIndex}, Seg {segmentIndex}: Code {touchStatus} -> LocalId {panelLocalIdZeroBased}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SerialInputReader SINGLE] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[SerialInputReader SINGLE] Unknown touch status value: {touchStatus}");
+        }
+    }
+
+    private void ProcessMultiTouchStatus(string touchStatusStr, int portIndex, int segmentIndex, bool[] panelStates)
+    {
+        if (int.TryParse(touchStatusStr, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int touchStatusInt))
+        {
+            List<int> pressed = DecodeTouchBitmask(touchStatusInt, PanelsPerSegment);
+            foreach (int zeroBasedLocalIndex in pressed)
+            {
+                int flippedLocalIndex = (PanelsPerSegment - 1) - zeroBasedLocalIndex;
+                int globalIndex = portIndex * PanelsPerPort +
+                                  segmentIndex * PanelsPerSegment +
+                                  flippedLocalIndex;
+
+                if (globalIndex >= 0 && globalIndex < panelStates.Length)
+                {
+                    panelStates[globalIndex] = true;
+                    if (EnableDebug)
+                    {
+                        Debug.Log($"[SerialInputReader MULTI] Port {portIndex}, Seg {segmentIndex}: Code {touchStatusStr} -> LocalId {zeroBasedLocalIndex}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[SerialInputReader MULTI] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[SerialInputReader MULTI] Invalid touch status string: {touchStatusStr}");
+        }
+    }
+
+    private List<int> DecodeTouchBitmask(int bitmask, int numPanels)
+    {
+        List<int> pressedIndices = new List<int>();
+        for (int i = 0; i < numPanels; i++)
+        {
+            if ((bitmask & (1 << i)) != 0)
+            {
+                pressedIndices.Add(i);
+            }
+        }
+        return pressedIndices;
+    }
+
+    private void LogPressedPanels(bool[] panelStates)
     {
         for (int i = 0; i < panelStates.Length; i++)
         {
             if (panelStates[i])
             {
-                int portIdx = i / (Settings.Instance.segments * panelsPerSegment);
-                int segmentIdx = (i % (Settings.Instance.segments * panelsPerSegment)) / panelsPerSegment;
-                int localIdx = i % panelsPerSegment;
-                Debug.Log($"[SerialInputReader] Panel pressed at global index: {i}, Port: {portNames[portIdx]}, Segment: {segmentIdx}, Local index: {localIdx}");
+                int portIdx = i / PanelsPerPort;
+                int withinPortIndex = i % PanelsPerPort;
+                int segmentIdx = withinPortIndex / PanelsPerSegment;
+                int localIdx = withinPortIndex % PanelsPerSegment;
+                Debug.Log($"[SerialInputReader] Panel pressed: GlobalIdx={i}, Port={portIdx}({portNames[portIdx]}), Seg={segmentIdx}, LocalInSeg={localIdx}");
             }
         }
     }
 
-    // Добавьте это поле в класс и инициализируйте при старте
-
     private void InitializeTouchStatusMap()
     {
-        touchStatusToIndexMap = new Dictionary<int, int>(Settings.Instance.rows * Settings.Instance.cols);
-        for (int i = 0; i < mainPanelsCode.Count; i++)
+        touchCodeToIndexMap = new Dictionary<int, int>(singleTouchPanelCodes.Count);
+        for (int i = 0; i < singleTouchPanelCodes.Count; i++)
         {
-            touchStatusToIndexMap[mainPanelsCode[i]] = i + 1;
+            // Assuming codes directly map to a 0-based logical order
+            touchCodeToIndexMap[singleTouchPanelCodes[i]] = i;
         }
     }
-
-    // Вспомогательная функция для декодирования суммы в индексы нажатых панелей
-    private List<int> DecodeTouchStatus(int touchStatus)
-    {
-        List<int> pressedIndices = new List<int>();
-
-        return pressedIndices;
-    }
-
-
 
     private void CloseSerialPorts()
     {
@@ -415,7 +423,8 @@ public class SerialInputReader : InputReader
                             _serialPorts[i].DiscardOutBuffer();
                             _serialPorts[i].Close();
                         }
-                        Debug.Log($"[SerialInputReader] Port {portNames[i]} closed.");
+                        if (EnableDebug)
+                            Debug.Log($"[SerialInputReader] Port {portNames[i]} closed.");
                     }
                     catch (Exception ex)
                     {

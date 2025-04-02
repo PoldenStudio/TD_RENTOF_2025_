@@ -46,15 +46,15 @@ public class VideoPlaybackController : MonoBehaviour
     private const float HOLD_THRESHOLD = 1f;
 
     private const float MIN_DECELERATION_DURATION = 1f;
-    private const float MAX_DECELERATION_DURATION = 5f;
+    private const float MAX_DECELERATION_DURATION = 4f;
 
-    private const float MAX_DECELERATION_DURATION_FROM_HOLD = 3f;
+    private const float MAX_DECELERATION_DURATION_FROM_HOLD = 2f;
 
 
     [SerializeField] private TextMeshProUGUI debugText;
     private SwipeData _lastSwipeData;
 
-    private const float maxTargetSpeed = 15f;
+    private const float maxTargetSpeed = 13f;
     private const float minSlowSpeed = 0.25f;
     private const float minEffectDuration = 4f;
     private const float maxEffectDuration = 10f;
@@ -62,13 +62,13 @@ public class VideoPlaybackController : MonoBehaviour
     private const float startfromTime = 0.3f;
     private bool _isReversePlayback = false;
 
-    private const float SLOW_SWIPE_TIME = 0.5f;
+    private const float SLOW_SWIPE_TIME = 0.2f;
     private const float FAST_SWIPE_TIME = 0.1f;
-    private const float MAX_REVERSE_SPEED = -15f;
+    private const float MAX_REVERSE_SPEED = -13f;
     private const float COUNTER_DIRECTION_MULTIPLIER = 1.5f;
 
     private float _lastPanelReleaseTime = 0f;
-    private const float HOLD_SAFETY_TIMEOUT = 0.4f;
+    private const float HOLD_SAFETY_TIMEOUT = 0.5f;
 
     [SerializeField] private SoundManager _SoundManager;
     [SerializeField] private MIDISoundManager _MIDISoundManager;
@@ -76,9 +76,10 @@ public class VideoPlaybackController : MonoBehaviour
     [SerializeField] private CurtainController curtainController;
     [SerializeField] private LEDController _LEDController;
     [SerializeField] private SPItouchPanel _SPItouchPanel;
+
     private bool _swipeControlEnabled = false;
 
-    private float _transitionDelay = 0.1f;
+    private readonly float _transitionDelay = 0.1f;
 
     private float _velocity = 0f;
     private float _smoothTime = 0.3f;
@@ -248,22 +249,32 @@ public class VideoPlaybackController : MonoBehaviour
 
     private float CalculateTargetSpeed(int directionFactor, float avgTimeBetween, float speedMultiplier, bool isSlowSwipe, bool isFastSwipe)
     {
+        float baseSpeed;
+
         if (isSlowSwipe)
         {
-            return directionFactor > 0 ? minSlowSpeed : -minSlowSpeed;
+            baseSpeed = minSlowSpeed;
         }
         else if (isFastSwipe)
         {
-            float baseSpeed = Mathf.Lerp(4f, 7f, 1f - avgTimeBetween / FAST_SWIPE_TIME);
-            return directionFactor > 0 ? Mathf.Min(_currentSpeed + baseSpeed * speedMultiplier, maxTargetSpeed) :
-                                         Mathf.Max(_currentSpeed - baseSpeed * speedMultiplier, MAX_REVERSE_SPEED);
+            baseSpeed = Mathf.Lerp(2f, 5f, 1f - avgTimeBetween / FAST_SWIPE_TIME);
         }
         else
         {
-            float baseSpeed = Mathf.Lerp(2f, 4f, (SLOW_SWIPE_TIME - avgTimeBetween) / (SLOW_SWIPE_TIME - FAST_SWIPE_TIME));
-            return directionFactor > 0 ? Mathf.Min(_currentSpeed + baseSpeed * speedMultiplier, maxTargetSpeed) :
-                                         Mathf.Max(_currentSpeed - baseSpeed * speedMultiplier, MAX_REVERSE_SPEED);
+            baseSpeed = Mathf.Lerp(0.25f, 2f,
+               (SLOW_SWIPE_TIME - avgTimeBetween) / (SLOW_SWIPE_TIME - FAST_SWIPE_TIME));
         }
+
+        // Задаем целевую скорость всегда в направлении свайпа, учитывая текущую скорость
+        float targetSpeed = _currentSpeed + directionFactor * baseSpeed * speedMultiplier;
+
+        // Ограничиваем величину целевой скорости
+        if (directionFactor > 0)
+            targetSpeed = Mathf.Clamp(targetSpeed, minSlowSpeed, maxTargetSpeed);
+        else
+            targetSpeed = Mathf.Clamp(targetSpeed, MAX_REVERSE_SPEED, -minSlowSpeed);
+
+        return targetSpeed;
     }
 
     private float CalculateEffectDuration(float avgTimeBetween, float targetSpeed)
@@ -567,7 +578,7 @@ public class VideoPlaybackController : MonoBehaviour
             _heldPanelIndex = -1;
             _isPanelHoldActive = false;
             _mediaPlayer.PlaybackSpeed = 1f;
-            //_mediaPlayer.SeekToTime(0f);
+            _mediaPlayer.SeekToTime(0f);
             _mediaPlayer.SeekToFrame(0);
             _mediaPlayer.Play();
             Debug.Log("[VideoPlaybackController] Скорость видео 1");
@@ -602,3 +613,7 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 }
+
+//смотри сейчас неправильно учитывается направление движения, важно строго опираться на данные свайпов, если мы получаем положитеный свайп, то в любом случае подаем полодитеные значения.
+//если получаем отрицательный свайп, от отрицательные
+

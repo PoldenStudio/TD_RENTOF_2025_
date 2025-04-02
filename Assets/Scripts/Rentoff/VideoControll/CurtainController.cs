@@ -40,7 +40,7 @@ public class CurtainController : MonoBehaviour
     private int _pendingSign = 0;
     private int _pendingCount = 0;
     private float _pendingValue = 0f;
-    private float _firstPendingValue = 0f; // Store the first pending increment
+    private float _firstPendingValue = 0f;
 
     private Action _onCurtainFullCallback;
     private Action _onCurtainFadedCallback;
@@ -116,7 +116,7 @@ public class CurtainController : MonoBehaviour
             _pendingSign = 0;
             _pendingCount = 0;
             _pendingValue = 0f;
-            _firstPendingValue = 0f; // Reset first pending value as direction is stable
+            _firstPendingValue = 0f;
             AddSwipeProgressReal(progressIncrement);
             return;
         }
@@ -132,15 +132,15 @@ public class CurtainController : MonoBehaviour
                     if (_pendingCount == 2)
                     {
                         _stableSign = sign;
-                        // Apply the first increment back in the original direction
+
                         AddSwipeProgressReal(_firstPendingValue * -1f);
-                        // Then apply the accumulated pending value in the new direction
+
                         AddSwipeProgressReal(_pendingValue);
 
                         _pendingSign = 0;
                         _pendingCount = 0;
                         _pendingValue = 0f;
-                        _firstPendingValue = 0f; // Reset first pending value
+                        _firstPendingValue = 0f; 
                     }
                 }
             }
@@ -149,7 +149,7 @@ public class CurtainController : MonoBehaviour
                 _pendingSign = sign;
                 _pendingCount = 1;
                 _pendingValue = progressIncrement;
-                _firstPendingValue = progressIncrement; // Store the first pending increment
+                _firstPendingValue = progressIncrement; 
             }
         }
     }
@@ -158,7 +158,7 @@ public class CurtainController : MonoBehaviour
     {
         if (_currentProgress >= targetProgressThreshold)
         {
-            Debug.Log("[CurtainController] Already full => ignoring new progress.");
+            Debug.Log("[CurtainController] Already full");
             return;
         }
 
@@ -203,26 +203,26 @@ public class CurtainController : MonoBehaviour
         }
 
         float duration = Mathf.Abs(progressDiff) / slideSpeed;
-        duration = Mathf.Max(duration, 0.05f); // Minimum duration to avoid zero duration
+        duration = Mathf.Max(duration, 0.05f);
 
         float timeElapsed = 0f;
-        float initialDuration = duration; // Store initial duration for consistent pacing
+        float initialDuration = duration;
 
         while (timeElapsed < duration)
         {
             timeElapsed += Time.deltaTime;
-            float normalizedTime = Mathf.Clamp01(timeElapsed / initialDuration); // Use initial duration
-            float easedTime = EaseOutSmooth(normalizedTime); // Apply smoother easing
+            float normalizedTime = Mathf.Clamp01(timeElapsed / initialDuration);
+            float easedTime = EaseOutSmooth(normalizedTime);
 
-            float currentTargetValue = toValue; // Default target is the initially passed 'toValue'
+            float currentTargetValue = toValue;
             if (!Mathf.Approximately(_targetProgress, toValue))
             {
-                currentTargetValue = _targetProgress; // Use the updated target if changed
-                duration = Mathf.Max(Mathf.Abs(currentTargetValue - _currentProgress) / slideSpeed, 0.05f); // Recalculate duration based on remaining distance and clamp
-                initialDuration = duration; // Update initial duration for next iterations to keep consistent pacing even after target change
-                timeElapsed = 0f; // Reset elapsed time to restart the animation smoothly towards the new target
-                toValue = currentTargetValue; // Update toValue for next iteration
-                startValue = _currentProgress; // Update start value for next interpolation
+                currentTargetValue = _targetProgress; 
+                duration = Mathf.Max(Mathf.Abs(currentTargetValue - _currentProgress) / slideSpeed, 0.05f);
+                initialDuration = duration; 
+                timeElapsed = 0f; 
+                toValue = currentTargetValue; 
+                startValue = _currentProgress; 
             }
 
             float nextProgress = Mathf.Lerp(startValue, currentTargetValue, easedTime);
@@ -236,7 +236,7 @@ public class CurtainController : MonoBehaviour
             yield return null;
         }
 
-        SetCurtainProgress(toValue); // Ensure final value is set precisely
+        SetCurtainProgress(toValue); 
         _isCurtainAnimating = false;
         _slideCoroutine = null;
 
@@ -457,7 +457,7 @@ public class CurtainController : MonoBehaviour
     {
         _onCurtainFadedCallback = callback;
     }
-
+    
     public void ResetCurtainProgress()
     {
         _currentProgress = 0f;
@@ -470,7 +470,7 @@ public class CurtainController : MonoBehaviour
         _pendingSign = 0;
         _pendingCount = 0;
         _pendingValue = 0f;
-        _firstPendingValue = 0f; // Reset first pending value
+        _firstPendingValue = 0f; 
 
         if (_slideCoroutine != null)
         {

@@ -55,47 +55,81 @@ public class MIDISoundManager : MonoBehaviour
 
     private Queue<int> activeNotes = new();
 
+
+
+
     private void Awake()
     {
+        // Receive MIDI data with this gameObject.
+        // The gameObject should implement IMidiXXXXXEventHandler.
         MidiManager.Instance.RegisterEventHandleObject(gameObject);
 
-        /*        foreach (var midiPlugin in MidiManager.Instance.midiPlugins)
-                {
-                    if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
-                    {
-                        Debug.Log($"[MIDI] Setting RtpMidiPlugin port to: {rtpMidiPort}");
-                        rtpMidiPlugin.SetPort(rtpMidiPort);
-                    }
-                }*/
-
-        //tpMidiPlugin.SetPort(rtpMidiPort);
-
+        // Initialize MIDI feature
         MidiManager.Instance.InitializeMidi(() =>
         {
-            Debug.Log("[MIDI] Initialized.");
-            isMidiReady = true;
-
-            Debug.Log("[MIDI] Available Devices:");
-            foreach (var device in MidiManager.Instance.DeviceIdSet)
-            {
-                Debug.Log($"[MIDI] Found Device: {device}");
-            }
-
-            if (string.IsNullOrEmpty(loopMidiDeviceId))
-            {
-                Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
-                return;
-            }
-
-            if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
-            {
-                Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
-            }
-            else
-            {
-                Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
-            }
+#if (UNITY_ANDROID || UNITY_IOS || UNITY_WEBGL) && !UNITY_EDITOR
+        // Start scan Bluetooth MIDI devices
+        MidiManager.Instance.StartScanBluetoothMidiDevices(0);
+#endif
         });
+
+#if !UNITY_IOS && !UNITY_WEBGL
+        // Start RTP MIDI server with session name "RtpMidiSession", and listen with port 5004.
+        MidiManager.Instance.StartRtpMidiServer("RtpMidiSession", 5004);
+
+        Debug.Log("[MIDI] Initialized.");
+        isMidiReady = true;
+
+        Debug.Log("[MIDI] Available Devices:");
+        foreach (var device in MidiManager.Instance.DeviceIdSet)
+        {
+            Debug.Log($"[MIDI] Found Device: {device}");
+        }
+
+        if (string.IsNullOrEmpty(loopMidiDeviceId))
+        {
+            Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
+            return;
+        }
+
+        if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
+        {
+            Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
+        }
+        else
+        {
+            Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
+        }
+
+
+#endif
+
+        /*        MidiManager.Instance.InitializeMidi(() =>
+                {
+                    Debug.Log("[MIDI] Initialized.");
+                    isMidiReady = true;
+
+                    Debug.Log("[MIDI] Available Devices:");
+                    foreach (var device in MidiManager.Instance.DeviceIdSet)
+                    {
+                        Debug.Log($"[MIDI] Found Device: {device}");
+                    }
+
+                    if (string.IsNullOrEmpty(loopMidiDeviceId))
+                    {
+                        Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
+                        return;
+                    }
+
+                    if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
+                    {
+                        Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
+                    }
+                    else
+                    {
+                        Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
+                    }
+                });*/
     }
 
     private void OnDestroy()

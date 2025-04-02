@@ -137,7 +137,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &31414345
 Transform:
   m_ObjectHideFlags: 0
@@ -384,6 +384,7 @@ MonoBehaviour:
   - {fileID: 1597980940}
   - {fileID: 31414344}
   - {fileID: 1549342324}
+  - {fileID: 770569957}
   deinitOrder: []
   isInProgress: 0
 --- !u!114 &46665299
@@ -639,14 +640,12 @@ MonoBehaviour:
   initOnEnable: 1
   initOrder:
   - {fileID: 1712025731}
-  - {fileID: 1535258761}
   - {fileID: 603832070}
   - {fileID: 145641964}
   - {fileID: 427341739}
   - {fileID: 4009982808809277425}
   - {fileID: 2137483543}
   - {fileID: 2114887783}
-  - {fileID: 1408335762}
   - {fileID: 1232863033839330278}
   - {fileID: 1440375867}
   - {fileID: 565072450}
@@ -914,7 +913,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &427341740
 Transform:
   m_ObjectHideFlags: 0
@@ -991,7 +990,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 447981336}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
   m_Name: 
@@ -1576,7 +1575,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &604088605
 Transform:
   m_ObjectHideFlags: 0
@@ -1829,7 +1828,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &770569958
 Transform:
   m_ObjectHideFlags: 0
@@ -1954,7 +1953,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 01010101
+  stripEnabled: 00000000
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 00000000000000000000000000000000
   currentSunModes: 00000000000000000000000000000000
@@ -3180,13 +3179,14 @@ GameObject:
   - component: {fileID: 1549342327}
   - component: {fileID: 1549342326}
   - component: {fileID: 1549342325}
+  - component: {fileID: 1549342328}
   m_Layer: 0
   m_Name: InitMIDI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!82 &1549342325
 AudioSource:
   m_ObjectHideFlags: 0
@@ -3296,7 +3296,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a4b716bd85f4764b8eb27bbcefe132f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  loopMidiDeviceId: Rentoff
+  loopMidiDeviceId: Rentoff_in
   midiChannel: 1
   rtpMidiPort: 5004
   neutralSpeed: 1
@@ -3380,6 +3380,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 46665297}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1549342328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1549342324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49d0a73a2947a6a4582bd1bb600bc80c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1585652905
 GameObject:
   m_ObjectHideFlags: 0
@@ -3407,7 +3419,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1585652906
 Transform:
   m_ObjectHideFlags: 0
@@ -3476,7 +3488,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rows: 1
-  cols: 12
+  cols: 23
   segments: 5
   sampleRate: 0.05
   swipeTimeThreshold: 0.2
@@ -3541,6 +3553,7 @@ MonoBehaviour:
   idleTimeout: 10000
   restartDelay: 1
   EnableDebug: 1
+  MultipleTouchPerSegmentAsHexBitmask: 0
   curtainController: {fileID: 31414346}
   swipeDetector: {fileID: 1585652908}
   stateManager: {fileID: 1585652921}
@@ -3757,7 +3770,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1597980941
 Transform:
   m_ObjectHideFlags: 0
@@ -5829,7 +5842,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4194070633512385018
 Transform:
   m_ObjectHideFlags: 0
