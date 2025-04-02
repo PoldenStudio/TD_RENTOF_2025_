@@ -313,18 +313,24 @@ public class CurtainController : MonoBehaviour
         float startPosition = curtainRect.anchoredPosition.x;
         float targetPosition = slideIn ? 0 : -screenWidth;
 
+        // Устанавливаем целевой прогресс в начале анимации
+        float targetProgress = slideIn ? targetProgressThreshold : 0f;
+        _targetProgress = targetProgress;
+
         if (instantMove)
         {
             curtainRect.anchoredPosition = new Vector2(targetPosition, curtainRect.anchoredPosition.y);
             _isCurtainAnimating = false;
             _isCurtainFull = slideIn;
+            _currentProgress = targetProgress;
+            _targetProgress = targetProgress;
             onComplete?.Invoke();
             _slideCoroutine = null;
             Debug.Log($"[CurtainController] Slide animation completed instantly: slideIn={slideIn}, final pos={curtainRect.anchoredPosition.x}");
             yield break;
         }
 
-        float duration = slideDuration; // Using slideDuration for full slide animation
+        float duration = slideDuration;
         float timeElapsed = 0f;
 
         while (timeElapsed < duration)
@@ -334,26 +340,32 @@ public class CurtainController : MonoBehaviour
             float easedT = EaseOutQuad(t);
             float newX = Mathf.Lerp(startPosition, targetPosition, easedT);
 
+            // Обновляем позицию шторки
             curtainRect.anchoredPosition = new Vector2(newX, curtainRect.anchoredPosition.y);
+
+            // Обновляем текущий прогресс на основе новой позиции
+            float normalized = (newX + screenWidth) / screenWidth; 
+            float currentProgress = normalized * targetProgressThreshold;
+            _currentProgress = currentProgress;
+
             yield return null;
         }
 
-        curtainRect.anchoredPosition = new Vector2(targetPosition, curtainRect.anchoredPosition.y);
-        _isCurtainAnimating = false;
+        // Убедимся, что прогресс установлен точно в целевое значение
+        _currentProgress = targetProgress;
+        _targetProgress = targetProgress;
         _isCurtainFull = slideIn;
 
-        // Сброс прогресса после завершения анимации
+        // Сброс прогресса, если шторка закрыта
         if (!slideIn)
         {
-            _currentProgress = 0f;
-            _targetProgress = 0f;
+
         }
 
         Debug.Log($"[CurtainController] Slide animation completed: slideIn={slideIn}, final pos={curtainRect.anchoredPosition.x}");
         onComplete?.Invoke();
         _slideCoroutine = null;
     }
-
     private float EaseOutQuad(float t)
     {
         return t * (2 - t);
