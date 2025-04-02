@@ -314,17 +314,17 @@ public class SerialInputReader : InputReader
                 panelStates[globalIndex] = true;
                 if (EnableDebug)
                 {
-                    Debug.Log($"[SerialInputReader SINGLE] Port {portIndex}, Seg {segmentIndex}: Code {touchStatus} -> LocalId {panelLocalIdZeroBased}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
+                    Debug.Log($"[SerialInputReader] Port {portIndex}, Seg {segmentIndex}: Code {touchStatus} -> LocalId {panelLocalIdZeroBased}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
                 }
             }
             else
             {
-                Debug.LogWarning($"[SerialInputReader SINGLE] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
+                Debug.LogWarning($"[SerialInputReader] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
             }
         }
         else
         {
-            Debug.LogWarning($"[SerialInputReader SINGLE] Unknown touch status value: {touchStatus}");
+            //Debug.LogWarning($"[SerialInputReader] Unknown touch status value: {touchStatus}");
         }
     }
 
@@ -345,18 +345,18 @@ public class SerialInputReader : InputReader
                     panelStates[globalIndex] = true;
                     if (EnableDebug)
                     {
-                        Debug.Log($"[SerialInputReader MULTI] Port {portIndex}, Seg {segmentIndex}: Code {touchStatusStr} -> LocalId {zeroBasedLocalIndex}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
+                        Debug.Log($"[SerialInputReader] Port {portIndex}, Seg {segmentIndex}: Code {touchStatusStr} -> LocalId {zeroBasedLocalIndex}, FlippedLocal {flippedLocalIndex}, Global {globalIndex}");
                     }
                 }
                 else
                 {
-                    Debug.LogWarning($"[SerialInputReader MULTI] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
+                    Debug.LogWarning($"[SerialInputReader] GlobalIndex {globalIndex} out of range. TotalPanels: {TotalPanels}");
                 }
             }
         }
         else
         {
-            Debug.LogWarning($"[SerialInputReader MULTI] Invalid touch status string: {touchStatusStr}");
+            //Debug.LogWarning($"[SerialInputReader] Invalid touch status string: {touchStatusStr}");
         }
     }
 

@@ -58,80 +58,61 @@ public class MIDISoundManager : MonoBehaviour
 
 
 
+
     private void Awake()
     {
-        // Register MIDI event handler
+        // Receive MIDI data with this gameObject.
+        // The gameObject should implement IMidiXXXXXEventHandler.
         MidiManager.Instance.RegisterEventHandleObject(gameObject);
 
-        // Initialize MIDI (this will trigger the callback when ready)
-        MidiManager.Instance.InitializeMidi(OnMidiInitialized);
-
-        // Optional: Start Bluetooth MIDI scan (Android/iOS/WebGL only)
+        // Initialize MIDI feature
+        MidiManager.Instance.InitializeMidi(() =>
+        {
 #if (UNITY_ANDROID || UNITY_IOS || UNITY_WEBGL) && !UNITY_EDITOR
+        // Start scan Bluetooth MIDI devices
         MidiManager.Instance.StartScanBluetoothMidiDevices(0);
 #endif
-    }
+        });
 
-    private void OnMidiInitialized()
-    {
-        Debug.Log("[MIDI] Initialized.");
+#if !UNITY_IOS && !UNITY_WEBGL
+        // Start RTP MIDI server with session name "RtpMidiSession", and listen with port 5004.
+        MidiManager.Instance.StartRtpMidiServer(loopMidiDeviceId, 5004);
+
+
+    Debug.Log("[MIDI] Initialized.");
+
         isMidiReady = true;
 
-        // Log available devices
         Debug.Log("[MIDI] Available Devices:");
         foreach (var device in MidiManager.Instance.DeviceIdSet)
         {
             Debug.Log($"[MIDI] Found Device: {device}");
         }
 
-        // Validate loopMidiDeviceId
+        MidiManager.Instance.OnMidiInputDeviceAttached(loopMidiDeviceId);
+        {
+
+        }
+
         if (string.IsNullOrEmpty(loopMidiDeviceId))
         {
-            Debug.LogError("[MIDI] loopMidiDeviceId is not set!");
+            Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
             return;
         }
 
         if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
         {
-            Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found!");
+            Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
         }
         else
         {
-            Debug.Log($"[MIDI] Using device: {loopMidiDeviceId}");
+            Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
         }
 
-        // Start RTP-MIDI server (non-Editor platforms only)
-#if !UNITY_EDITOR && !UNITY_IOS && !UNITY_WEBGL
-        MidiManager.Instance.StartRtpMidiServer("RtpMidiSession", rtpMidiPort);
+
+
 #endif
-
-    /*        MidiManager.Instance.InitializeMidi(() =>
-            {
-                Debug.Log("[MIDI] Initialized.");
-                isMidiReady = true;
-
-                Debug.Log("[MIDI] Available Devices:");
-                foreach (var device in MidiManager.Instance.DeviceIdSet)
-                {
-                    Debug.Log($"[MIDI] Found Device: {device}");
-                }
-
-                if (string.IsNullOrEmpty(loopMidiDeviceId))
-                {
-                    Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
-                    return;
-                }
-
-                if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
-                {
-                    Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
-                }
-                else
-                {
-                    Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
-                }
-            });*/
-}
+    }
 
     private void OnDestroy()
     {
@@ -144,27 +125,64 @@ public class MIDISoundManager : MonoBehaviour
         if (!isMidiReady || string.IsNullOrEmpty(loopMidiDeviceId)) return;
 
         float deltaTime = Time.fixedDeltaTime;
-        float interval = Mathf.Lerp(minInterval, maxInterval, 1f / Mathf.Clamp(currentSpeed, 0.5f, 5f));
-        bool isForwardActive = Mathf.Abs(currentSpeed - neutralSpeed) > activationThreshold;
-        bool isBackActive = Mathf.Abs(currentSpeed - neutralbackSpeed) < activationThreshold;
+        float interval = Mathf.Lerp(minInterval, maxInterval, 1f / Mathf.Clamp(Mathf.Abs(currentSpeed), 0.5f, 5f));
 
-        if ((!isForwardActive || !isBackActive) && muteWhenNeutral) return;
+        // Исправленная логика активации
+        bool isActive = (currentSpeed - activationThreshold) > 1f || (currentSpeed + activationThreshold) < -1f;
 
-        lastNoteTime += deltaTime;
-        lastCCSendTime += deltaTime;
+        if (!isActive && muteWhenNeutral) return;
 
-        if ((!isForwardActive || !isBackActive) && lastNoteTime >= interval)
-        {
-            GenerateNote();
-            lastNoteTime = 0f;
-        }
 
-        if (sendCC && lastCCSendTime >= ccSendInterval)
-        {
-            SendCC();
-            lastCCSendTime = 0f;
-        }
+        MidiManager.Instance.SendMidiNoteOff(loopMidiDeviceId, 0, midiChannel, 3, 0);
+        /*        lastNoteTime += deltaTime;
+                lastCCSendTime += deltaTime;
+
+                if (isActive && lastNoteTime >= interval)
+                {
+                    GenerateNote();
+                    lastNoteTime = 0f;
+                }
+
+                if (sendCC && lastCCSendTime >= ccSendInterval)
+                {
+                    SendCC();
+                    lastCCSendTime = 0f;
+                }*/
     }
+
+    /*
+private void FixedUpdate()
+{
+    if (!isMidiReady || string.IsNullOrEmpty(loopMidiDeviceId)) return;
+
+    float deltaTime = Time.fixedDeltaTime;
+    float interval = Mathf.Lerp(minInterval, maxInterval, 1f / Mathf.Clamp(Mathf.Abs(currentSpeed), 0.5f, 5f));
+
+    bool isMovingForward = currentSpeed > (neutralSpeed + activationThreshold); // > 1.05
+    bool isMovingBackward = currentSpeed < (neutralbackSpeed - activationThreshold); // < -1.05
+
+    if (!(isMovingForward || isMovingBackward) && muteWhenNeutral)
+    {
+        return;
+    }
+
+    lastNoteTime += deltaTime;
+    lastCCSendTime += deltaTime;
+
+    if (lastNoteTime >= interval)
+    {
+        GenerateNote();
+        lastNoteTime = 0f;
+    }
+
+    if (sendCC && lastCCSendTime >= ccSendInterval)
+    {
+        SendCC();
+        lastCCSendTime = 0f;
+    }
+}*/
+
+
 
     public void UpdateSynthParameters(float newSpeed)
     {

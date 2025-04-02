@@ -47,7 +47,8 @@ public class VideoPlaybackController : MonoBehaviour
 
     private const float MIN_DECELERATION_DURATION = 1f;
     private const float MAX_DECELERATION_DURATION = 4f;
-
+    private float FastSwiping = 100000f;
+    private float ShortSwiping = 0f;
     private const float MAX_DECELERATION_DURATION_FROM_HOLD = 2f;
 
 
@@ -169,9 +170,9 @@ public class VideoPlaybackController : MonoBehaviour
         // Преобразуем смещение в прогресс, учитывая направление
         float progressIncrement = relativeSwipeData.shift / (float)settings.cols;
         if (relativeSwipeData.shift < 0) // Влево
-            progressIncrement = -Mathf.Abs(progressIncrement);
-        else // Вправо
             progressIncrement = Mathf.Abs(progressIncrement);
+        else // Вправо
+            progressIncrement = -Mathf.Abs(progressIncrement);
 
         // Output the progress increment to the console
         Debug.Log($"[VideoPlaybackController] Curtain progress increment: {progressIncrement}");
@@ -227,15 +228,22 @@ public class VideoPlaybackController : MonoBehaviour
         bool isSlowSwipe = avgTimeBetween > SLOW_SWIPE_TIME;
         bool isFastSwipe = avgTimeBetween <= FAST_SWIPE_TIME;
 
-        float targetSpeed = CalculateTargetSpeed(directionFactor, avgTimeBetween, speedMultiplier, isSlowSwipe, isFastSwipe);
+        float targetSpeed = CalculateTargetSpeed(Mathf.Abs(swipeData.direction.x), avgTimeBetween, speedMultiplier, isSlowSwipe, isFastSwipe);
         float effectDuration = CalculateEffectDuration(avgTimeBetween, targetSpeed);
 
-        _targetAccelerationSpeed = targetSpeed;
-        _finalTargetSpeed = directionFactor > 0 ? 1f : -1f;
-        _isReversePlayback = directionFactor < 0;
+        _targetAccelerationSpeed = _currentSpeed + directionFactor * targetSpeed;
+        _finalTargetSpeed = _targetAccelerationSpeed;
+
+        // Ограничиваем величину целевой скорости
+        _targetAccelerationSpeed = Mathf.Clamp(_targetAccelerationSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
+        _finalTargetSpeed = Mathf.Clamp(_finalTargetSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
 
         _totalEffectDuration = effectDuration;
-        _accelerationDuration = _totalEffectDuration * 0.4f;
+
+
+
+
+        _accelerationDuration = _totalEffectDuration * 0.8f;
         _decelerationDuration = _totalEffectDuration * 0.6f;
 
         _state = PlaybackState.Accelerating;
@@ -245,6 +253,27 @@ public class VideoPlaybackController : MonoBehaviour
         _lastSwipeData = swipeData;
 
         UpdateDebugText();
+    }
+
+    private float CalculateTargetSpeed(float direction, float avgTimeBetween, float speedMultiplier, bool isSlowSwipe, bool isFastSwipe)
+    {
+        float baseSpeed;
+
+        if (isSlowSwipe)
+        {
+            baseSpeed = minSlowSpeed;
+        }
+        else if (isFastSwipe)
+        {
+            baseSpeed = Mathf.Lerp(2f, 5f, 1f - avgTimeBetween / FAST_SWIPE_TIME);
+        }
+        else
+        {
+            baseSpeed = Mathf.Lerp(0.25f, 2f,
+               (SLOW_SWIPE_TIME - avgTimeBetween) / (SLOW_SWIPE_TIME - FAST_SWIPE_TIME));
+        }
+
+        return baseSpeed * speedMultiplier;
     }
 
     private float CalculateTargetSpeed(int directionFactor, float avgTimeBetween, float speedMultiplier, bool isSlowSwipe, bool isFastSwipe)
@@ -614,6 +643,4 @@ public class VideoPlaybackController : MonoBehaviour
     }
 }
 
-//смотри сейчас неправильно учитывается направление движения, важно строго опираться на данные свайпов, если мы получаем положитеный свайп, то в любом случае подаем полодитеные значения.
-//если получаем отрицательный свайп, от отрицательные
-
+//смотри сейчас В скрипте есть такая фигня что направление движение меняется когда мы делаем свайп в одну и ту же сторону, тоесть важно чтобы всегда когда у мы получаем положитеный свайп мы прибавляли currentspeed, когда получаем отрицательный, то всегда его убавляли

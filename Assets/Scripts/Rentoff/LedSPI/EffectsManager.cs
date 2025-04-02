@@ -475,7 +475,7 @@ namespace LEDControl
 
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
             int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-            Color32 sunColor = stripManager.GetSunMode(stripIndex) == SunMode.Warm ? new Color32(255, 147, 41, 255) : new Color32(173, 216, 230, 255);
+            Color32 sunColor = stripManager.GetSunMode(stripIndex) == SunMode.Warm ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 255);
             Color32 blackColor = new Color32(0, 0, 0, 255);
 
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);

@@ -295,10 +295,10 @@ namespace LEDControl
             {
                 if (wasIdled)
                 {
-                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 8);
-                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 8);
-                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel1, 8);
-                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel2, 8);
+                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel1, 0);
+                    WriteToDMXChannel(FrameBuffer, relocatedKineticHeightChannel2, 0);
+                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel1, 0);
+                    WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel2, 0);
                     wasIdled = false;
                 }
             }

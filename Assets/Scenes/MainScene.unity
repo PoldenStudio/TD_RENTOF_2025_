@@ -167,13 +167,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   curtainRect: {fileID: 1705977789}
   curtainImage: {fileID: 1705977790}
-  slideDuration: 1
+  slideDuration: 2
   fadeDuration: 2
   slideSpeed: 0.1
   instantMove: 0
   targetProgressThreshold: 1
-  swipeProgressMultiplier: 4
+  swipeProgressMultiplier: 2
   inactivityCloseDelay: 4
+  oppositeSwipeTolerance: 2
 --- !u!114 &31414347
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1598,7 +1599,7 @@ AudioSource:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604088604}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
@@ -1695,7 +1696,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604088604}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 72cbad695bc06fe42bdcede762544b63, type: 3}
   m_Name: 
@@ -1713,7 +1714,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604088604}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 49d0a73a2947a6a4582bd1bb600bc80c, type: 3}
   m_Name: 
@@ -1725,7 +1726,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604088604}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f27a428fbc1b11a479e75bc1420af8b0, type: 3}
   m_Name: 
@@ -1744,7 +1745,7 @@ AudioLowPassFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604088604}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_LowpassResonanceQ: 1
   lowpassLevelCustomCurve:
@@ -1863,6 +1864,7 @@ MonoBehaviour:
   stateManager: {fileID: 1585652921}
   swipeDetector: {fileID: 1585652908}
   debugMode: 0
+  SunCanMove: 0
 --- !u!114 &770569960
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1915,22 +1917,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd463a62003821847914e5abaa37cd9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  synthLedCountBase: 40
+  synthLedCountBase: 30
   speedLedCountFactor: 2
   speedBrightnessFactor: 5
   tailIntensity: 0.05
   moveDirection: 1
   startFromEnd: 1
-  stationaryBrightnessFactor: 0.5
+  stationaryBrightnessFactor: 0.8
   warmSunSettings:
     pixelCount: 10
-    cycleLength: 241
-    startTime: 38
+    cycleLength: 180
+    startTime: 20
     endTime: 230
     brightnessMultiplier: 1
   coldSunSettings:
     pixelCount: 10
-    cycleLength: 241
+    cycleLength: 140
     startTime: 38
     endTime: 230
     brightnessMultiplier: 1
@@ -1953,10 +1955,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 01010101
+  stripEnabled: 01000001
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 00000000000000000000000000000000
-  currentSunModes: 00000000000000000000000000000000
+  currentDisplayModes: 03000000030000000000000000000000
+  currentSunModes: 0000000001000000
   stripSettings: []
   monochromeStripSettings:
   - globalColor:
@@ -1977,7 +1979,7 @@ MonoBehaviour:
       rgba: 4278190080
     synthColor:
       serializedVersion: 2
-      rgba: 4292424246
+      rgba: 4278190080
   - globalColor:
       serializedVersion: 2
       rgba: 4278190080
@@ -1986,7 +1988,7 @@ MonoBehaviour:
       rgba: 4294967295
   stripSegmentColors: []
   touchPanelCols: 12
-  touchPanelOffset: 70
+  touchPanelOffset: 100
 --- !u!1 &920054923
 GameObject:
   m_ObjectHideFlags: 0
@@ -3296,11 +3298,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a4b716bd85f4764b8eb27bbcefe132f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  loopMidiDeviceId: Rentoff_in
+  loopMidiDeviceId: Rentoff
   midiChannel: 1
   rtpMidiPort: 5004
   neutralSpeed: 1
-  neutralbackSpeed: 0
+  neutralbackSpeed: -1
   activationThreshold: 0.05
   muteWhenNeutral: 1
   baseNote: 60
@@ -4101,7 +4103,7 @@ MonoBehaviour:
     currentFrameIdle: 0
   debugText: {fileID: 0}
   autoCalculateOffsets: 0
-  enableFrameDebug: 0
+  enableFrameDebug: 1
   kineticControlCurve:
     serializedVersion: 2
     m_Curve:
@@ -4133,10 +4135,28 @@ MonoBehaviour:
       inWeight: 0.33333334
       outWeight: 0.33333334
     - serializedVersion: 3
+      time: 0.4791667
+      value: 0
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.75
+      value: 0.495283
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: 2.018868
+      outSlope: 2.018868
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -4177,10 +4197,28 @@ MonoBehaviour:
       inWeight: 0.33333334
       outWeight: 0.33333334
     - serializedVersion: 3
+      time: 0.4791667
+      value: 0
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.75
+      value: 0.495283
+      inSlope: Infinity
+      outSlope: Infinity
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: 2.018868
+      outSlope: 2.018868
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334

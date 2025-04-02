@@ -16,8 +16,8 @@ public class StateManager : MonoBehaviour
     [SerializeField] private CurtainController curtainController;
     [SerializeField] private CometController cometController;
     [SerializeField] private LEDController ledController;
-    [SerializeField] private SoundManager soundManager; // Добавлена ссылка на SoundManager
-    [SerializeField] private SPItouchPanel spiTouchPanel; // Добавлен контроллер для SPI лент
+    [SerializeField] private SoundManager soundManager; 
+    [SerializeField] private SPItouchPanel spiTouchPanel; 
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 1f;
@@ -25,7 +25,10 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float fadeOutDuration = 0.5f;
     [SerializeField] private float fadeInDuration = 0.5f;
     [SerializeField] private float soundFadeDuration = 1f;
-    [SerializeField] private float cometDelayInTransition = 1f; // Задержка перед запуском комет в Transition
+    [SerializeField] private float cometDelayInTransition = 1f;
+
+
+
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
@@ -93,6 +96,7 @@ public class StateManager : MonoBehaviour
 
         // Запускаем кометы на SPI лентах через 1 секунду
         yield return new WaitForSeconds(cometDelayInTransition);
+        spiTouchPanel.SunCanMove = true;
         for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
@@ -101,6 +105,9 @@ public class StateManager : MonoBehaviour
                 float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(spiTouchPanel.effectsManager.currentSpeed) * spiTouchPanel.effectsManager.speedBrightnessFactor);
                 spiTouchPanel.effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
             }
+
+
+
         }
 
         yield return new WaitForSeconds(curtainFullWait);

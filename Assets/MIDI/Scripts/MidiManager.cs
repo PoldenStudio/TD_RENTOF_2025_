@@ -281,6 +281,7 @@ namespace jp.kshoji.unity.midi
                 if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
                 {
                     rtpMidiPlugin.StartRtpMidiServer(sessionName, listenPort);
+                    Debug.Log("[MidiManager] " + sessionName +" "+  listenPort);
                     break;
                 }
             }

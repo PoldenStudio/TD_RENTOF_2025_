@@ -20,7 +20,7 @@ public class SPItouchPanel : MonoBehaviour
     private bool dataChanged = true;
     private float transitionStartTime = 0f;
     private bool isTransitioning = false;
-
+    public bool SunCanMove = false;
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>(); // Подсвеченные сегменты для каждой ленты
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>(); // Время последнего свайпа для каждой ленты
     private Dictionary<int, MoveDirection> lastSwipeDirection = new Dictionary<int, MoveDirection>(); // Направление последнего свайпа для каждой ленты
@@ -183,12 +183,16 @@ public class SPItouchPanel : MonoBehaviour
                 }
             }
 
-            if (stripDataManager.currentDisplayModes.Contains(DisplayMode.SunMovement))
+            if (SunCanMove == true && stripDataManager.currentDisplayModes.Contains(DisplayMode.SunMovement))
             {
                 effectsManager.UpdateSunMovementPhase();
             }
+            else
+            {
 
-            SendDataToLEDStrip();
+            }
+
+                SendDataToLEDStrip();
             dataChanged = false;
         }
     }
