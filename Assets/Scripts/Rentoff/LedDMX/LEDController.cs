@@ -363,17 +363,21 @@ namespace LEDControl
 
             float curveValue = Mathf.Clamp01(currentValue);
 
+            //ограничения
+            float max = 255f;
+            float min = 0f;
+
             // переводим в два байта
             float minCombinedValue = 0f;
-            float maxCombinedValue = (210f - 8f) * 256f + (210f - 8f);
+            float maxCombinedValue = (max - min) * 256f + (max - min);
 
             float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
 
-            float firstByteValue = Mathf.Floor(combinedValue / 256f) + 8f;
-            float secondByteValue = (combinedValue % 256f) + 8f;
+            float firstByteValue = Mathf.Floor(combinedValue / 256f) + min;
+            float secondByteValue = (combinedValue % 256f) + min;
 
-            byte firstByte = (byte)Mathf.Clamp(firstByteValue, 8f, 210f);
-            byte secondByte = (byte)Mathf.Clamp(secondByteValue, 8f, 210f);
+            byte firstByte = (byte)Mathf.Clamp(firstByteValue, min, max);
+            byte secondByte = (byte)Mathf.Clamp(secondByteValue, min, max);
 
             WriteToDMXChannel(FrameBuffer, channel1, firstByte);
             WriteToDMXChannel(FrameBuffer, channel2, secondByte);

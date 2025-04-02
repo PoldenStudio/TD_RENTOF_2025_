@@ -1953,7 +1953,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 3402000034020000340200000e010000
   ledsPerSegment: 1
-  stripEnabled: 00000000
+  stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 00000000000000000000000000000000
   currentSunModes: 00000000000000000000000000000000
@@ -1961,13 +1961,13 @@ MonoBehaviour:
   monochromeStripSettings:
   - globalColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4278190080
     synthColor:
       serializedVersion: 2
       rgba: 4294967295
   - globalColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4278190080
     synthColor:
       serializedVersion: 2
       rgba: 4294967295

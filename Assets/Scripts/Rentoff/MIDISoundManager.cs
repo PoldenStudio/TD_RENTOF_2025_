@@ -60,77 +60,78 @@ public class MIDISoundManager : MonoBehaviour
 
     private void Awake()
     {
-        // Receive MIDI data with this gameObject.
-        // The gameObject should implement IMidiXXXXXEventHandler.
+        // Register MIDI event handler
         MidiManager.Instance.RegisterEventHandleObject(gameObject);
 
-        // Initialize MIDI feature
-        MidiManager.Instance.InitializeMidi(() =>
-        {
+        // Initialize MIDI (this will trigger the callback when ready)
+        MidiManager.Instance.InitializeMidi(OnMidiInitialized);
+
+        // Optional: Start Bluetooth MIDI scan (Android/iOS/WebGL only)
 #if (UNITY_ANDROID || UNITY_IOS || UNITY_WEBGL) && !UNITY_EDITOR
-        // Start scan Bluetooth MIDI devices
         MidiManager.Instance.StartScanBluetoothMidiDevices(0);
 #endif
-        });
+    }
 
-#if !UNITY_IOS && !UNITY_WEBGL
-        // Start RTP MIDI server with session name "RtpMidiSession", and listen with port 5004.
-        MidiManager.Instance.StartRtpMidiServer("RtpMidiSession", 5004);
-
+    private void OnMidiInitialized()
+    {
         Debug.Log("[MIDI] Initialized.");
         isMidiReady = true;
 
+        // Log available devices
         Debug.Log("[MIDI] Available Devices:");
         foreach (var device in MidiManager.Instance.DeviceIdSet)
         {
             Debug.Log($"[MIDI] Found Device: {device}");
         }
 
+        // Validate loopMidiDeviceId
         if (string.IsNullOrEmpty(loopMidiDeviceId))
         {
-            Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
+            Debug.LogError("[MIDI] loopMidiDeviceId is not set!");
             return;
         }
 
         if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
         {
-            Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
+            Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found!");
         }
         else
         {
-            Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
+            Debug.Log($"[MIDI] Using device: {loopMidiDeviceId}");
         }
 
-
+        // Start RTP-MIDI server (non-Editor platforms only)
+#if !UNITY_EDITOR && !UNITY_IOS && !UNITY_WEBGL
+        MidiManager.Instance.StartRtpMidiServer("RtpMidiSession", rtpMidiPort);
 #endif
 
-        /*        MidiManager.Instance.InitializeMidi(() =>
+    /*        MidiManager.Instance.InitializeMidi(() =>
+            {
+                Debug.Log("[MIDI] Initialized.");
+                isMidiReady = true;
+
+                Debug.Log("[MIDI] Available Devices:");
+                foreach (var device in MidiManager.Instance.DeviceIdSet)
                 {
-                    Debug.Log("[MIDI] Initialized.");
-                    isMidiReady = true;
+                    Debug.Log($"[MIDI] Found Device: {device}");
+                }
 
-                    Debug.Log("[MIDI] Available Devices:");
-                    foreach (var device in MidiManager.Instance.DeviceIdSet)
-                    {
-                        Debug.Log($"[MIDI] Found Device: {device}");
-                    }
+                if (string.IsNullOrEmpty(loopMidiDeviceId))
+                {
+                    Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
+                    return;
+                }
 
-                    if (string.IsNullOrEmpty(loopMidiDeviceId))
-                    {
-                        Debug.LogError("[MIDI] loopMidiDeviceId is not set. Please assign a valid MIDI device.");
-                        return;
-                    }
-
-                    if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
-                    {
-                        Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
-                    }
-                    else
-                    {
-                        Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
-                    }
-                });*/
-    }
+                if (!MidiManager.Instance.DeviceIdSet.Contains(loopMidiDeviceId))
+                {
+                    Debug.LogError($"[MIDI] Device '{loopMidiDeviceId}' not found in available devices!");
+                }
+                else
+                {
+                    Debug.Log($"[MIDI] Successfully detected device: {loopMidiDeviceId}");
+                }
+            });*/
+}
 
     private void OnDestroy()
     {
