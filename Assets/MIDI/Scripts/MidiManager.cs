@@ -26,7 +26,7 @@ namespace jp.kshoji.unity.midi
         private readonly HashSet<string> inputDeviceIdSet = new HashSet<string>();
         private readonly HashSet<string> outputDeviceIdSet = new HashSet<string>();
 
-        public readonly List<IMidiPlugin> midiPlugins = new List<IMidiPlugin>()
+        private readonly List<IMidiPlugin> midiPlugins = new List<IMidiPlugin>()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             new AndroidMidiPlugin(),
@@ -145,27 +145,17 @@ namespace jp.kshoji.unity.midi
         /// Initializes MIDI Plugin system
         /// </summary>
         /// <param name="initializeCompletedAction"></param>
-        /// 
-
-
-
         public void InitializeMidi(Action initializeCompletedAction)
         {
-            Debug.Log("[MIDI] Starting MIDI initialization...");
-            
             if (EventSystem.current == null)
             {
                 // NOTE: if the EventSystem already exists at another place, remove this AddComponent method calling. 
-                //gameObject.AddComponent<EventSystem>();
+                gameObject.AddComponent<EventSystem>();
             }
-
-            Debug.Log($"[MIDI] Found {midiPlugins.Count} MIDI plugins to initialize.");
 
             var initializedPlugins = new Dictionary<IMidiPlugin, bool>();
             foreach (var midiPlugin in midiPlugins)
-
             {
-                Debug.Log($"[MIDI] Initializing plugin: {midiPlugin.GetType().Name}");
                 initializedPlugins[midiPlugin] = false;
             }
 
@@ -173,11 +163,9 @@ namespace jp.kshoji.unity.midi
             {
                 while (initializedPlugins.Count(w => w.Value) < midiPlugins.Count)
                 {
-                    Debug.Log($"[MIDI] Waiting for plugins to initialize. Initialized: {initializedPlugins.Count(w => w.Value)}/{midiPlugins.Count}");
                     yield return null;
                 }
 
-                Debug.Log("[MIDI] All plugins initialized. Invoking initializeCompletedAction...");
                 initializeCompletedAction?.Invoke();
             }
 
@@ -188,62 +176,11 @@ namespace jp.kshoji.unity.midi
             {
                 midiPlugin.InitializeMidi(() =>
                 {
-                    Debug.Log($"[MIDI] Plugin initialized: {midiPlugin.GetType().Name}");
                     initializedPlugins[midiPlugin] = true;
                 });
             }
         }
-
-
-
-/*        public void InitializeMidi(Action initializeCompletedAction)
-        {
-            Debug.Log("[MIDI] Starting MIDI initialization...");
-
-            if (EventSystem.current == null)
-            {
-                gameObject.AddComponent<EventSystem>();
-            }
-
-            Debug.Log($"[MIDI] Found {midiPlugins.Count} MIDI plugins to initialize.");
-
-            var initializedPlugins = new Dictionary<IMidiPlugin, bool>();
-            foreach (var midiPlugin in midiPlugins)
-            {
-                Debug.Log($"[MIDI] Initializing plugin: {midiPlugin.GetType().Name}");
-
-*//*                if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
-                {
-                    rtpMidiPlugin.SetPort(5004);
-                }*//*
-
-                initializedPlugins[midiPlugin] = false;
-            }
-
-            IEnumerator InitializeCompletedWatcher()
-            {
-                while (initializedPlugins.Count(w => w.Value) < midiPlugins.Count)
-                {
-                    Debug.Log($"[MIDI] Waiting for plugins to initialize. Initialized: {initializedPlugins.Count(w => w.Value)}/{midiPlugins.Count}");
-                    yield return null;
-                }
-
-                Debug.Log("[MIDI] All plugins initialized. Invoking initializeCompletedAction...");
-                initializeCompletedAction?.Invoke();
-            }
-
-            StartCoroutine(InitializeCompletedWatcher());
-
-            foreach (var midiPlugin in midiPlugins)
-            {
-                midiPlugin.InitializeMidi(() =>
-                {
-                    Debug.Log($"[MIDI] Plugin initialized: {midiPlugin.GetType().Name}");
-                    initializedPlugins[midiPlugin] = true;
-                });
-            }
-        }*/
-
+        
 #if UNITY_EDITOR
         private void Awake()
         {
@@ -281,7 +218,6 @@ namespace jp.kshoji.unity.midi
                 if (midiPlugin is RtpMidiPlugin rtpMidiPlugin)
                 {
                     rtpMidiPlugin.StartRtpMidiServer(sessionName, listenPort);
-                    Debug.Log("[MidiManager] " + sessionName +" "+  listenPort);
                     break;
                 }
             }

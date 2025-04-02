@@ -267,21 +267,33 @@ public class VideoPlaybackController : MonoBehaviour
     {
         _effectStartSpeed = _currentSpeed;
         int directionFactor = swipeData.direction.x > 0 ? 1 : -1;
+        directionFactor *= -1;
+
         float avgTimeBetween = swipeData.avgTimeBetween;
+        int panelsCount = swipeData.panelsCount;
 
         float speedChangeAmount = CalculateSpeedChangeAmount(avgTimeBetween);
+
+        // Учитываем количество панелей только для быстрых свайпов
+        if (avgTimeBetween <= fastSwipeTimeThreshold)
+        {
+            float panelsMultiplier = Mathf.Lerp(1f, 2f, Mathf.InverseLerp(1, settings.cols, panelsCount));
+            speedChangeAmount *= panelsMultiplier;
+        }
 
         _immediateTargetSpeed = _currentSpeed + directionFactor * speedChangeAmount;
         _immediateTargetSpeed = Mathf.Clamp(_immediateTargetSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
 
-        _accelerationDuration = 4f;
+        float speedRatio = Mathf.InverseLerp(fastSwipeTimeThreshold, 0f, avgTimeBetween);
+        _accelerationDuration = Mathf.Lerp(2f, 5f, speedRatio);
+
         _phaseTimer = 0f;
         _state = PlaybackState.Accelerating;
 
         if (Mathf.Abs(_immediateTargetSpeed) > maintainSpeedThreshold)
         {
             _finalTargetSpeed = _immediateTargetSpeed;
-            _decelerationDuration = 0f; // No deceleration phase
+            _decelerationDuration = 0f;
         }
         else
         {

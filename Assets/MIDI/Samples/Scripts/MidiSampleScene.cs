@@ -16,10 +16,6 @@ namespace jp.kshoji.unity.midi.sample
 {
     public class MidiSampleScene : MonoBehaviour, IMidiAllEventsHandler, IMidiDeviceEventHandler
     {
-        public Action<int, int> onNoteRecieved;
-
-
-
         private AudioSource audioSource;
         private readonly AudioClip[] audioClips = new AudioClip[128];
         readonly int[] position = new int[128];
@@ -91,12 +87,7 @@ namespace jp.kshoji.unity.midi.sample
                 });
             }
 
-
-
-
-
             audioSource = GetComponent<AudioSource>();
-
             MidiSystem.AddReceiver("MidiNoteReceiver", new MidiNoteReceiver());
         }
 
@@ -132,7 +123,6 @@ namespace jp.kshoji.unity.midi.sample
         }
 
         private static readonly Queue<ShortMessage> NoteOnQueue = new Queue<ShortMessage>();
-        /*
         private void Update()
         {
             // process playing AudioClips
@@ -145,7 +135,7 @@ namespace jp.kshoji.unity.midi.sample
                 }
             }
         }
-        */
+
         private const int MaxNumberOfReceiverMidiMessages = 50;
         private readonly List<string> receivedMidiMessages = new List<string>();
 
@@ -185,7 +175,7 @@ namespace jp.kshoji.unity.midi.sample
         private bool isBluetoothAdvertising;
         private bool isNearbyDiscovering;
         private bool isNearbyAdvertising;
-        
+
         private void OnGUI()
         {
             if (Event.current.type != EventType.Layout)
@@ -195,15 +185,11 @@ namespace jp.kshoji.unity.midi.sample
 
             GUIUtility.ScaleAroundPivot(new Vector2(guiScale, guiScale), Vector2.zero);
 
-            //sendMidiWindowRect = GUILayout.Window(SendMidiWindow, sendMidiWindowRect, OnGUIWindow, "Send MIDI");
-            //receiveMidiWindowRect = GUILayout.Window(ReceiveMidiWindow, receiveMidiWindowRect, OnGUIWindow, "Receive MIDI");
-            //midiPlayerWindowRect = GUILayout.Window(MidiPlayerWindow, midiPlayerWindowRect, OnGUIWindow, "MIDI Player");
+            sendMidiWindowRect = GUILayout.Window(SendMidiWindow, sendMidiWindowRect, OnGUIWindow, "Send MIDI");
+            receiveMidiWindowRect = GUILayout.Window(ReceiveMidiWindow, receiveMidiWindowRect, OnGUIWindow, "Receive MIDI");
+            midiPlayerWindowRect = GUILayout.Window(MidiPlayerWindow, midiPlayerWindowRect, OnGUIWindow, "MIDI Player");
 
             // MidiConnectionWindow may be empty under some platforms, See OnGUIWindow implementation
-
-
-            selectedInputDeviceId = "M65535-P65535-I1";
-
             var isMidiConnectionWindowEnabled = false;
 #if ((UNITY_IOS || UNITY_ANDROID || UNITY_WEBGL) && !UNITY_EDITOR)
             isMidiConnectionWindowEnabled = true;
@@ -219,10 +205,10 @@ namespace jp.kshoji.unity.midi.sample
 #endif
             if (isMidiConnectionWindowEnabled)
             {
-                //midiConnectionWindowRect = GUILayout.Window(MidiConnectionWindow, midiConnectionWindowRect, OnGUIWindow, "MIDI Connections");
+                midiConnectionWindowRect = GUILayout.Window(MidiConnectionWindow, midiConnectionWindowRect, OnGUIWindow, "MIDI Connections");
             }
         }
-        /**/
+
         void UpdateReceiverConnections()
         {
             var receivers = new HashSet<IReceiver>();
@@ -242,9 +228,8 @@ namespace jp.kshoji.unity.midi.sample
             }
 
             sequencer.UpdateDeviceConnections(receivers, new HashSet<ITransmitter>());
-
         }
-       
+
         private void OnGUIWindow(int id)
         {
             var outputDeviceIds = MidiManager.Instance.OutputDeviceIdSet.ToArray();
@@ -353,10 +338,6 @@ namespace jp.kshoji.unity.midi.sample
                     break;
 
                 case ReceiveMidiWindow:
-
-                    selectedInputDeviceId = "M65535-P65535-I1";
-                    break;
-
                     GUILayout.Label("Device to receive MIDI: ");
                     if (inputDeviceIds.Length == 0)
                     {
@@ -376,7 +357,6 @@ namespace jp.kshoji.unity.midi.sample
                             inputDeviceIdIndex = inputDeviceIds.Length - 1;
                         }
                         selectedInputDeviceId = inputDeviceIds[inputDeviceIdIndex];
-                        print("SLCT: " + selectedInputDeviceId);
                     }
 
                     receiveMidiWindowScrollPosition = GUILayout.BeginScrollView(receiveMidiWindowScrollPosition);
@@ -696,8 +676,6 @@ namespace jp.kshoji.unity.midi.sample
             }
             GUI.DragWindow();
         }
-        /* */
-
 
         private bool isPaused = false;
         private void OnApplicationPause(bool pauseStatus)
@@ -777,9 +755,6 @@ namespace jp.kshoji.unity.midi.sample
         {
             if (selectedInputDeviceId == deviceId)
             {
-                onNoteRecieved?.Invoke(note, velocity);
-
-                //print(($"OnMidiNoteOn from: {deviceId}, channel: {channel}, note: {note}, velocity: {velocity}"));
                 receivedMidiMessages.Add($"OnMidiNoteOn from: {deviceId}, channel: {channel}, note: {note}, velocity: {velocity}");
             }
 

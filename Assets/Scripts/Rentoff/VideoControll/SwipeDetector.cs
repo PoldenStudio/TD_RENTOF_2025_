@@ -37,10 +37,11 @@ public class SwipeDetector : MonoBehaviour
 
     [SerializeField] private float swipeFinishDelay = 0.3f;
     [SerializeField] private float maxSwipeDuration = 2.0f;
-    [SerializeField] private float maxTimeBetweenPresses = 0.5f; // NEW: Max time between presses to consider it a swipe
+    [SerializeField] private float maxTimeBetweenPresses = 0.5f;
 
     [SerializeField] private VideoPlaybackController _playbackController;
     [SerializeField] private StateManager stateManager;
+    [SerializeField] private SerialInputReader _serialInputReader; // Assign this in the Inspector
 
     private float _lastTouchTime;
     private bool _isSwipeInProgress = false;
@@ -52,70 +53,31 @@ public class SwipeDetector : MonoBehaviour
         float currentTime = Time.time;
         bool anyPressed = false;
 
-        int segmentsPerPort = Settings.Instance.segments;
-        int rows = Settings.Instance.rows;
-        int cols = Settings.Instance.cols;
-        int panelsPerSegment = rows * cols; // Panels in one hardware segment
-        int panelsPerPort = panelsPerSegment * segmentsPerPort;
-        int portsCount = panelStates.Length / panelsPerPort;
-
-        // Virtual panels aggregate touches across segments at the same relative position.
-        // Layout: All panels of one segment type from all ports side-by-side.
-        int virtualPanelsCount = cols * rows * portsCount;
-        bool[] virtualPanelStates = new bool[virtualPanelsCount];
-
-        for (int prt = 0; prt < portsCount; prt++)
+        for (int globalIndex = 0; globalIndex < panelStates.Length; globalIndex++)
         {
-            for (int pIdx = 0; pIdx < panelsPerSegment; pIdx++) // Local index within a segment
-            {
-                bool isPressedOnAnySegment = false;
-                for (int seg = 0; seg < segmentsPerPort; seg++)
-                {
-                    int globalIndex = prt * panelsPerPort + seg * panelsPerSegment + pIdx;
-                    if (globalIndex < panelStates.Length && panelStates[globalIndex])
-                    {
-                        isPressedOnAnySegment = true;
-                        break;
-                    }
-                }
-
-                int virtualPanelIndex = prt * panelsPerSegment + pIdx;
-                if (virtualPanelIndex < virtualPanelStates.Length)
-                {
-                    virtualPanelStates[virtualPanelIndex] = isPressedOnAnySegment;
-                }
-            }
-        }
-
-        for (int virtualIndex = 0; virtualIndex < virtualPanelStates.Length; virtualIndex++)
-        {
-            bool isPressed = virtualPanelStates[virtualIndex];
+            bool isPressed = panelStates[globalIndex];
 
             if (isPressed)
             {
                 anyPressed = true;
-                PanelPressed?.Invoke(virtualIndex, true);
-                _playbackController?.OnPanelPressed(virtualIndex, true);
+                PanelPressed?.Invoke(globalIndex, true);
+                _playbackController?.OnPanelPressed(globalIndex, true);
 
-                if (!_currentlyPressedPanels.Contains(virtualIndex))
+                if (!_currentlyPressedPanels.Contains(globalIndex))
                 {
-                    _currentlyPressedPanels.Add(virtualIndex);
-                    _panelHoldStartTimes[virtualIndex] = currentTime;
+                    _currentlyPressedPanels.Add(globalIndex);
+                    _panelHoldStartTimes[globalIndex] = currentTime;
 
-                    //Important change here: only add to history if the time difference is small enough
                     if (_activationHistory.Count > 0 &&
                         (currentTime - _activationHistory.Last().time) > maxTimeBetweenPresses)
                     {
-                        //If the time difference is too large, reset the swipe data to start fresh
                         ResetSwipeData();
                         Debug.Log("Resetting Swipe Data due to time gap");
                     }
 
-                    // Add the activation to the history
-                    _activationHistory.Add(new PanelActivation { index = virtualIndex, time = currentTime });
+                    _activationHistory.Add(new PanelActivation { index = globalIndex, time = currentTime });
                     _lastTouchTime = currentTime;
-
-                    _isSwipeInProgress = true;  // Immediately consider it a swipe in progress
+                    _isSwipeInProgress = true;
 
                     if (stateManager.CurrentState == AppState.Active)
                     {
@@ -129,12 +91,12 @@ public class SwipeDetector : MonoBehaviour
             }
             else
             {
-                if (_currentlyPressedPanels.Contains(virtualIndex))
+                if (_currentlyPressedPanels.Contains(globalIndex))
                 {
-                    _currentlyPressedPanels.Remove(virtualIndex);
-                    _panelHoldStartTimes.Remove(virtualIndex);
-                    PanelPressed?.Invoke(virtualIndex, false);
-                    _playbackController?.OnPanelPressed(virtualIndex, false);
+                    _currentlyPressedPanels.Remove(globalIndex);
+                    _panelHoldStartTimes.Remove(globalIndex);
+                    PanelPressed?.Invoke(globalIndex, false);
+                    _playbackController?.OnPanelPressed(globalIndex, false);
                 }
             }
         }
@@ -151,7 +113,6 @@ public class SwipeDetector : MonoBehaviour
     {
         float currentTime = Time.time;
 
-        //Check for timeout to finish swipe
         if (_activationHistory.Count > 0 && (currentTime - _lastTouchTime) >= swipeFinishDelay)
         {
             if (_isSwipeInProgress)
@@ -168,13 +129,12 @@ public class SwipeDetector : MonoBehaviour
             }
             ResetSwipeData();
         }
-        //Check for swipe duration timeout
         else if (_activationHistory.Count > 0 && (currentTime - _activationHistory[0].time) > maxSwipeDuration)
         {
             if (_isSwipeInProgress)
             {
-                TryDetectSwipe(false);  // Detect and send the swipe one last time
-                TryDetectRelativeSwipe();  // Detect and send relative swipe one last time
+                TryDetectSwipe(false);
+                TryDetectRelativeSwipe();
                 _isSwipeInProgress = false;
             }
             ResetSwipeData();
@@ -280,20 +240,35 @@ public class SwipeDetector : MonoBehaviour
         }
     }
 
-    private Vector2 GetPanelPos(int virtualIndex)
+    private Vector2 GetPanelPos(int globalIndex)
     {
         int cols = Settings.Instance.cols;
         int rows = Settings.Instance.rows;
+        int segmentsPerPort = Settings.Instance.segments;
         int panelsPerSegment = cols * rows;
+        int panelsPerPort = panelsPerSegment * segmentsPerPort;
+        int numPorts = _serialInputReader != null ? _serialInputReader.portNames.Length : 1;
 
-        int portIndex = virtualIndex / panelsPerSegment;
-        int localIndex = virtualIndex % panelsPerSegment;
+        if (panelsPerPort == 0)
+        {
+            Debug.LogError("panelsPerPort is zero, cannot calculate panel position.");
+            return Vector2.zero;
+        }
 
-        int y = localIndex / cols;
-        int x = localIndex % cols;
+        int portIndex = globalIndex / panelsPerPort;
+        int indexInPort = globalIndex % panelsPerPort;
+        int segmentIndex = indexInPort / panelsPerSegment;
+        int indexInSegment = indexInPort % panelsPerSegment;
 
-        Vector2 pos = new Vector2(x + portIndex * cols, -y);
-        Debug.Log($"GetPanelPos: virtualIndex={virtualIndex}, portIndex={portIndex}, localIndex={localIndex}, x_local={x}, y_local={y}, calculated_pos={pos}");
+        int localY = indexInSegment / cols;
+        int localX = indexInSegment % cols;
+
+        // Assuming a layout where segments extend horizontally, and ports also extend horizontally
+        float globalX = localX + segmentIndex * cols + portIndex * cols * segmentsPerPort;
+        float globalY = -localY; // To make the origin top-left and Y increasing downwards
+
+        Vector2 pos = new Vector2(globalX, globalY);
+        Debug.Log($"GetPanelPos: globalIndex={globalIndex}, portIdx={portIndex}, segIdx={segmentIndex}, localX={localX}, localY={localY}, pos={pos}");
         return pos;
     }
 }
