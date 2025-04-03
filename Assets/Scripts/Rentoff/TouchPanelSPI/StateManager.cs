@@ -120,7 +120,7 @@ public class StateManager : MonoBehaviour
                 effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
             }
         }
-
+        soundManager.SetSoundClip(soundManager.ActiveClip);
         yield return new WaitForSeconds(curtainFullWait);
 
         yield return videoPlayer.SwitchToDefaultMode();
@@ -205,6 +205,7 @@ public class StateManager : MonoBehaviour
             curtainController.ResetCurtainProgress();
             cometController.ResetComet();
             soundManager?.StopSoundImmediately();
+            soundManager.SetSoundClip(soundManager.IdleClip);
 
             for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
@@ -238,7 +239,7 @@ public class StateManager : MonoBehaviour
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
         while (!fadeCompleted) yield return null;
-
+        soundManager.SetSoundClip(soundManager.IdleClip);
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
 

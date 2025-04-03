@@ -18,9 +18,7 @@ public class SPItouchPanel : MonoBehaviour
     [SerializeField] private bool debugMode = false;
 
     private bool dataChanged = true;
-    // private float transitionStartTime = 0f; // Не используется
-    // private bool isTransitioning = false; // Не используется
-    // public bool SunCanMove = false; // Удалено
+
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>();
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
     private Dictionary<int, MoveDirection> lastSwipeDirection = new Dictionary<int, MoveDirection>();
@@ -85,7 +83,6 @@ public class SPItouchPanel : MonoBehaviour
     {
         bool colorsChanged = false;
         if (stripDataManager != null) colorsChanged = stripDataManager.CheckForChanges();
-        //if (effectsManager != null) colorsChanged |= effectsManager.CheckForChanges();
         if (colorsChanged) dataChanged = true;
     }
 
@@ -105,7 +102,6 @@ public class SPItouchPanel : MonoBehaviour
                 }
             }
         }
-
         UpdateSun();
         if (stripDataManager.currentDisplayModes.Contains(DisplayMode.SunMovement))
         {

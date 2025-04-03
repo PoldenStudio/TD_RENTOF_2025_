@@ -35,16 +35,29 @@ public class SoundManager : MonoBehaviour
     private bool isSwipeSoundActive = false;
     private Coroutine currentFadeCoroutine;
 
+    public AudioClip IdleClip;
+    public AudioClip ActiveClip;
+    private AudioClip currentClip;
+
     private void Awake()
     {
         synthSource = GetComponent<AudioSource>();
         lowPassFilter = GetComponent<AudioLowPassFilter>();
 
+        if (IdleClip == null)
+        {
+            Debug.LogError("IdleClip is not assigned in the inspector!");
+            return;
+        }
+
+        SetSoundClip(IdleClip);
         synthSource.loop = true;
-        synthSource.playOnAwake = false;
-        synthSource.volume = 0f;
+        synthSource.playOnAwake = true; 
+        synthSource.volume = baseVolume;
         synthSource.pitch = basePitch;
         lowPassFilter.cutoffFrequency = maxCutoffFrequency;
+
+        synthSource.Play(); 
     }
 
     public void StartFadeIn(float duration)
@@ -92,10 +105,23 @@ public class SoundManager : MonoBehaviour
         }
         currentFadeCoroutine = null;
     }
+    void Start()
+    {
+        SetSoundClip(IdleClip);
+    }
+
+    public void SetSoundClip(AudioClip clip)
+    {
+        if (currentClip != clip)
+        {
+            currentClip = clip;
+            synthSource.clip = clip;
+        }
+    }
 
     public void UpdateSynthParameters(float currentSpeed)
     {
-        // Не обновляем параметры во время fade
+
         if (currentFadeCoroutine != null)
             return;
 

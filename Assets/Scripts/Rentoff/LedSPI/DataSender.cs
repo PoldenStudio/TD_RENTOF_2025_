@@ -254,12 +254,20 @@ namespace LEDControl
 
             DataMode dataMode = stripManager.currentDataModes[stripIndex];
             DisplayMode displayMode = stripManager.currentDisplayModes[stripIndex];
+            
 
-            // В режиме Idle и SpeedSynthMode ничего не отправляем
             if (appState == AppState.Idle && displayMode == DisplayMode.SpeedSynthMode)
             {
                 return "";
             }
+
+            if (appState == AppState.Transition) {
+                for (int i = 0; i < 4; i++)
+                {
+                    serialPort.Write(i + ":clear\r\n");
+                }
+            }
+
 
             string prefix = GetPrefixForDataMode(dataMode);
             string colorData = displayMode switch
