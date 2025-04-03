@@ -261,19 +261,19 @@ namespace LEDControl
             {
                 case DisplayMode.GlobalColor:
                     ClearLEDChannels();
-                    BuildGlobalColorBuffer(globalBrightness);
+                    BuildGlobalColorBuffer( );
                     break;
                 case DisplayMode.SegmentColor:
                     ClearLEDChannels();
-                    BuildSegmentColorBuffer(globalBrightness);
+                    BuildSegmentColorBuffer();
                     break;
                 case DisplayMode.JsonDataSync:
                     ClearLEDChannels();
-                    BuildJsonDataSyncBuffer(globalBrightness);
+                    BuildJsonDataSyncBuffer();
                     break;
                 case DisplayMode.TestMode:
                     ClearLEDChannels();
-                    BuildTestModeBuffer(globalBrightness);
+                    BuildTestModeBuffer();
                     break;
             }
 
@@ -395,7 +395,7 @@ namespace LEDControl
             };
         }
 
-        void BuildGlobalColorBuffer(float brightness)
+        void BuildGlobalColorBuffer()
         {
             foreach (var strip in ledStrips)
             {
@@ -403,6 +403,7 @@ namespace LEDControl
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
                 Color color = strip.globalColor;
+                float brightness = strip.brightness; // Use individual strip brightness
                 byte r = (byte)(color.r * brightness * 255);
                 byte g = (byte)(color.g * brightness * 255);
                 byte b = (byte)(color.b * brightness * 255);
@@ -437,13 +438,14 @@ namespace LEDControl
             }
         }
 
-        void BuildSegmentColorBuffer(float brightness)
+        void BuildSegmentColorBuffer()
         {
             foreach (var strip in ledStrips)
             {
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int segments = strip.TotalSegments;
                 int offset = strip.dmxChannelOffset;
+                float brightness = strip.brightness; // Use individual strip brightness
 
                 for (int seg = 0; seg < segments; seg++)
                 {
@@ -483,7 +485,7 @@ namespace LEDControl
             }
         }
 
-        void BuildJsonDataSyncBuffer(float brightness)
+        void BuildJsonDataSyncBuffer()
         {
             foreach (var strip in ledStrips)
             {
@@ -497,6 +499,7 @@ namespace LEDControl
                 frameIndex = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
 
                 byte[] stripValues = frames[frameIndex].channelValues;
+                float brightness = strip.brightness; // Use individual strip brightness
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
@@ -512,20 +515,21 @@ namespace LEDControl
             }
         }
 
-        void BuildTestModeBuffer(float brightness)
+        void BuildTestModeBuffer()
         {
             if (mediaPlayer == null)
                 mediaPlayer = new DemolitionMediaPlayer(Media.Instance);
 
             float currentTime = Time.time - kineticStartTime;
             float curveValue = testModeCurve.Evaluate(currentTime / videoLength);
-            byte intensity = (byte)(curveValue * brightness * 255);
 
             foreach (var strip in ledStrips)
             {
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
                 int channelsPerLed = GetChannelsPerLed(strip);
+                float brightness = strip.brightness; // Use individual strip brightness
+                byte intensity = (byte)(curveValue * brightness * 255);
 
                 for (int i = 0; i < totLEDs; i++)
                 {

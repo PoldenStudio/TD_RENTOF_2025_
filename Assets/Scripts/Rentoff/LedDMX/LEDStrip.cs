@@ -16,8 +16,11 @@ namespace LEDControl
         [Tooltip("Количество диодов в сегменте")]
         public int ledsPerSegment = 1;
 
+
         [Tooltip("Смещение DMX-канала")]
         public int dmxChannelOffset = 1;
+
+        public float brightness = 1.0f;
 
         [Tooltip("Глобальный цвет")]
         public Color globalColor = Color.white;

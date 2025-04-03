@@ -31,59 +31,6 @@ namespace LEDControl
         public float brightnessMultiplier = 1f;
     }
 
-    public class Comet
-    {
-        public float position;
-        public Color32 color;
-        public float length;
-        public float brightness;
-        public bool isActive;
-        public float startTime;
-        public bool isMoving;
-        public float direction;
-
-        public int lastLedIndex = -1;
-        public int[] affectedLeds = null;
-        public float[] brightnessByLed = null;
-
-        public Comet(float position, Color32 color, float length, float brightness, float direction)
-        {
-            this.position = position;
-            this.color = color;
-            this.length = length;
-            this.brightness = brightness;
-            this.isActive = true;
-            this.startTime = Time.time;
-            this.isMoving = false;
-            this.direction = direction;
-        }
-
-        public void UpdateCache(int totalLEDs, float tailIntensity)
-        {
-            int dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(length));
-            if (affectedLeds == null || affectedLeds.Length != dynamicLedCount)
-            {
-                affectedLeds = new int[dynamicLedCount];
-                brightnessByLed = new float[dynamicLedCount];
-            }
-
-            int ledIndex = Mathf.FloorToInt(position);
-            lastLedIndex = ledIndex;
-
-            for (int j = 0; j < dynamicLedCount; j++)
-            {
-                int offset = direction > 0 ? j : -j;
-                int currentLedIndex = ledIndex + offset;
-                currentLedIndex = Mathf.RoundToInt(Mathf.Repeat(currentLedIndex, totalLEDs));
-                affectedLeds[j] = currentLedIndex;
-
-                float tailFalloff = 1f - ((float)j / (dynamicLedCount - 1));
-                tailFalloff = Mathf.Clamp01(tailFalloff);
-                brightnessByLed[j] = tailFalloff * tailIntensity;
-            }
-        }
-    }
-
     public class EffectsManager : MonoBehaviour
     {
         [Header("Speed Synth Mode Settings")]
@@ -106,11 +53,9 @@ namespace LEDControl
         public float sunFadeDuration = 1.0f;
 
         [Header("Synchronization Settings")]
-        [Tooltip("Ссылка на компонент DataSender для синхронизации предзапека с интервалом отправки.")]
         public DataSender dataSender;
 
         [Header("Pre-Bake Settings")]
-        [Tooltip("Частота предзапека (в кадрах в секунду). Обычно = 1/SendInterval DataSender'а.")]
         public float preBakeFrameRate = 35f;
 
         public float currentSpeedRaw = 1f;
@@ -156,20 +101,14 @@ namespace LEDControl
             public List<BakedSunStateData> stateData = new();
         }
 
-        [Tooltip("Pre-baked data for sun movement. Generated in Editor, used at Runtime.")]
         [SerializeField, HideInInspector]
         private List<BakedSunStripData> allPreBakedSunData = new();
-        // --- End Persisted Pre-Baked Sun Data ---
 
         private void Awake()
         {
             if (stripDataManager == null)
             {
                 stripDataManager = GetComponent<StripDataManager>();
-                if (stripDataManager == null)
-                {
-                    Debug.LogError("[EffectsManager] StripDataManager not assigned and not found on GameObject!");
-                }
             }
 
             if (dataSender == null)
@@ -187,14 +126,8 @@ namespace LEDControl
         {
             if (allPreBakedSunData == null || allPreBakedSunData.Count == 0)
             {
-                Debug.Log("[EffectsManager] No pre-baked sun data loaded on start.");
-                return;
-            }
 
-            Debug.Log($"[EffectsManager] Pre-baked sun data loaded for {allPreBakedSunData.Count} strips:");
-            foreach (var stripData in allPreBakedSunData)
-            {
-                Debug.Log($"- Strip Index: {stripData.stripIndex}, has {stripData.stateData.Count} baked state entries.");
+                return;
             }
         }
 
@@ -204,7 +137,6 @@ namespace LEDControl
         {
             if (!stripDataManager)
             {
-                Debug.LogError("[EffectsManager] StripDataManager is not assigned. Cannot pre-bake.");
                 return;
             }
 
@@ -218,16 +150,7 @@ namespace LEDControl
                 if (dataSender.SendInterval > 0)
                 {
                     preBakeFrameRate = 1f / dataSender.SendInterval;
-                    Debug.Log($"[EffectsManager] preBakeFrameRate set to {preBakeFrameRate} based on DataSender.SendInterval.");
                 }
-                else
-                {
-                    Debug.LogWarning("[EffectsManager] DataSender.SendInterval is zero, using default preBakeFrameRate.");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[EffectsManager] DataSender not assigned. Using default preBakeFrameRate.");
             }
 
             bool bakedSomething = false;
@@ -246,16 +169,7 @@ namespace LEDControl
                 if (!wasDirty)
                 {
                     EditorUtility.SetDirty(this);
-                    Debug.Log("[EffectsManager] Pre-baking Sun Data finished. Make sure to SAVE YOUR SCENE/PREFAB to persist changes.");
                 }
-                else
-                {
-                    Debug.Log("[EffectsManager] Pre-baking Sun Data finished.");
-                }
-            }
-            else
-            {
-                Debug.Log("[EffectsManager] No strips with SunMovement mode found to pre-bake.");
             }
         }
 #endif
@@ -264,17 +178,15 @@ namespace LEDControl
         {
             if (stripIndex < 0 || stripIndex >= stripDataManager.totalLEDsPerStrip.Count)
             {
-                Debug.LogError($"[EffectsManager] Invalid stripIndex {stripIndex} for pre-baking.");
                 return;
             }
             if (stripIndex >= stripDataManager.currentDataModes.Count)
             {
-                Debug.LogError($"[EffectsManager] DataMode not configured for stripIndex {stripIndex}.");
                 return;
             }
 
             int totalLEDs = stripDataManager.totalLEDsPerStrip[stripIndex];
-            // Для солнца — монохром, по 2 символа на пиксель
+
             int hexPerPixel = 2;
 
             BakedSunStripData stripData = new BakedSunStripData { stripIndex = stripIndex };
@@ -302,11 +214,10 @@ namespace LEDControl
 
             if (settings == null || settings.baseCycleLength <= 0f)
             {
-                Debug.LogWarning($"[EffectsManager] Sun settings invalid or baseCycleLength <= 0 for (State={appState}, SunMode={sunMode}). No data baked.");
                 return stateData;
             }
 
-            float totalCycleLength = settings.baseCycleLength; 
+            float totalCycleLength = settings.baseCycleLength;
             int frameCount = Mathf.Max(1, Mathf.CeilToInt(totalCycleLength * preBakeFrameRate));
             float frameDuration = totalCycleLength / frameCount;
 
@@ -314,22 +225,21 @@ namespace LEDControl
             stateData.frameDuration = frameDuration;
 
             byte[] pixelBrightness = new byte[totalLEDs];
-            StringBuilder allFramesHex = new StringBuilder(frameCount * totalLEDs * hexPerPixel);
-
-            byte maxBrightnessBase = (sunMode == SunMode.Warm) ? (byte)255 : (byte)255; 
+            StringBuilder allFramesHex = new(frameCount * totalLEDs * hexPerPixel);
 
             for (int frame = 0; frame < frameCount; frame++)
             {
                 float currentTime = frame * frameDuration;
                 Array.Clear(pixelBrightness, 0, totalLEDs);
 
-                bool isActive = false; 
+                bool isActive = false;
 
                 if (settings.activeIntervals != null)
                 {
                     foreach (var interval in settings.activeIntervals)
                     {
-                        //Double the Time to make the movement slower.
+                        if (interval.endTime <= interval.startTime) continue;
+
                         float adjustedStartTime = interval.startTime;
                         float adjustedEndTime = interval.endTime;
 
@@ -338,13 +248,11 @@ namespace LEDControl
                             isActive = true;
                             float intervalDuration = adjustedEndTime - adjustedStartTime;
                             float activeTime = currentTime - adjustedStartTime;
+                            float progress = Mathf.Clamp01(activeTime / intervalDuration);
 
                             float fadeFactor = 1f;
 
-                            float sunPosition = -(activeTime / intervalDuration) * totalLEDs;
-
-                            // Инвертирование позиции солнца, чтобы оно шло с конца ленты
-                            sunPosition = totalLEDs - sunPosition;
+                            float sunPosition = totalLEDs * (1f - progress);
 
                             int centerPixel = Mathf.RoundToInt(sunPosition);
                             int halfPixels = Mathf.Max(1, settings.pixelCount) / 2;
@@ -357,11 +265,11 @@ namespace LEDControl
                                 if (wrappedIndex < 0) wrappedIndex += totalLEDs;
 
                                 float distance = Mathf.Abs(pixelIndexOffset - sunPosition);
-                                float brightnessFactor = Mathf.Clamp01(1f - distance / halfPixelsF) * 5 * fadeFactor;
+                                float normalizedBrightness = Mathf.Clamp01(1f - distance / halfPixelsF);
 
-                                byte newValue = (byte)Mathf.Clamp(255, 255, 255);
-                                pixelBrightness[wrappedIndex] = (byte)Mathf.Max(pixelBrightness[wrappedIndex], newValue);
-
+                                byte baseValue = 255;
+                                byte newValue = (byte)(baseValue * normalizedBrightness * fadeFactor);
+                                pixelBrightness[wrappedIndex] = Math.Max(pixelBrightness[wrappedIndex], newValue);
                             }
                         }
                     }
@@ -381,18 +289,12 @@ namespace LEDControl
             return stateData;
         }
 
-        private byte GetSunBase(SunMode mode)
-        {
-            return mode == SunMode.Warm ? (byte)255 : (byte)200;
-        }
-
         public void SetAppState(StateManager.AppState state)
         {
             if (_currentAppState != state)
             {
                 _targetAppState = state;
 
-                // Если мы выходим из Active/Idle в другой, запускаем затухание
                 if (_currentAppState != StateManager.AppState.Idle && state != _currentAppState)
                 {
                     StartSunFadeOut(sunFadeDuration);
@@ -405,7 +307,6 @@ namespace LEDControl
                 }
             }
         }
-
         private void ResetSunMovementPhase()
         {
             _sunMovementPhase = 0f;
@@ -453,7 +354,6 @@ namespace LEDControl
 
         private void ClearSunCache()
         {
-            // Очищаем только те ленты, которые работают в режиме "SunMovement"
             for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
                 if (stripDataManager.currentDisplayModes.Count > stripIndex &&
@@ -583,12 +483,18 @@ namespace LEDControl
             if (settingsRef == null || settingsRef.baseCycleLength <= 0f) return;
 
             float currentSpeed = CurrentSunSpeed;
-            if (Mathf.Approximately(currentSpeed, 0f)) return;
+            if (Mathf.Approximately(currentSpeed, 0f))
+            {
+                ClearSunCache();
+                return;
+            }
 
-            float currentCycleDuration = settingsRef.baseCycleLength / currentSpeed;
+
+            float currentCycleDuration = settingsRef.baseCycleLength / Mathf.Abs(currentSpeed);
             if (Mathf.Approximately(currentCycleDuration, 0f)) return;
 
-            _sunMovementPhase += Time.fixedDeltaTime / currentCycleDuration;
+ 
+            _sunMovementPhase += (Time.fixedDeltaTime / currentCycleDuration) * Mathf.Sign(currentSpeed);
             _sunMovementPhase = Mathf.Repeat(_sunMovementPhase, 1f);
 
             ClearSunCache();
@@ -689,6 +595,7 @@ namespace LEDControl
         {
             return ((int)appState * 10) + (int)sunMode;
         }
+
         public string GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             if (allPreBakedSunData == null) return "";
@@ -727,13 +634,6 @@ namespace LEDControl
             int ledsPerStrip = stripDataManager.totalLEDsPerStrip[stripIndex];
             int frameHexLength = ledsPerStrip * hexPerPixel;
             int startIndex = currentFrame * frameHexLength;
-
-            if (startIndex < 0 || startIndex + frameHexLength > bakedHexAnimation.Length)
-            {
-                Debug.LogError($"[EffectsManager] Pre-baked data indexing error for strip {stripIndex}. " +
-                               $"startIndex: {startIndex}, frameHexLength: {frameHexLength}, totalLength: {bakedHexAnimation.Length}");
-                return "";
-            }
 
             string rawHex = bakedHexAnimation.Substring(startIndex, frameHexLength);
             string optimizedHex = OptimizeHexString(rawHex, new string('0', hexPerPixel), hexPerPixel);
