@@ -102,7 +102,7 @@ public class SPItouchPanel : MonoBehaviour
                 }
             }
         }
-        UpdateSun();
+
         if (stripDataManager.currentDisplayModes.Contains(DisplayMode.SunMovement))
         {
             UpdateSun();

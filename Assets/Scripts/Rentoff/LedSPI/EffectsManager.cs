@@ -126,7 +126,6 @@ namespace LEDControl
         {
             if (allPreBakedSunData == null || allPreBakedSunData.Count == 0)
             {
-
                 return;
             }
         }
@@ -493,9 +492,12 @@ namespace LEDControl
             float currentCycleDuration = settingsRef.baseCycleLength / Mathf.Abs(currentSpeed);
             if (Mathf.Approximately(currentCycleDuration, 0f)) return;
 
- 
-            _sunMovementPhase += (Time.fixedDeltaTime / currentCycleDuration) * Mathf.Sign(currentSpeed);
-            _sunMovementPhase = Mathf.Repeat(_sunMovementPhase, 1f);
+            _sunMovementPhase += dataSender.SendInterval / currentCycleDuration;
+
+            if (_sunMovementPhase >= 1.0f)
+            {
+                _sunMovementPhase = 0f;
+            }
 
             ClearSunCache();
         }
@@ -517,7 +519,6 @@ namespace LEDControl
         {
             return true;
         }
-
 
         public string GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
@@ -627,7 +628,11 @@ namespace LEDControl
 
             float currentCycleTime = _sunMovementPhase * currentSettings.baseCycleLength;
             int currentFrame = Mathf.FloorToInt(currentCycleTime / frameDuration);
-            currentFrame = (int)Mathf.Repeat(currentFrame, frameCount);
+
+            if (currentFrame >= frameCount)
+            {
+                return "";
+            }
 
             int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
             if (stripIndex < 0 || stripIndex >= stripDataManager.totalLEDsPerStrip.Count) return "";
