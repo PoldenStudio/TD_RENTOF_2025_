@@ -20,7 +20,8 @@ namespace LEDControl
         private SerialPort serialPort;
 
         private float lastSendTime = 0f;
-        private float sendInterval = 0.028f; // 28 мс
+        // Интервал отправки (например, 28 мс)
+        private float sendInterval = 0.028f;
 
         private Dictionary<int, string> previousGlobalData = new();
         private Dictionary<int, string> previousSegmentData = new();
@@ -56,7 +57,7 @@ namespace LEDControl
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
 
-                    // Запускаем поток
+                    // Запускаем поток для отправки
                     threadRunning = true;
                     portThread = new Thread(SerialThreadLoop);
                     portThread.IsBackground = true;
@@ -83,7 +84,7 @@ namespace LEDControl
                     }
                     else
                     {
-                        Thread.Sleep(1); // чтобы не грузить процессор
+                        Thread.Sleep(1); 
                     }
                 }
                 catch (Exception e)
@@ -147,7 +148,6 @@ namespace LEDControl
                 return;
 
             sendQueue.Enqueue(dataString);
-
             lastSendTime = Time.time;
         }
 
@@ -156,6 +156,9 @@ namespace LEDControl
             return ((int)mode).ToString() + ":";
         }
 
+        /// <summary>
+        /// Оптимизирует hex-строку, обрезая пиксели, у которых данные равны значению blackHex (например, "00").
+        /// </summary>
         private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel, int totalPixels, ref int lastSentPixel)
         {
             int changedPixels = totalPixels;
@@ -215,7 +218,6 @@ namespace LEDControl
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
-
             StringBuilder sb = new StringBuilder(totalPixels * hexPerPixel);
 
             foreach (Color32 color in segmentColors)
@@ -284,15 +286,9 @@ namespace LEDControl
             }
             return sb.Length > 0 ? sb.ToString() : "";
         }
-
-        public void SendAllData(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public float SendInterval
         {
-            if (ShouldSendData())
-            {
-                string totalData = GenerateAllDataString(stripManager, effectsManager, colorProcessor, appState);
-                if (!string.IsNullOrEmpty(totalData))
-                    EnqueueData(totalData);
-            }
+            get { return sendInterval; }
         }
     }
 }

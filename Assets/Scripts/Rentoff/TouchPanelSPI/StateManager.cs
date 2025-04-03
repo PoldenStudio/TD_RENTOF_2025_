@@ -16,8 +16,9 @@ public class StateManager : MonoBehaviour
     [SerializeField] private CurtainController curtainController;
     [SerializeField] private CometController cometController;
     [SerializeField] private LEDController ledController;
-    [SerializeField] private SoundManager soundManager; 
-    [SerializeField] private SPItouchPanel spiTouchPanel; 
+    [SerializeField] private SoundManager soundManager;
+    [SerializeField] private SPItouchPanel spiTouchPanel;
+    [SerializeField] private EffectsManager effectsManager;
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 1f;
@@ -26,16 +27,34 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float fadeInDuration = 0.5f;
     [SerializeField] private float soundFadeDuration = 1f;
     [SerializeField] private float cometDelayInTransition = 1f;
+    [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
 
+    [SerializeField] private float transitionToIdleDelay = 10f;
+    [SerializeField] private float sunTransitionDuration = 1.5f;
+    [SerializeField] private SPItouchPanel touchPanel;
 
-
+    private float idleStartTime;
+    private float lastInteractionTime;
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
 
+    private void Awake()
+    {
+        if (effectsManager == null)
+        {
+            effectsManager = GetComponent<EffectsManager>();
+            if (effectsManager == null)
+            {
+                Debug.LogError("[StateManager] EffectsManager not assigned and not found on GameObject!");
+            }
+        }
+    }
+
     void Start()
     {
         CurrentState = AppState.Idle;
+        effectsManager?.SetAppState(CurrentState);
         playbackController?.SetSwipeControlEnabled(false);
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
@@ -46,7 +65,6 @@ public class StateManager : MonoBehaviour
         {
             StartCoroutine(TransitionToIdleCoroutine());
         }
-
     }
 
     private void OnCurtainFull()
@@ -66,48 +84,41 @@ public class StateManager : MonoBehaviour
 
     public void StartTransitionToIdle()
     {
-        if (CurrentState != AppState.Active) return;
+        if (CurrentState != AppState.Active && CurrentState != AppState.Transition) return;
         StartCoroutine(TransitionToIdleCoroutine());
     }
 
     private IEnumerator TransitionToActiveCoroutine()
     {
         AppState previousState = CurrentState;
-        CurrentState = AppState.Transition;
-        OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
+        SetState(AppState.Transition, previousState);
 
         curtainController.SetOnCurtainFullCallback(null);
 
-        // LED переход: fade-out, смена JSON на активный, fade-in
         yield return ledController.FadeOut(fadeOutDuration);
         ledController.SwitchToActiveJSON();
         yield return ledController.FadeIn(fadeInDuration, ledController.DefaultGlobalBrightness);
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
-        while (!slideCompleted)
-            yield return null;
+        while (!slideCompleted) yield return null;
 
         bool cometFinished = false;
         cometController.StartCometTravel(() => { cometFinished = true; });
-        while (!cometFinished)
-            yield return null;
+        while (!cometFinished) yield return null;
 
-        // Запускаем кометы на SPI лентах через 1 секунду
+        effectsManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        effectsManager.SetAppState(AppState.Active);
+        // Запускаем кометы на SPI лентах
         yield return new WaitForSeconds(cometDelayInTransition);
-        spiTouchPanel.SunCanMove = true;
         for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
             {
-                float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(spiTouchPanel.effectsManager.synthLedCountBase + Mathf.Abs(spiTouchPanel.effectsManager.currentSpeed) * spiTouchPanel.effectsManager.speedLedCountFactor));
-                float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(spiTouchPanel.effectsManager.currentSpeed) * spiTouchPanel.effectsManager.speedBrightnessFactor);
-                spiTouchPanel.effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
+                float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(effectsManager.synthLedCountBase + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedLedCountFactor));
+                float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedBrightnessFactor);
+                effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
             }
-
-
-
         }
 
         yield return new WaitForSeconds(curtainFullWait);
@@ -117,83 +128,66 @@ public class StateManager : MonoBehaviour
 
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
-        while (!fadeCompleted)
-            yield return null;
+        while (!fadeCompleted) yield return null;
 
         yield return new WaitForSeconds(swipeReactivateDelay);
 
-        previousState = CurrentState;
-        CurrentState = AppState.Active;
-        OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
-
+        SetState(AppState.Active, CurrentState);
         playbackController.SetSwipeControlEnabled(true);
-
         Debug.Log("[StateManager] Transition to Active mode completed.");
     }
 
     private IEnumerator TransitionToIdleCoroutine()
     {
-        for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
-        {
-            if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-            {
-                spiTouchPanel.effectsManager.UpdateComets(stripIndex, spiTouchPanel.stripDataManager);
-            }
-        }
-
         AppState previousState = CurrentState;
-        CurrentState = AppState.Transition;
-        OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
+        SetState(AppState.Transition, previousState);
 
         Debug.Log("[StateManager] Starting transition to Idle.");
         playbackController.SetSwipeControlEnabled(false);
 
-        
-        // LED переход: переключаем JSON на Idle (без fade-эффекта)
+        effectsManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+
+        effectsManager?.SetAppState(AppState.Idle);
+
         ledController.wasIdled = true;
         ledController.SwitchToIdleJSON();
-
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
-        while (!slideCompleted)
-            yield return null;
+        while (!slideCompleted) yield return null;
 
         soundManager?.StartFadeOut(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
-        
-        StartCoroutine(
-                    CompleteTransitionToIdle());
+
+        SetState(AppState.Idle, CurrentState);
+        CompleteTransitionToIdle();
     }
 
-
-    private IEnumerator CompleteTransitionToIdle()
+    private void CompleteTransitionToIdle()
     {
-        AppState previousState = CurrentState;
-        CurrentState = AppState.Idle;
-        OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
-
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
-        while (!fadeCompleted)
-            yield return null;
 
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
 
-        // Сбрасываем кометы на SPI лентах
         for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
             {
-                spiTouchPanel.effectsManager.ResetComets(stripIndex);
+                effectsManager.ResetComets(stripIndex);
             }
         }
 
         Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
+    }
+
+    private void SetState(AppState newState, AppState previousState)
+    {
+        CurrentState = newState;
+        OnPreviousStateChanged?.Invoke(previousState);
+        OnStateChanged?.Invoke(CurrentState);
+        effectsManager?.SetAppState(CurrentState);
     }
 
     public void SwitchToIdleDirect(bool performTransition = true)
@@ -205,24 +199,21 @@ public class StateManager : MonoBehaviour
         else
         {
             AppState previousState = CurrentState;
-            CurrentState = AppState.Idle;
+            SetState(AppState.Idle, previousState);
+
             playbackController.SetSwipeControlEnabled(false);
             curtainController.ResetCurtainProgress();
             cometController.ResetComet();
-
             soundManager?.StopSoundImmediately();
 
-            // Сбрасываем кометы на SPI лентах
             for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
                 if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
                 {
-                    spiTouchPanel.effectsManager.ResetComets(stripIndex);
+                    effectsManager.ResetComets(stripIndex);
                 }
             }
 
-            OnPreviousStateChanged?.Invoke(previousState);
-            OnStateChanged?.Invoke(CurrentState);
             Debug.Log("[StateManager] Switched directly to Idle mode.");
             curtainController.SetOnCurtainFullCallback(OnCurtainFull);
         }
@@ -231,13 +222,10 @@ public class StateManager : MonoBehaviour
     private IEnumerator SwitchToIdleModeRoutine()
     {
         AppState previousState = CurrentState;
-        CurrentState = AppState.Idle;
-        OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
+        SetState(AppState.Idle, previousState);
 
         yield return videoPlayer.SwitchToIdleMode();
         ledController.SwitchToIdleJSON();
-
         soundManager?.StartFadeOut(soundFadeDuration);
 
         Debug.Log("[StateManager] Starting SwitchToIdle workflow.");
@@ -245,23 +233,20 @@ public class StateManager : MonoBehaviour
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
-        while (!slideCompleted)
-            yield return null;
+        while (!slideCompleted) yield return null;
 
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
-        while (!fadeCompleted)
-            yield return null;
+        while (!fadeCompleted) yield return null;
 
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
 
-        // Сбрасываем кометы на SPI лентах
         for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
             {
-                spiTouchPanel.effectsManager.ResetComets(stripIndex);
+                effectsManager.ResetComets(stripIndex);
             }
         }
 

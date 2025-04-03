@@ -220,65 +220,6 @@ namespace LEDControl
             return new List<Color32>(stripSegmentColors[stripIndex].segments);
         }
 
-        public void SetGlobalColorMonochrome(int stripIndex, Color32 color, bool debug = false)
-        {
-            if (stripIndex < 0 || stripIndex >= monochromeStripSettings.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
-            }
-            // Ограничиваем цвет белым диапазоном для монохромных лент
-            float lum = (color.r * 0.299f + color.g * 0.587f + color.b * 0.114f);
-            color = new Color32((byte)lum, (byte)lum, (byte)lum, 255);
-            monochromeStripSettings[stripIndex].globalColor = color;
-            if (debug) Debug.Log($"Global color (Monochrome strip {stripIndex}) set to {color}");
-        }
-
-        public Color32 GetGlobalColorMonochrome(int stripIndex)
-        {
-            if (stripIndex < 0 || stripIndex >= monochromeStripSettings.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return Color.black;
-            }
-            return monochromeStripSettings[stripIndex].globalColor;
-        }
-
-        public void SetGlobalColorRGB(int stripIndex, Color32 color, bool debug = false)
-        {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
-            }
-            int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
-            int rgbIndex = stripIndex - monochromeCount;
-            if (rgbIndex < 0 || rgbIndex >= rgbStripSettings.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid RGB strip index: {rgbIndex}");
-                return;
-            }
-            rgbStripSettings[rgbIndex].globalColor = color;
-            if (debug) Debug.Log($"Global color (RGB/RGBW strip {stripIndex}) set to {color}");
-        }
-
-        public Color32 GetGlobalColorRGB(int stripIndex)
-        {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return Color.black;
-            }
-            int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
-            int rgbIndex = stripIndex - monochromeCount;
-            if (rgbIndex < 0 || rgbIndex >= rgbStripSettings.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid RGB strip index: {rgbIndex}");
-                return Color.black;
-            }
-            return rgbStripSettings[rgbIndex].globalColor;
-        }
-
         public Color32 GetGlobalColorForStrip(int stripIndex, DataMode mode)
         {
             if (mode == DataMode.Monochrome1Color || mode == DataMode.Monochrome2Color)
@@ -297,58 +238,6 @@ namespace LEDControl
                 return rgbStripSettings[rgbIndex].globalColor;
             }
             return Color.black;
-        }
-
-        public void SetDisplayMode(int stripIndex, int modeIndex, bool debug = false)
-        {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
-            }
-            if (Enum.IsDefined(typeof(DisplayMode), modeIndex))
-            {
-                currentDisplayModes[stripIndex] = (DisplayMode)modeIndex;
-                InitializeStripData(); // Обновляем цвета сегментов
-                if (debug)
-                    Debug.Log($"Strip {stripIndex} display mode switched to {currentDisplayModes[stripIndex]}");
-            }
-            else
-            {
-                Debug.LogError($"[StripDataManager] Invalid Display Mode Index: {modeIndex}");
-            }
-        }
-
-        public void SetDataMode(int stripIndex, int modeIndex, bool debug = false)
-        {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
-            }
-            if (Enum.IsDefined(typeof(DataMode), modeIndex))
-            {
-                currentDataModes[stripIndex] = (DataMode)modeIndex;
-                InitializeStripData(); // Обновляем цвета сегментов
-                if (debug)
-                    Debug.Log($"Strip {stripIndex} data mode switched to {currentDataModes[stripIndex]}");
-            }
-            else
-            {
-                Debug.LogError($"[StripDataManager] Invalid Data Mode Index: {modeIndex}");
-            }
-        }
-
-        public void SetStripEnabled(int stripIndex, bool enabled, bool debug = false)
-        {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
-            }
-            stripEnabled[stripIndex] = enabled;
-            if (debug)
-                Debug.Log($"Strip {stripIndex} enabled set to {enabled}");
         }
 
         public void CachePreviousValues()
@@ -403,7 +292,7 @@ namespace LEDControl
                     colorsChanged = true;
                     break;
                 }
-                for (int i = 0; i<stripSegmentColors[stripIndex].segments.Count; ++i)
+                for (int i = 0; i < stripSegmentColors[stripIndex].segments.Count; ++i)
                 {
                     if (stripSegmentColors[stripIndex].segments[i].IsDifferent(previousSegmentColors[stripIndex][i]))
                     {
@@ -412,179 +301,106 @@ namespace LEDControl
                     }
                 }
                 if (colorsChanged)
-    break;
+                    break;
             }
             for (int i = 0; i < monochromeStripSettings.Count; i++)
-{
-    if (monochromeStripSettings[i].globalColor.IsDifferent(previousMonochromeStripSettings[i].globalColor) ||
-        monochromeStripSettings[i].synthColor.IsDifferent(previousMonochromeStripSettings[i].synthColor))
-    {
-        colorsChanged = true;
-        break;
-    }
-}
-for (int i = 0; i < rgbStripSettings.Count; i++)
-{
-    if (rgbStripSettings[i].globalColor.IsDifferent(previousRGBStripSettings[i].globalColor) ||
-        rgbStripSettings[i].synthColor.IsDifferent(previousRGBStripSettings[i].synthColor))
-    {
-        colorsChanged = true;
-        break;
-    }
-}
-if (!currentDisplayModes.SequenceEqual(previousDisplayModes) ||
-    !currentDataModes.SequenceEqual(previousDataModes) ||
-    !stripEnabled.SequenceEqual(previousStripEnabled) ||
-    !currentSunModes.SequenceEqual(previousSunModes))
-{
-    colorsChanged = true;
-}
-for (int i = 0; i < stripSettings.Count; i++)
-{
-    if (stripSettings[i].brightness != previousStripSettings[i].brightness ||
-        stripSettings[i].gammaValue != previousStripSettings[i].gammaValue ||
-        stripSettings[i].enableGammaCorrection != previousStripSettings[i].enableGammaCorrection)
-    {
-        colorsChanged = true;
-        break;
-    }
-}
-return colorsChanged;
+            {
+                if (monochromeStripSettings[i].globalColor.IsDifferent(previousMonochromeStripSettings[i].globalColor) ||
+                    monochromeStripSettings[i].synthColor.IsDifferent(previousMonochromeStripSettings[i].synthColor))
+                {
+                    colorsChanged = true;
+                    break;
+                }
+            }
+            for (int i = 0; i < rgbStripSettings.Count; i++)
+            {
+                if (rgbStripSettings[i].globalColor.IsDifferent(previousRGBStripSettings[i].globalColor) ||
+                    rgbStripSettings[i].synthColor.IsDifferent(previousRGBStripSettings[i].synthColor))
+                {
+                    colorsChanged = true;
+                    break;
+                }
+            }
+            if (!currentDisplayModes.SequenceEqual(previousDisplayModes) ||
+                !currentDataModes.SequenceEqual(previousDataModes) ||
+                !stripEnabled.SequenceEqual(previousStripEnabled) ||
+                !currentSunModes.SequenceEqual(previousSunModes))
+            {
+                colorsChanged = true;
+            }
+            for (int i = 0; i < stripSettings.Count; i++)
+            {
+                if (stripSettings[i].brightness != previousStripSettings[i].brightness ||
+                    stripSettings[i].gammaValue != previousStripSettings[i].gammaValue ||
+                    stripSettings[i].enableGammaCorrection != previousStripSettings[i].enableGammaCorrection)
+                {
+                    colorsChanged = true;
+                    break;
+                }
+            }
+            return colorsChanged;
         }
 
-        public void SetStripBrightness(int stripIndex, float brightness, bool debug = false)
-{
-    if (stripIndex < 0 || stripIndex >= stripSettings.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return;
-    }
-    stripSettings[stripIndex].brightness = Mathf.Clamp01(brightness);
-    if (debug)
-        Debug.Log($"Strip {stripIndex} brightness set to {brightness}");
-}
-
-public float GetStripBrightness(int stripIndex)
-{
-    if (stripIndex < 0 || stripIndex >= stripSettings.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return 1f;
-    }
-    return stripSettings[stripIndex].brightness;
-}
-
-public void SetStripGamma(int stripIndex, float gamma, bool enableGammaCorrection, bool debug = false)
-{
-    if (stripIndex < 0 || stripIndex >= stripSettings.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return;
-    }
-    stripSettings[stripIndex].gammaValue = Mathf.Clamp(gamma, 0.1f, 5f);
-    stripSettings[stripIndex].enableGammaCorrection = enableGammaCorrection;
-    if (debug)
-        Debug.Log($"Strip {stripIndex} gamma set to {gamma}, gamma correction enabled: {enableGammaCorrection}");
-}
-
-public float GetStripGamma(int stripIndex)
-{
-    if (stripIndex < 0 || stripIndex >= stripSettings.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return 2.2f;
-    }
-    return stripSettings[stripIndex].gammaValue;
-}
-
-public bool IsGammaCorrectionEnabled(int stripIndex)
-{
-    if (stripIndex < 0 || stripIndex >= stripSettings.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return true;
-    }
-    return stripSettings[stripIndex].enableGammaCorrection;
-}
-
-public Color32 GetSynthColorForStrip(int stripIndex)
-{
-    switch (currentDataModes[stripIndex])
-    {
-        case DataMode.Monochrome1Color:
-        case DataMode.Monochrome2Color:
-            return monochromeStripSettings[stripIndex < monochromeStripSettings.Count ? stripIndex : monochromeStripSettings.Count - 1].synthColor;
-        case DataMode.RGBW:
-        case DataMode.RGB:
-            int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
-            int rgbIndex = stripIndex - monochromeCount;
-            if (rgbIndex < 0 || rgbIndex >= rgbStripSettings.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid RGB strip index: {rgbIndex}");
-                return Color.white;
-            }
-            return rgbStripSettings[rgbIndex].synthColor;
-        default:
-            return Color.white;
-    }
-}
-
-public void SetSynthColorForStrip(int stripIndex, Color32 color, bool debug = false)
-{
-    switch (currentDataModes[stripIndex])
-    {
-        case DataMode.Monochrome1Color:
-        case DataMode.Monochrome2Color:
-            if (stripIndex < 0 || stripIndex >= monochromeStripSettings.Count)
+        public float GetStripBrightness(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count)
             {
                 Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return;
+                return 1f;
             }
-            // Ограничиваем цвет белым диапазоном для монохромных лент
-            float lum = (color.r * 0.299f + color.g * 0.587f + color.b * 0.114f);
-            color = new Color32((byte)lum, (byte)lum, (byte)lum, 255);
-            monochromeStripSettings[stripIndex].synthColor = color;
-            if (debug) Debug.Log($"Synth color (Monochrome strip {stripIndex}) set to {color}");
-            break;
-        case DataMode.RGBW:
-        case DataMode.RGB:
-            int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
-            int rgbIndex = stripIndex - monochromeCount;
-            if (rgbIndex < 0 || rgbIndex >= rgbStripSettings.Count)
+            return stripSettings[stripIndex].brightness;
+        }
+
+        public float GetStripGamma(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count)
             {
-                Debug.LogError($"[StripDataManager] Invalid RGB strip index: {rgbIndex}");
-                return;
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return 2.2f;
             }
-            rgbStripSettings[rgbIndex].synthColor = color;
-            if (debug) Debug.Log($"Synth color (RGB/RGBW strip {stripIndex}) set to {color}");
-            break;
-        default:
-            Debug.LogError($"[StripDataManager] Unsupported data mode for strip {stripIndex}");
-            break;
-    }
-}
+            return stripSettings[stripIndex].gammaValue;
+        }
 
-// Методы для управления режимом солнца
-public void SetSunMode(int stripIndex, SunMode mode, bool debug = false)
-{
-    if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return;
-    }
-    currentSunModes[stripIndex] = mode;
-    if (debug)
-        Debug.Log($"Strip {stripIndex} sun mode set to {mode}");
-}
+        public bool IsGammaCorrectionEnabled(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count)
+            {
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return true;
+            }
+            return stripSettings[stripIndex].enableGammaCorrection;
+        }
 
-public SunMode GetSunMode(int stripIndex)
-{
-    if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
-    {
-        Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-        return SunMode.Warm; // По умолчанию теплый режим
-    }
-    return currentSunModes[stripIndex];
-}
+        public Color32 GetSynthColorForStrip(int stripIndex)
+        {
+            switch (currentDataModes[stripIndex])
+            {
+                case DataMode.Monochrome1Color:
+                case DataMode.Monochrome2Color:
+                    return monochromeStripSettings[stripIndex < monochromeStripSettings.Count ? stripIndex : monochromeStripSettings.Count - 1].synthColor;
+                case DataMode.RGBW:
+                case DataMode.RGB:
+                    int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
+                    int rgbIndex = stripIndex - monochromeCount;
+                    if (rgbIndex < 0 || rgbIndex >= rgbStripSettings.Count)
+                    {
+                        Debug.LogError($"[StripDataManager] Invalid RGB strip index: {rgbIndex}");
+                        return Color.white;
+                    }
+                    return rgbStripSettings[rgbIndex].synthColor;
+                default:
+                    return Color.white;
+            }
+        }
+
+        public SunMode GetSunMode(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
+            {
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return SunMode.Warm; // По умолчанию теплый режим
+            }
+            return currentSunModes[stripIndex];
+        }
     }
 }
