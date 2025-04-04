@@ -1904,7 +1904,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   portName: COM23
   baudRate: 921600
-  debugMode: 1
+  debugMode: 0
   stripManager: {fileID: 770569964}
 --- !u!114 &770569963
 MonoBehaviour:
@@ -3606,7 +3606,7 @@ MonoBehaviour:
   dataTimeout: 1
   idleTimeout: 180
   restartDelay: 1
-  EnableDebug: 0
+  EnableDebug: 1
   MultipleTouchPerSegmentAsHexBitmask: 0
   curtainController: {fileID: 31414346}
   swipeDetector: {fileID: 1585652908}

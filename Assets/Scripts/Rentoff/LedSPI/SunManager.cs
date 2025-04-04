@@ -287,7 +287,27 @@ namespace LEDControl
             Debug.Log($"[EffectsManager] Finished pre-baking data for Strip {stripIndex}. {stripData.stateData.Count} states baked.");
             return stripData;
         }
+        private void UpdateSunFade()
+        {
+            if (_isSunFading)
+            {
+                float elapsed = Time.time - _sunFadeStartTime;
+                _currentSunFadeFactor = Mathf.Clamp01(1f - (elapsed / _sunFadeDuration));
 
+                if (_currentSunFadeFactor <= 0f)
+                {
+                    _isSunFading = false;
+                    _currentSunFadeFactor = 1f;
+
+                    _currentAppState = _targetAppState;
+
+                    ResetSunMovementPhase();
+                    InvalidateCache(CacheInvalidationReason.AppStateChange);
+                }
+
+                ClearSunCache();
+            }
+        }
         private BakedSunStateData PreBakeSunDataForStateAndMode(
             SunMode sunMode,
             SunMovementSettings settings,
@@ -404,26 +424,6 @@ namespace LEDControl
             _sunFadeStartTime = Time.time;
             _isSunFading = true;
             _currentSunFadeFactor = 1f;
-        }
-
-        private void UpdateSunFade()
-        {
-            if (_isSunFading)
-            {
-                float elapsed = Time.time - _sunFadeStartTime;
-                _currentSunFadeFactor = Mathf.Clamp01(1f - (elapsed / _sunFadeDuration));
-
-                if (_currentSunFadeFactor <= 0f)
-                {
-                    _isSunFading = false;
-                    _currentSunFadeFactor = 1f;
-                    _currentAppState = _targetAppState;
-                    ResetSunMovementPhase();
-                    InvalidateCache(CacheInvalidationReason.AppStateChange);
-                }
-
-                ClearSunCache();
-            }
         }
 
         private void ClearSunCache()
@@ -584,6 +584,7 @@ namespace LEDControl
         }
 
 #if UNITY_EDITOR
+
         [CustomEditor(typeof(SunManager))]
         public class SunManagerEditor : Editor
         {
