@@ -25,7 +25,7 @@ namespace LEDControl
         public float gammaValue = 2.2f;
 
         [Tooltip("Включена ли гамма-коррекция для ленты")]
-        public bool enableGammaCorrection = true;
+        public bool enableGammaCorrection = false;
     }
 
     public class StripDataManager : MonoBehaviour
@@ -398,7 +398,7 @@ namespace LEDControl
             if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count)
             {
                 Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return SunMode.Warm; // По умолчанию теплый режим
+                return SunMode.Warm;
             }
             return currentSunModes[stripIndex];
         }

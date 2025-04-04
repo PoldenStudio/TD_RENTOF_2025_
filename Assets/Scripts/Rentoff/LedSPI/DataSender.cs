@@ -98,6 +98,11 @@ namespace LEDControl
             }
         }
 
+        public void SendString(string row)
+        {
+            serialPort.Write(row);
+        }
+
         public void CloseSerialPort()
         {
             threadRunning = false;

@@ -183,7 +183,7 @@ public class VideoPlaybackController : MonoBehaviour
         int backwardCount = _swipeDirectionHistory.Count(d => d == -1);
         int totalHistory = _swipeDirectionHistory.Count;
 
-        if (totalHistory < 2) // Not enough history to determine a trend
+        if (totalHistory < 2)
             return false;
 
         float forwardRatio = (float)forwardCount / totalHistory;
@@ -191,12 +191,12 @@ public class VideoPlaybackController : MonoBehaviour
 
         if (currentDirection == 1 && backwardRatio >= swipeIgnoreThreshold)
         {
-            return true; // Mostly backward swipes recently, ignore forward
+            return true; 
         }
 
         if (currentDirection == -1 && forwardRatio >= swipeIgnoreThreshold)
         {
-            return true; // Mostly forward swipes recently, ignore backward
+            return true; 
         }
 
         return false;
@@ -274,7 +274,6 @@ public class VideoPlaybackController : MonoBehaviour
 
         float speedChangeAmount = CalculateSpeedChangeAmount(avgTimeBetween);
 
-        // Учитываем количество панелей только для быстрых свайпов
         if (avgTimeBetween <= fastSwipeTimeThreshold)
         {
             float panelsMultiplier = Mathf.Lerp(1f, 2f, Mathf.InverseLerp(1, settings.cols, panelsCount));
@@ -324,7 +323,7 @@ public class VideoPlaybackController : MonoBehaviour
         }
         else if (isFastSwipe)
         {
-            return Mathf.Lerp(2f, 5f, 1f - avgTimeBetween / fastSwipeTimeThreshold);
+            return Mathf.Lerp(2f, 4f, 1f - avgTimeBetween / fastSwipeTimeThreshold);
         }
         else
         {
@@ -370,7 +369,7 @@ public class VideoPlaybackController : MonoBehaviour
             _isPanelHoldActive = false;
             _isHolding = false;
         }
-        ClearSwipeHistory(); // Clear history on hold interaction
+        ClearSwipeHistory();
     }
 
     private void HandleReleaseAfterHold()
@@ -664,7 +663,6 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void OnValidate()
     {
-        // Ensure fast swipe threshold is not greater than slow swipe threshold
         if (fastSwipeTimeThreshold > slowSwipeTimeThreshold)
         {
             fastSwipeTimeThreshold = slowSwipeTimeThreshold;

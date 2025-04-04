@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: GlobalSettings
   m_EditorClassIdentifier: 
   contentSettings:
-    defaultModeMovieName: Active_end3.mov
+    defaultModeMovieName: Active_mode.mov
     idleModeMovieName: Idle_mode.mov
     spcModeMovieName: Bomba_2024.06.15.mov
     defaultModeChan: malva_v.4.chan
