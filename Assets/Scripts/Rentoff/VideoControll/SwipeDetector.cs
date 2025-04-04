@@ -41,7 +41,7 @@ public class SwipeDetector : MonoBehaviour
 
     [SerializeField] private VideoPlaybackController _playbackController;
     [SerializeField] private StateManager stateManager;
-    [SerializeField] private SerialInputReader _serialInputReader; // Assign this in the Inspector
+    [SerializeField] private SerialInputReader _serialInputReader;
 
     private float _lastTouchTime;
     private bool _isSwipeInProgress = false;

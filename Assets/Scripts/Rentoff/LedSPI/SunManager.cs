@@ -361,7 +361,7 @@ namespace LEDControl
                             float progress = Mathf.Clamp01(activeTime / intervalDuration);
 
                             float sunRadius = Mathf.Max(1f, settings.pixelCount) * 1f;
-                            float virtualLength = totalLEDs + 2 * sunRadius; 
+                            float virtualLength = totalLEDs + 2 * sunRadius;
                             float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
                             float sigma = sunRadius / Mathf.Max(0.1f, settings.gaussianSpreadFactor);
                             float denominator = 2f * sigma * sigma;
@@ -437,7 +437,7 @@ namespace LEDControl
             if (Mathf.Abs(currentSpeedRaw - speed) > Mathf.Epsilon)
             {
                 currentSpeedRaw = speed;
-                InvalidateCache(CacheInvalidationReason.SpeedChange); 
+                InvalidateCache(CacheInvalidationReason.SpeedChange);
             }
         }
 
@@ -459,7 +459,7 @@ namespace LEDControl
                 return;
             }
 
-            float currentCycleDuration = settingsRef.baseCycleLength / Mathf.Abs(currentSpeed);
+            float currentCycleDuration = settingsRef.baseCycleLength / (currentSpeed);
             if (Mathf.Approximately(currentCycleDuration, 0f)) return;
 
             _sunMovementPhase += Time.deltaTime / currentCycleDuration;
@@ -543,7 +543,7 @@ namespace LEDControl
 
                 float currentCycleTime = _sunMovementPhase * currentSettings.baseCycleLength;
                 int currentFrame = Mathf.FloorToInt(currentCycleTime / frameDuration);
-                currentFrame = Mathf.Clamp(currentFrame, 0, frameCount - 1); 
+                currentFrame = Mathf.Clamp(currentFrame, 0, frameCount - 1);
 
                 string hexData = stateData.hexFrames[currentFrame];
 

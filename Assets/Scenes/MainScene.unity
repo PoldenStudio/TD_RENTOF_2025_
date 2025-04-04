@@ -2010,20 +2010,20 @@ MonoBehaviour:
     pixelCount: 15
     baseCycleLength: 180
     activeIntervals:
-    - startTime: 20
-      endTime: 50
-    - startTime: 118
-      endTime: 138
+    - startTime: 90
+      endTime: 120
+    - startTime: 138
+      endTime: 158
     brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   coldSunSettingsActive:
     pixelCount: 15
     baseCycleLength: 180
     activeIntervals:
-    - startTime: 65
-      endTime: 96
-    - startTime: 153
-      endTime: 179
+    - startTime: 35
+      endTime: 80
+    - startTime: 173
+      endTime: 199
     brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
@@ -3877,7 +3877,7 @@ MonoBehaviour:
   baudRate: 250000
   baseFramesPerSecond: 60
   frameSkip: 1
-  globalBrightness: 1
+  globalBrightness: 2
   testModeCurve:
     serializedVersion: 2
     m_Curve:
@@ -3902,7 +3902,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  videoLength: 242.4333
+  videoLength: 180
   currentMode: 2
   ledStrips:
   - name: LED Strip
@@ -3964,7 +3964,7 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
     normalJsonPath: Active_left_rgbw.json
-    idleJsonPath: Active_left_rgbw.json
+    idleJsonPath: Idle_left_rgbw.json
     jsonFormat: 1
     fullNormalJsonPath: 
     fullIdleJsonPath: 
@@ -4029,7 +4029,7 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
     normalJsonPath: Active_right_rgbw.json
-    idleJsonPath: Active_right_rgbw.json
+    idleJsonPath: Idle_right_rgbw.json
     jsonFormat: 1
     fullNormalJsonPath: 
     fullIdleJsonPath: 
@@ -4094,7 +4094,7 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
     normalJsonPath: Active_top_rgbwmix.json
-    idleJsonPath: Active_top_rgbwmix.json
+    idleJsonPath: Idle_top_rgbwmix.json
     jsonFormat: 3
     fullNormalJsonPath: 
     fullIdleJsonPath: 
@@ -4159,7 +4159,7 @@ MonoBehaviour:
     - {r: 0, g: 0, b: 0, a: 1}
     segmentActiveStates: 0101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
     normalJsonPath: Active_bottom_rgbwmix.json
-    idleJsonPath: Active_bottom_rgbwmix.json
+    idleJsonPath: Idle_bottom_rgbwmix.json
     jsonFormat: 3
     fullNormalJsonPath: 
     fullIdleJsonPath: 

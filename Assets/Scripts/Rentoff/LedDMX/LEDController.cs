@@ -64,6 +64,7 @@ namespace LEDControl
 
         private IMediaPlayer mediaPlayer;
         private float kineticStartTime = 0f;
+        private bool isKineticPaused = false; // Added to track kinetic pause state
 
         private int totalLedChannels = 0;
         private int relocatedKineticHeightChannel1;
@@ -176,9 +177,22 @@ namespace LEDControl
 
         public void UpdateSynthParameters(float speed)
         {
-            currentSpeed = speed;
-        }
+            if (currentSpeed != speed)
+            {
+                currentSpeed = speed;
 
+                if (Mathf.Approximately(currentSpeed, 0f))
+                {
+                    kineticPaused = true;
+                    pausedKineticValue = kineticCurrentValue;
+                    pausedSecondKineticValue = secondKineticCurrentValue;
+                }
+                else
+                {
+                    kineticPaused = false;
+                }
+            }
+        }
         private void HandleStateChanged(AppState newState)
         {
             Debug.Log("[LEDController] State changed to " + newState);
@@ -261,7 +275,7 @@ namespace LEDControl
             {
                 case DisplayMode.GlobalColor:
                     ClearLEDChannels();
-                    BuildGlobalColorBuffer( );
+                    BuildGlobalColorBuffer();
                     break;
                 case DisplayMode.SegmentColor:
                     ClearLEDChannels();
@@ -289,6 +303,11 @@ namespace LEDControl
             }
         }
 
+        private bool kineticPaused = false;
+        private float pausedKineticValue = 0f;
+        private float pausedSecondKineticValue = 0f;
+
+
         void UpdateKineticControl()
         {
             if (idleMode)
@@ -301,44 +320,67 @@ namespace LEDControl
                     WriteToDMXChannel(FrameBuffer, relocatedSecondKineticHeightChannel2, 0);
                     wasIdled = false;
                 }
+                return;
             }
-            else
+
+            mediaPlayer ??= new DemolitionMediaPlayer(Media.Instance);
+
+            if (!confirmTime)
             {
-                mediaPlayer ??= new DemolitionMediaPlayer(Media.Instance);
+                videoLength = mediaPlayer.DurationSeconds;
+                kineticStartTime = Time.time;
 
-                if (!confirmTime)
-                {
-                    videoLength = mediaPlayer.DurationSeconds;
-                    kineticStartTime = Time.time;
+                kineticTargetIndex = 0;
+                secondKineticTargetIndex = 0;
+                kineticCurrentValue = 0f;
+                secondKineticCurrentValue = 0f;
 
-                    // Сбросим индексы и текущие значения кинетики
-                    kineticTargetIndex = 0;
-                    secondKineticTargetIndex = 0;
-                    kineticCurrentValue = 0f;
-                    secondKineticCurrentValue = 0f;
-
-                    confirmTime = true;
-                }
-
-                float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
-                float normalizedTime = (elapsedTime / videoLength) % 1f;
-
-                UpdateStepwiseKinetic(kineticControlCurve, ref kineticTargetIndex, ref kineticCurrentValue, ref kineticTargetValue, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2, normalizedTime);
-                UpdateStepwiseKinetic(secondKineticControlCurve, ref secondKineticTargetIndex, ref secondKineticCurrentValue, ref secondKineticTargetValue, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2, normalizedTime);
+                confirmTime = true;
             }
+
+            if (kineticPaused)
+            {
+                SetKineticDMXChannels(pausedKineticValue, pausedSecondKineticValue);
+                return;
+            }
+
+            float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
+            float normalizedTime = (elapsedTime / videoLength) % 1f;
+
+            UpdateStepwiseKinetic(kineticControlCurve, ref kineticTargetIndex, ref kineticCurrentValue, ref kineticTargetValue, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2, normalizedTime);
+            UpdateStepwiseKinetic(secondKineticControlCurve, ref secondKineticTargetIndex, ref secondKineticCurrentValue, ref secondKineticTargetValue, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2, normalizedTime);
         }
 
-        /// <summary>
-        /// Плавное приближение к целевому значению
-        /// </summary>
+        private void SetKineticDMXChannels(float kineticValue1, float kineticValue2)
+        {
+            SetKineticDMXChannel(kineticValue1, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2);
+            SetKineticDMXChannel(kineticValue2, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2);
+        }
+
+        private void SetKineticDMXChannel(float curveValue, int channel1, int channel2)
+        {
+            float max = 255f;
+            float min = 0f;
+
+            float minCombinedValue = 0f;
+            float maxCombinedValue = (max - min) * 256f + (max - min);
+
+            float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, Mathf.Clamp01(curveValue));
+
+            byte firstByte = (byte)Mathf.Clamp(Mathf.Floor(combinedValue / 256f) + min, min, max);
+            byte secondByte = (byte)Mathf.Clamp((combinedValue % 256f) + min, min, max);
+
+            WriteToDMXChannel(FrameBuffer, channel1, firstByte);
+            WriteToDMXChannel(FrameBuffer, channel2, secondByte);
+        }
+
+
+
         private float SmoothApproach(float current, float target, float speed)
         {
             return Mathf.MoveTowards(current, target, speed * Time.fixedDeltaTime);
         }
 
-        /// <summary>
-        /// Обработка ступенчатой кинетики по кривой
-        /// </summary>
         private void UpdateStepwiseKinetic(AnimationCurve curve, ref int targetIndex, ref float currentValue, ref float targetValue, int channel1, int channel2, float normalizedTime)
         {
             if (curve.length == 0)
@@ -403,7 +445,7 @@ namespace LEDControl
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
                 Color color = strip.globalColor;
-                float brightness = strip.brightness; // Use individual strip brightness
+                float brightness = strip.brightness;
                 byte r = (byte)(color.r * brightness * 255);
                 byte g = (byte)(color.g * brightness * 255);
                 byte b = (byte)(color.b * brightness * 255);
@@ -445,7 +487,7 @@ namespace LEDControl
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int segments = strip.TotalSegments;
                 int offset = strip.dmxChannelOffset;
-                float brightness = strip.brightness; // Use individual strip brightness
+                float brightness = strip.brightness;
 
                 for (int seg = 0; seg < segments; seg++)
                 {
@@ -499,7 +541,7 @@ namespace LEDControl
                 frameIndex = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
 
                 byte[] stripValues = frames[frameIndex].channelValues;
-                float brightness = strip.brightness; // Use individual strip brightness
+                float brightness = strip.brightness;
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
@@ -528,7 +570,7 @@ namespace LEDControl
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
                 int channelsPerLed = GetChannelsPerLed(strip);
-                float brightness = strip.brightness; // Use individual strip brightness
+                float brightness = strip.brightness;
                 byte intensity = (byte)(curveValue * brightness * 255);
 
                 for (int i = 0; i < totLEDs; i++)
