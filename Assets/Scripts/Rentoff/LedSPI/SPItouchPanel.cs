@@ -130,10 +130,7 @@ public class SPItouchPanel : MonoBehaviour
         {
             if (stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SunMovement)
             {
-                string sunData = sunManager.GetHexDataForSunMovement(stripIndex,
-                    stripDataManager.currentDataModes[stripIndex],
-                    stripDataManager,
-                    colorProcessor);
+
             }
         }
     }

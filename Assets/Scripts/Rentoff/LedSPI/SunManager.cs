@@ -78,6 +78,11 @@ namespace LEDControl
             [Tooltip("Controls the blurriness of the sun edges. Higher values = more blurry edges.")]
             [Range(1f, 5f)]
             public float gaussianSpreadFactor = 3f;
+
+            public override string ToString()
+            {
+                return $"PixelCount: {pixelCount}, CycleLength: {baseCycleLength}, Brightness: {brightnessMultiplier}, Gaussian: {gaussianSpreadFactor}";
+            }
         }
 
         [Serializable]
@@ -335,15 +340,16 @@ namespace LEDControl
                             float activeTime = currentTime - adjustedStartTime;
                             float progress = Mathf.Clamp01(activeTime / intervalDuration);
 
-                            float sunPositionContinuous = totalLEDs * (1f - progress);
-                            float sunRadius = Mathf.Max(1f, settings.pixelCount) * 0.5f;
+                            float sunRadius = Mathf.Max(1f, settings.pixelCount) * 1f;
+                            float virtualLength = totalLEDs + 2 * sunRadius; 
+                            float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
                             float sigma = sunRadius / Mathf.Max(0.1f, settings.gaussianSpreadFactor);
                             float denominator = 2f * sigma * sigma;
                             if (denominator <= 0f) denominator = 0.001f;
 
                             for (int i = 0; i < totalLEDs; i++)
                             {
-                                float distance = GetWrappedDistance(i, sunPositionContinuous, totalLEDs);
+                                float distance = Mathf.Abs(i - sunPositionContinuous);
                                 float brightnessFactor = Mathf.Exp(-(distance * distance) / denominator);
                                 byte brightnessValue = (byte)Mathf.Clamp(255f * brightnessFactor, 0, 255);
                                 pixelBrightness[i] = Math.Max(pixelBrightness[i], brightnessValue);
@@ -382,6 +388,7 @@ namespace LEDControl
                 {
                     _currentAppState = state;
                     ResetSunMovementPhase();
+                    InvalidateCache(CacheInvalidationReason.AppStateChange); // Invalidate on state change
                 }
             }
         }
@@ -412,6 +419,7 @@ namespace LEDControl
                     _currentSunFadeFactor = 1f;
                     _currentAppState = _targetAppState;
                     ResetSunMovementPhase();
+                    InvalidateCache(CacheInvalidationReason.AppStateChange);
                 }
 
                 ClearSunCache();
@@ -420,20 +428,17 @@ namespace LEDControl
 
         private void ClearSunCache()
         {
-            for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
-            {
-                if (stripDataManager.currentDisplayModes.Count > stripIndex &&
-                    stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SunMovement)
-                {
-                    hexCache.Remove(stripIndex);
-                    lastUpdateTime.Remove(stripIndex);
-                }
-            }
+            hexCache.Clear();
+            lastUpdateTime.Clear();
         }
 
         public void UpdateSpeed(float speed)
         {
-            currentSpeedRaw = speed;
+            if (Mathf.Abs(currentSpeedRaw - speed) > Mathf.Epsilon)
+            {
+                currentSpeedRaw = speed;
+                InvalidateCache(CacheInvalidationReason.SpeedChange); 
+            }
         }
 
 
@@ -447,7 +452,10 @@ namespace LEDControl
             float currentSpeed = CurrentSunSpeed;
             if (Mathf.Approximately(currentSpeed, 0f))
             {
-                ClearSunCache();
+                if (hexCache.Count > 0)
+                {
+                    ClearSunCache();
+                }
                 return;
             }
 
@@ -456,6 +464,7 @@ namespace LEDControl
 
             _sunMovementPhase += Time.deltaTime / currentCycleDuration;
             _sunMovementPhase %= 1.0f;
+
 
             ClearSunCache();
         }
@@ -473,6 +482,29 @@ namespace LEDControl
             };
         }
 
+        private enum CacheInvalidationReason
+        {
+            AppStateChange,
+            SpeedChange,
+            SunSettingsChange
+        }
+
+        private void InvalidateCache(CacheInvalidationReason reason)
+        {
+            switch (reason)
+            {
+                case CacheInvalidationReason.AppStateChange:
+                    Debug.Log("Cache invalidated due to AppState change.");
+                    break;
+                case CacheInvalidationReason.SpeedChange:
+                    Debug.Log("Cache invalidated due to Speed change.");
+                    break;
+                case CacheInvalidationReason.SunSettingsChange:
+                    Debug.Log("Cache invalidated due to SunSettings change.");
+                    break;
+            }
+            //ClearSunCache();
+        }
         public string GetHexDataForSunMovement(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             if (_currentAppState == StateManager.AppState.Transition)
@@ -480,8 +512,11 @@ namespace LEDControl
                 return "";
             }
 
-            if (hexCache.TryGetValue(stripIndex, out string cachedHex) &&
-                lastUpdateTime.TryGetValue(stripIndex, out float lastUpdate) &&
+            // Use the cache key including current AppState and sun mode
+            int cacheKey = GetCacheKey(stripIndex, _currentAppState, stripManager.GetSunMode(stripIndex));
+
+            if (hexCache.TryGetValue(cacheKey, out string cachedHex) &&
+                lastUpdateTime.TryGetValue(cacheKey, out float lastUpdate) &&
                 Time.time - lastUpdate < cacheLifetime)
             {
                 return cachedHex;
@@ -508,118 +543,62 @@ namespace LEDControl
 
                 float currentCycleTime = _sunMovementPhase * currentSettings.baseCycleLength;
                 int currentFrame = Mathf.FloorToInt(currentCycleTime / frameDuration);
-                currentFrame = currentFrame % frameCount;
+                currentFrame = Mathf.Clamp(currentFrame, 0, frameCount - 1); 
 
-                int hexPerPixelTarget = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-                int hexPerPixelSource = 2;
+                string hexData = stateData.hexFrames[currentFrame];
 
-                if (stripIndex < 0 || stripIndex >= stripDataManager.totalLEDsPerStrip.Count) return "";
-                int ledsPerStrip = stripDataManager.totalLEDsPerStrip[stripIndex];
-                int expectedFrameHexLength = ledsPerStrip * hexPerPixelSource;
+                // Cache the result
+                hexCache[cacheKey] = hexData;
+                lastUpdateTime[cacheKey] = Time.time;
 
-                if (currentFrame < 0 || currentFrame >= stateData.hexFrames.Count)
-                {
-                    Debug.LogWarning($"Calculated frame index {currentFrame} out of bounds for strip {stripIndex}, state {stateKey}. " +
-                                     $"Frame count: {stateData.hexFrames.Count}");
-                    return "";
-                }
-
-                string frameHex = stateData.hexFrames[currentFrame];
-
-                if (frameHex == null || frameHex.Length != expectedFrameHexLength)
-                {
-                    Debug.LogWarning($"Invalid baked frame data at index {currentFrame} for strip {stripIndex}, state {stateKey}. " +
-                                     $"Expected length {expectedFrameHexLength}, got {frameHex?.Length ?? 0}");
-                    return "";
-                }
-
-                float stripBrightness = stripManager.GetStripBrightness(stripIndex);
-                float effectBrightness = currentSettings.brightnessMultiplier;
-                float totalBrightnessMultiplier = stripBrightness * effectBrightness;
-
-                float stripGamma = stripManager.GetStripGamma(stripIndex);
-                bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
-
-                StringBuilder convertedHex = GetStringBuilder(ledsPerStrip * hexPerPixelTarget);
-                for (int i = 0; i < ledsPerStrip; i++)
-                {
-                    int pixelStart = i * hexPerPixelSource;
-                    if (pixelStart + hexPerPixelSource <= frameHex.Length)
-                    {
-                        string brightnessHex = frameHex.Substring(pixelStart, hexPerPixelSource);
-                        if (byte.TryParse(brightnessHex, System.Globalization.NumberStyles.HexNumber, null, out byte bakedBrightness))
-                        {
-                            byte finalBrightness = (byte)Mathf.Clamp(bakedBrightness * totalBrightnessMultiplier, 0, 255);
-                            Color32 pixelColor = new Color32(finalBrightness, finalBrightness, finalBrightness, 255);
-                            string hexColor = mode switch
-                            {
-                                DataMode.RGBW => colorProcessor.ColorToHexRGBW(pixelColor, 1f, stripGamma, stripGammaEnabled),
-                                DataMode.RGB => colorProcessor.ColorToHexRGB(pixelColor, 1f, stripGamma, stripGammaEnabled),
-                                _ => colorProcessor.ColorToHexMonochrome(pixelColor, 1f, stripGamma, stripGammaEnabled),
-                            };
-                            convertedHex.Append(hexColor);
-                        }
-                        else
-                        {
-                            convertedHex.Append(new string('0', hexPerPixelTarget));
-                        }
-                    }
-                    else
-                    {
-                        convertedHex.Append(new string('0', hexPerPixelTarget));
-                    }
-                }
-
-                string optimizedHex = OptimizeHexString(convertedHex.ToString(), new string('0', hexPerPixelTarget), hexPerPixelTarget);
-                hexCache[stripIndex] = optimizedHex;
-                lastUpdateTime[stripIndex] = Time.time;
-                return optimizedHex;
-            }
-
-            Debug.LogWarning($"No preloaded sun data found for strip {stripIndex}, state key {stateKey}");
-            return "";
-        }
-
-        private StringBuilder GetStringBuilder(int capacity)
-        {
-            if (!stringBuilderCache.TryGetValue(capacity, out StringBuilder sb))
-            {
-                sb = new StringBuilder(capacity);
-                stringBuilderCache[capacity] = sb;
+                return hexData;
             }
             else
             {
-                sb.Clear();
+                Debug.LogWarning($"No pre-baked data found for strip {stripIndex}, state {stateKey}");
+                return "";
             }
-            return sb;
         }
 
-        private int GenerateStateKey(StateManager.AppState appState, SunMode sunMode)
+        private int GenerateStateKey(StateManager.AppState state, SunMode sunMode)
         {
-            return ((int)appState * 10) + (int)sunMode;
+            return ((int)state << 1) | (int)sunMode;
+        }
+        private int GetCacheKey(int stripIndex, StateManager.AppState appState, SunMode sunMode)
+        {
+            return HashCode.Combine(stripIndex, appState, sunMode);
         }
 
-        private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
+        private StringBuilder GetStringBuilderForStrip(int stripIndex)
         {
-            if (string.IsNullOrEmpty(hexString)) return "";
-            if (hexPerPixel <= 0) return hexString;
-            int totalPixels = hexString.Length / hexPerPixel;
-            if (totalPixels == 0) return "";
-
-            int lastNonBlack = -1;
-            for (int i = totalPixels - 1; i >= 0; i--)
+            if (!stringBuilderCache.ContainsKey(stripIndex))
             {
-                int startIndex = i * hexPerPixel;
-                if (startIndex + hexPerPixel <= hexString.Length &&
-                    hexString.Substring(startIndex, hexPerPixel) != blackHex)
+                stringBuilderCache[stripIndex] = new StringBuilder();
+            }
+            return stringBuilderCache[stripIndex];
+        }
+
+        public void OnSunSettingsChanged()
+        {
+            InvalidateCache(CacheInvalidationReason.SunSettingsChange);
+        }
+
+#if UNITY_EDITOR
+        [CustomEditor(typeof(SunManager))]
+        public class SunManagerEditor : Editor
+        {
+            public override void OnInspectorGUI()
+            {
+                base.OnInspectorGUI();
+
+                SunManager sunManager = (SunManager)target;
+
+                if (GUILayout.Button("Invalidate Cache"))
                 {
-                    lastNonBlack = i;
-                    break;
+                    sunManager.OnSunSettingsChanged();
                 }
             }
-
-            if (lastNonBlack == -1) return "";
-            return hexString.Substring(0, (lastNonBlack + 1) * hexPerPixel);
         }
+#endif
     }
 }

@@ -292,7 +292,7 @@ namespace LEDControl
             return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
         }
 
-        private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
+         public string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
         {
             if (string.IsNullOrEmpty(hexString)) return "";
             if (hexPerPixel <= 0) return hexString;

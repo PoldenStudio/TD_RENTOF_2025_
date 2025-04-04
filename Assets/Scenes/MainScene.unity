@@ -1904,7 +1904,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   portName: COM23
   baudRate: 921600
-  debugMode: 0
+  debugMode: 1
   stripManager: {fileID: 770569964}
 --- !u!114 &770569963
 MonoBehaviour:
@@ -1996,7 +1996,7 @@ MonoBehaviour:
     activeIntervals:
     - startTime: 60
       endTime: 140
-    brightnessMultiplier: 3
+    brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   coldSunSettingsIdle:
     pixelCount: 15
@@ -2004,7 +2004,7 @@ MonoBehaviour:
     activeIntervals:
     - startTime: 0
       endTime: 43
-    brightnessMultiplier: 1
+    brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   warmSunSettingsActive:
     pixelCount: 15
@@ -2014,7 +2014,7 @@ MonoBehaviour:
       endTime: 50
     - startTime: 118
       endTime: 138
-    brightnessMultiplier: 3
+    brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   coldSunSettingsActive:
     pixelCount: 15
@@ -2024,7 +2024,7 @@ MonoBehaviour:
       endTime: 96
     - startTime: 153
       endTime: 179
-    brightnessMultiplier: 3
+    brightnessMultiplier: 2
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
   dataSender: {fileID: 770569962}

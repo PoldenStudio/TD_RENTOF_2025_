@@ -134,6 +134,7 @@ public class StateManager : MonoBehaviour
         yield return new WaitForSeconds(swipeReactivateDelay);
 
         SetState(AppState.Active, CurrentState);
+        sunManager.SetAppState(AppState.Active);
         playbackController.SetSwipeControlEnabled(true);
         Debug.Log("[StateManager] Transition to Active mode completed.");
     }

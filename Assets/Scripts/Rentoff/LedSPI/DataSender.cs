@@ -30,6 +30,7 @@ namespace LEDControl
         private Thread portThread;
         private volatile bool threadRunning = false;
         private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
+        private bool transfer = true;
 
         void Awake()
         {
@@ -267,14 +268,23 @@ namespace LEDControl
             }
 
             if (appState == AppState.Transition) {
+
+                if (transfer == true)
+                {
+                    transfer = false;
                 for (int i = 0; i < 4; i++)
                 {
                     serialPort.Write(i + ":clear\r\n");
                 }
+
+                }
+            }
+            else
+            {
+                transfer = true;
             }
 
-
-            string prefix = GetPrefixForDataMode(dataMode);
+                string prefix = GetPrefixForDataMode(dataMode);
             string colorData = displayMode switch
             {
                 DisplayMode.GlobalColor => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor),
