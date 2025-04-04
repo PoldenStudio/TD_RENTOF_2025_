@@ -10,6 +10,7 @@ public class SPItouchPanel : MonoBehaviour
     [SerializeField] public StripDataManager stripDataManager;
     [SerializeField] public ColorProcessor colorProcessor;
     [SerializeField] public EffectsManager effectsManager;
+    [SerializeField] public SunManager sunManager;
     [SerializeField] public DataSender dataSender;
     [SerializeField] public StateManager stateManager;
     [SerializeField] private SwipeDetector swipeDetector;
@@ -124,12 +125,12 @@ public class SPItouchPanel : MonoBehaviour
 
     public void UpdateSun()
     {
-        effectsManager.UpdateSunMovementPhase();
+        sunManager.UpdateSunMovementPhase();
         for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SunMovement)
             {
-                string sunData = effectsManager.GetHexDataForSunMovement(stripIndex,
+                string sunData = sunManager.GetHexDataForSunMovement(stripIndex,
                     stripDataManager.currentDataModes[stripIndex],
                     stripDataManager,
                     colorProcessor);
@@ -237,7 +238,7 @@ public class SPItouchPanel : MonoBehaviour
                 continue;
             }
 
-            string dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, effectsManager, colorProcessor, stateManager.CurrentState);
+            string dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, sunManager, effectsManager, colorProcessor, stateManager.CurrentState);
             fullData.Append(dataString);
         }
         dataSender.EnqueueData(fullData.ToString());
@@ -246,6 +247,7 @@ public class SPItouchPanel : MonoBehaviour
     public void UpdateSynthParameters(float speed)
     {
         effectsManager.UpdateSpeed(speed);
+        sunManager.UpdateSpeed(speed);
         dataChanged = true;
     }
 }

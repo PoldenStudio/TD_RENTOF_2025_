@@ -19,6 +19,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private SoundManager soundManager;
     [SerializeField] private SPItouchPanel spiTouchPanel;
     [SerializeField] private EffectsManager effectsManager;
+    [SerializeField] private SunManager sunManager;
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 1f;
@@ -54,7 +55,7 @@ public class StateManager : MonoBehaviour
     void Start()
     {
         CurrentState = AppState.Idle;
-        effectsManager?.SetAppState(CurrentState);
+        sunManager?.SetAppState(CurrentState);
         playbackController?.SetSwipeControlEnabled(false);
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
@@ -107,8 +108,8 @@ public class StateManager : MonoBehaviour
         cometController.StartCometTravel(() => { cometFinished = true; });
         while (!cometFinished) yield return null;
 
-        effectsManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
-        effectsManager.SetAppState(AppState.Active);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        sunManager.SetAppState(AppState.Active);
         // Запускаем кометы на SPI лентах
         yield return new WaitForSeconds(cometDelayInTransition);
         for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
@@ -145,9 +146,9 @@ public class StateManager : MonoBehaviour
         Debug.Log("[StateManager] Starting transition to Idle.");
         playbackController.SetSwipeControlEnabled(false);
 
-        effectsManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
 
-        effectsManager?.SetAppState(AppState.Idle);
+        sunManager?.SetAppState(AppState.Idle);
 
         ledController.wasIdled = true;
         ledController.SwitchToIdleJSON();
@@ -187,7 +188,7 @@ public class StateManager : MonoBehaviour
         CurrentState = newState;
         OnPreviousStateChanged?.Invoke(previousState);
         OnStateChanged?.Invoke(CurrentState);
-        effectsManager?.SetAppState(CurrentState);
+        sunManager?.SetAppState(CurrentState);
     }
 
     public void SwitchToIdleDirect(bool performTransition = true)

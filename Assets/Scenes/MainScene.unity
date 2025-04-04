@@ -1818,6 +1818,7 @@ GameObject:
   m_Component:
   - component: {fileID: 770569958}
   - component: {fileID: 770569964}
+  - component: {fileID: 770569965}
   - component: {fileID: 770569963}
   - component: {fileID: 770569961}
   - component: {fileID: 770569962}
@@ -1860,6 +1861,7 @@ MonoBehaviour:
   stripDataManager: {fileID: 770569964}
   colorProcessor: {fileID: 770569961}
   effectsManager: {fileID: 770569963}
+  sunManager: {fileID: 770569965}
   dataSender: {fileID: 770569962}
   stateManager: {fileID: 1585652921}
   swipeDetector: {fileID: 1585652908}
@@ -1924,48 +1926,9 @@ MonoBehaviour:
   toggleTouchMode: 0
   startFromEnd: 1
   stationaryBrightnessFactor: 0.8
-  warmSunSettingsIdle:
-    pixelCount: 15
-    baseCycleLength: 180
-    activeIntervals:
-    - startTime: 61
-      endTime: 138
-    brightnessMultiplier: 3
-    gaussianSpreadFactor: 3
-  coldSunSettingsIdle:
-    pixelCount: 15
-    baseCycleLength: 180
-    activeIntervals:
-    - startTime: 0
-      endTime: 42
-    brightnessMultiplier: 3
-    gaussianSpreadFactor: 3
-  warmSunSettingsActive:
-    pixelCount: 15
-    baseCycleLength: 180
-    activeIntervals:
-    - startTime: 20
-      endTime: 48
-    - startTime: 118
-      endTime: 138
-    brightnessMultiplier: 3
-    gaussianSpreadFactor: 3
-  coldSunSettingsActive:
-    pixelCount: 15
-    baseCycleLength: 180
-    activeIntervals:
-    - startTime: 66
-      endTime: 95
-    - startTime: 153
-      endTime: 179
-    brightnessMultiplier: 3
-    gaussianSpreadFactor: 3
-  sunFadeDuration: 1
-  dataSender: {fileID: 770569962}
-  preBakeFrameRate: 35.714283
-  bakedDataFolderPath: SunData
   currentSpeedRaw: 1
   MultiplySpeed: 1
+  dataSender: {fileID: 770569962}
   stripDataManager: {fileID: 770569964}
 --- !u!114 &770569964
 MonoBehaviour:
@@ -2014,7 +1977,62 @@ MonoBehaviour:
       rgba: 4294967295
   stripSegmentColors: []
   touchPanelCols: 30
-  touchPanelOffset: 120
+  touchPanelOffset: 130
+--- !u!114 &770569965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 770569957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8f89ac4671ad245a17b11bdf7065ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  warmSunSettingsIdle:
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 60
+      endTime: 140
+    brightnessMultiplier: 3
+    gaussianSpreadFactor: 1
+  coldSunSettingsIdle:
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 0
+      endTime: 43
+    brightnessMultiplier: 1
+    gaussianSpreadFactor: 1
+  warmSunSettingsActive:
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 20
+      endTime: 50
+    - startTime: 118
+      endTime: 138
+    brightnessMultiplier: 3
+    gaussianSpreadFactor: 1
+  coldSunSettingsActive:
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 65
+      endTime: 96
+    - startTime: 153
+      endTime: 179
+    brightnessMultiplier: 3
+    gaussianSpreadFactor: 1
+  sunFadeDuration: 1
+  dataSender: {fileID: 770569962}
+  preBakeFrameRate: 35.714283
+  bakedDataFolderPath: SunData
+  currentSpeedRaw: 1
+  MultiplySpeed: 1
+  stripDataManager: {fileID: 770569964}
 --- !u!1 &920054923
 GameObject:
   m_ObjectHideFlags: 0
@@ -3761,6 +3779,7 @@ MonoBehaviour:
   soundManager: {fileID: 1585652922}
   spiTouchPanel: {fileID: 770569959}
   effectsManager: {fileID: 770569963}
+  sunManager: {fileID: 770569965}
   curtainFullWait: 1
   swipeReactivateDelay: 0.5
   fadeOutDuration: 1

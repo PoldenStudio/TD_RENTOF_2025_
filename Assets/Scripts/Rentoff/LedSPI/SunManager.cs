@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Text;
 using System.Collections.Generic;
@@ -10,6 +10,49 @@ namespace LEDControl
 {
     public class SunManager : MonoBehaviour
     {
+        [Header("Sun Movement Settings")]
+        [Header("Idle")]
+        public SunMovementSettings warmSunSettingsIdle = new();
+        public SunMovementSettings coldSunSettingsIdle = new();
+        [Header("Active")]
+        public SunMovementSettings warmSunSettingsActive = new();
+        public SunMovementSettings coldSunSettingsActive = new();
+
+        [Header("Transition Settings")]
+        public float sunFadeDuration = 1.0f;
+
+        [Header("Synchronization Settings")]
+        public DataSender dataSender;
+
+        [Header("Pre-Bake Settings")]
+        public float preBakeFrameRate = 35f;
+        public string bakedDataFolderPath = "SunData";
+
+        public float currentSpeedRaw = 1f;
+        public float MultiplySpeed = 1f;
+        private float CurrentSunSpeed => currentSpeedRaw * MultiplySpeed;
+
+        private float _sunMovementPhase = 0f;
+
+        private Dictionary<int, string> hexCache = new();
+        private Dictionary<int, float> lastUpdateTime = new();
+        private float cacheLifetime = 0.05f;
+
+        private Dictionary<int, StringBuilder> stringBuilderCache = new();
+
+        private StateManager.AppState _currentAppState = StateManager.AppState.Idle;
+        private StateManager.AppState _targetAppState = StateManager.AppState.Idle;
+
+        private bool _isSunFading = false;
+        private float _sunFadeDuration = 1f;
+        private float _sunFadeStartTime;
+        private float _currentSunFadeFactor = 1f;
+
+        [SerializeField] private StripDataManager stripDataManager;
+
+        private Dictionary<int, Dictionary<int, BakedSunStateData>> preloadedStateData = new();
+
+
         public enum SunMode
         {
             Warm,
@@ -53,26 +96,21 @@ namespace LEDControl
             public List<BakedSunStateData> stateData = new();
         }
 
-        public SunMovementSettings warmSunSettingsIdle = new();
-        public SunMovementSettings coldSunSettingsIdle = new();
-        public SunMovementSettings warmSunSettingsActive = new();
-        public SunMovementSettings coldSunSettingsActive = new();
+        private void EnsureDirectoryExists(string filePath)
+        {
+            string directory = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+        }
 
-        public float sunFadeDuration = 1.0f;
-
-        public float preBakeFrameRate = 35f;
-        public string bakedDataFolderPath = "SunData";
-
-        private float _sunMovementPhase = 0f;
-        private Dictionary<int, Dictionary<int, BakedSunStateData>> preloadedStateData = new();
-
-        private bool _isSunFading = false;
-        private float _sunFadeDuration = 1f;
-        private float _sunFadeStartTime;
-        private float _currentSunFadeFactor = 1f;
-
-        private StateManager.AppState _currentAppState = StateManager.AppState.Idle;
-        private StateManager.AppState _targetAppState = StateManager.AppState.Idle;
+        private float GetWrappedDistance(float p1, float p2, int wrap)
+        {
+            float diffNormal = Mathf.Abs(p1 - p2);
+            float diffWrap = wrap - diffNormal;
+            return Mathf.Min(diffNormal, diffWrap);
+        }
 
         private void Awake()
         {
@@ -184,6 +222,11 @@ namespace LEDControl
                 Debug.Log("No strips found with SunMovement mode to bake.");
             }
         }
+        private string GetSunDataFilePath(int stripIndex)
+        {
+            return Path.Combine(Application.streamingAssetsPath, bakedDataFolderPath, $"BakedSunData_Strip_{stripIndex}.json");
+        }
+
 
         private void SaveBakedStripDataToJson(BakedSunStripData stripData)
         {
@@ -339,7 +382,6 @@ namespace LEDControl
                 {
                     _currentAppState = state;
                     ResetSunMovementPhase();
-                    ClearCaches();
                 }
             }
         }
@@ -375,6 +417,26 @@ namespace LEDControl
                 ClearSunCache();
             }
         }
+
+        private void ClearSunCache()
+        {
+            for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+            {
+                if (stripDataManager.currentDisplayModes.Count > stripIndex &&
+                    stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SunMovement)
+                {
+                    hexCache.Remove(stripIndex);
+                    lastUpdateTime.Remove(stripIndex);
+                }
+            }
+        }
+
+        public void UpdateSpeed(float speed)
+        {
+            currentSpeedRaw = speed;
+        }
+
+
         public void UpdateSunMovementPhase()
         {
             UpdateSunFade();
@@ -518,9 +580,46 @@ namespace LEDControl
             return "";
         }
 
+        private StringBuilder GetStringBuilder(int capacity)
+        {
+            if (!stringBuilderCache.TryGetValue(capacity, out StringBuilder sb))
+            {
+                sb = new StringBuilder(capacity);
+                stringBuilderCache[capacity] = sb;
+            }
+            else
+            {
+                sb.Clear();
+            }
+            return sb;
+        }
+
         private int GenerateStateKey(StateManager.AppState appState, SunMode sunMode)
         {
             return ((int)appState * 10) + (int)sunMode;
+        }
+
+        private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
+        {
+            if (string.IsNullOrEmpty(hexString)) return "";
+            if (hexPerPixel <= 0) return hexString;
+            int totalPixels = hexString.Length / hexPerPixel;
+            if (totalPixels == 0) return "";
+
+            int lastNonBlack = -1;
+            for (int i = totalPixels - 1; i >= 0; i--)
+            {
+                int startIndex = i * hexPerPixel;
+                if (startIndex + hexPerPixel <= hexString.Length &&
+                    hexString.Substring(startIndex, hexPerPixel) != blackHex)
+                {
+                    lastNonBlack = i;
+                    break;
+                }
+            }
+
+            if (lastNonBlack == -1) return "";
+            return hexString.Substring(0, (lastNonBlack + 1) * hexPerPixel);
         }
     }
 }

@@ -249,7 +249,7 @@ namespace LEDControl
             return optimizedHex;
         }
 
-        public string GenerateDataString(int stripIndex, StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public string GenerateDataString(int stripIndex, StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             if (stripIndex < 0 || stripIndex >= stripManager.totalLEDsPerStrip.Count)
             {
@@ -281,19 +281,19 @@ namespace LEDControl
                 DisplayMode.SegmentColor => GetHexDataForSegmentColors(stripIndex, dataMode, stripManager, colorProcessor),
                 DisplayMode.SpeedSynthMode when dataMode is DataMode.RGB or DataMode.RGBW
                     => effectsManager.GetHexDataForSpeedSynthMode(stripIndex, dataMode, stripManager, colorProcessor),
-                DisplayMode.SunMovement => effectsManager.GetHexDataForSunMovement(stripIndex, dataMode, stripManager, colorProcessor),
+                DisplayMode.SunMovement => SunManager.GetHexDataForSunMovement(stripIndex, dataMode, stripManager, colorProcessor),
                 _ => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor)
             };
 
             return string.IsNullOrEmpty(colorData) ? "" : $"{prefix}{colorData}\r\n";
         }
 
-        public string GenerateAllDataString(StripDataManager stripManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public string GenerateAllDataString(StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; i++)
             {
-                string stripData = GenerateDataString(i, stripManager, effectsManager, colorProcessor, appState);
+                string stripData = GenerateDataString(i, stripManager, SunManager, effectsManager, colorProcessor, appState);
                 if (!string.IsNullOrEmpty(stripData))
                     sb.Append(stripData);
             }
