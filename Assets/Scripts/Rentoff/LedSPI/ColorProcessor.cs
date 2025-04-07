@@ -9,8 +9,9 @@ namespace LEDControl
 
         private void Awake()
         {
-            // Инициализация гамма-таблицы будет выполняться по требованию.
+            // Инициализация гамма-таблицы не нужна здесь, так как она будет создаваться для каждой ленты
         }
+
 
         private void InitializeGammaTable(float gammaValue)
         {
@@ -39,19 +40,19 @@ namespace LEDControl
             return monoColorByte.ToString("X2");
         }
 
-        public string ColorToHexRGB(Color32 color, float brightness, float gammaValue, bool enableGammaCorrection)
+        public string ColorToHexRGB(Color32 monoColor, Color32 color, Color32 color2, float brightness, float gammaValue, bool enableGammaCorrection)
         {
             byte r = ApplyGammaCorrection((byte)Mathf.Clamp(color.r * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
-            byte g = ApplyGammaCorrection((byte)Mathf.Clamp(color.g * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
-            byte b = ApplyGammaCorrection((byte)Mathf.Clamp(color.b * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            byte g = ApplyGammaCorrection((byte)Mathf.Clamp(color2.g * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
+            byte b = ApplyGammaCorrection((byte)Mathf.Clamp(monoColor.b * brightness, 0f, 255f), gammaValue, enableGammaCorrection);
             return r.ToString("X2") + g.ToString("X2") + b.ToString("X2");
         }
 
-        public string ColorToHexRGBW(Color32 color, float brightness, float gammaValue, bool enableGammaCorrection)
+        public string ColorToHexRGBW(Color32 monoColor, Color32 color, Color32 color2, float brightness, float gammaValue, bool enableGammaCorrection)
         {
             byte r = color.r;
-            byte g = color.g;
-            byte b = color.b;
+            byte g = color2.g;
+            byte b = monoColor.b;
             byte w = (byte)Mathf.Min(Mathf.Min(r, g), b);
 
             r = (byte)Mathf.Max(0, r - w);

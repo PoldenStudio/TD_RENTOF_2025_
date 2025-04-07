@@ -1930,6 +1930,7 @@ MonoBehaviour:
   MultiplySpeed: 1
   dataSender: {fileID: 770569962}
   stripDataManager: {fileID: 770569964}
+  colorProcessor: {fileID: 0}
 --- !u!114 &770569964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1942,11 +1943,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90212b2feae384689065f9fe14050f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalLEDsPerStrip: 820000008200000034020000a0000000
+  totalLEDsPerStrip: 820000008200000082000000a0000000
   ledsPerSegment: 1
-  stripEnabled: 01010001
+  stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 03000000030000000000000000000000
+  currentDisplayModes: 03000000030000000300000000000000
   currentSunModes: 00000000010000000000000000000000
   stripSettings: []
   monochromeStripSettings:
@@ -2033,6 +2034,7 @@ MonoBehaviour:
   currentSpeedRaw: 1
   MultiplySpeed: 1
   stripDataManager: {fileID: 770569964}
+  colorProcessor: {fileID: 770569961}
 --- !u!1 &920054923
 GameObject:
   m_ObjectHideFlags: 0

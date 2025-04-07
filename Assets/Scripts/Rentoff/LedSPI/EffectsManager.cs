@@ -40,7 +40,7 @@ namespace LEDControl
         private Dictionary<int, float> lastTouchTimes = new();
 
         [SerializeField] private StripDataManager stripDataManager;
-
+        [SerializeField] private ColorProcessor colorProcessor;
 
         public void UpdateSpeed(float speed)
         {
@@ -237,7 +237,7 @@ namespace LEDControl
                 }
             }
 
-            string result = GenerateOptimizedHexString(pixelColors, mode, colorProcessor, 1f, stripGamma, stripGammaEnabled, hexPerPixel);
+            string result = GenerateOptimizedHexString(pixelColors, mode, colorProcessor, stripIndex);
             hexCache[stripIndex] = result;
             lastUpdateTime[stripIndex] = Time.time;
             return result;
@@ -273,26 +273,31 @@ namespace LEDControl
         }
 
 
-        private string GenerateOptimizedHexString(Color32[] pixelColors, DataMode mode, ColorProcessor colorProcessor, float brightness, float gamma, bool gammaEnabled, int hexPerPixel)
+        private string GenerateOptimizedHexString(Color32[] pixelColors, DataMode mode, ColorProcessor colorProcessor, int stripIndex)
         {
             int totalLEDs = pixelColors.Length;
+            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
             StringBuilder sb = GetStringBuilder(totalLEDs * hexPerPixel);
+
+            float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
+            float stripGamma = stripDataManager.GetStripGamma(stripIndex);
+            bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
 
             for (int i = 0; i < totalLEDs; ++i)
             {
                 Color32 pixelColor = pixelColors[i];
                 string hexColor = mode switch
                 {
-                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(pixelColor, brightness, gamma, gammaEnabled),
-                    DataMode.RGB => colorProcessor.ColorToHexRGB(pixelColor, brightness, gamma, gammaEnabled),
-                    _ => colorProcessor.ColorToHexMonochrome(pixelColor, brightness, gamma, gammaEnabled),
+                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 
+                    DataMode.RGB => colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled), 
+                    _ => colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
                 };
                 sb.Append(hexColor);
             }
             return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
         }
 
-         public string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
+        public string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
         {
             if (string.IsNullOrEmpty(hexString)) return "";
             if (hexPerPixel <= 0) return hexString;

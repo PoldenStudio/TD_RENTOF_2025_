@@ -85,7 +85,7 @@ namespace LEDControl
                     }
                     else
                     {
-                        Thread.Sleep(1); 
+                        Thread.Sleep(1);
                     }
                 }
                 catch (Exception e)
@@ -194,8 +194,8 @@ namespace LEDControl
             string pixelHex = mode switch
             {
                 DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
-                DataMode.RGB => colorProcessor.ColorToHexRGB(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
-                DataMode.RGBW => colorProcessor.ColorToHexRGBW(globalColor, stripBrightness, stripGamma, stripGammaEnabled),
+                DataMode.RGB => colorProcessor.ColorToHexRGB(globalColor, globalColor, globalColor, stripBrightness, stripGamma, stripGammaEnabled),
+                DataMode.RGBW => colorProcessor.ColorToHexRGBW(globalColor, globalColor, globalColor, stripBrightness, stripGamma, stripGammaEnabled),
                 _ => ""
             };
 
@@ -231,8 +231,8 @@ namespace LEDControl
                 string pixelHex = mode switch
                 {
                     DataMode.Monochrome1Color or DataMode.Monochrome2Color => colorProcessor.ColorToHexMonochrome(color, stripBrightness, stripGamma, stripGammaEnabled),
-                    DataMode.RGB => colorProcessor.ColorToHexRGB(color, stripBrightness, stripGamma, stripGammaEnabled),
-                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(color, stripBrightness, stripGamma, stripGammaEnabled),
+                    DataMode.RGB => colorProcessor.ColorToHexRGB(color, color, color, stripBrightness, stripGamma, stripGammaEnabled),
+                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(color, color, color, stripBrightness, stripGamma, stripGammaEnabled),
                     _ => ""
                 };
 
@@ -260,22 +260,23 @@ namespace LEDControl
 
             DataMode dataMode = stripManager.currentDataModes[stripIndex];
             DisplayMode displayMode = stripManager.currentDisplayModes[stripIndex];
-            
+
 
             if (appState == AppState.Idle && displayMode == DisplayMode.SpeedSynthMode)
             {
                 return "";
             }
 
-            if (appState == AppState.Transition) {
+            if (appState == AppState.Transition)
+            {
 
                 if (transfer == true)
                 {
                     transfer = false;
-                for (int i = 0; i < 4; i++)
-                {
-                    serialPort.Write(i + ":clear\r\n");
-                }
+                    for (int i = 0; i < 4; i++)
+                    {
+                        serialPort.Write(i + ":clear\r\n");
+                    }
 
                 }
             }
@@ -284,7 +285,7 @@ namespace LEDControl
                 transfer = true;
             }
 
-                string prefix = GetPrefixForDataMode(dataMode);
+            string prefix = GetPrefixForDataMode(dataMode);
             string colorData = displayMode switch
             {
                 DisplayMode.GlobalColor => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor),
