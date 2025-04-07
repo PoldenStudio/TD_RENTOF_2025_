@@ -9,9 +9,8 @@ namespace LEDControl
 
         private void Awake()
         {
-            // Инициализация гамма-таблицы не нужна здесь, так как она будет создаваться для каждой ленты
+            // Инициализация гамма-таблицы будет выполняться по требованию.
         }
-
 
         private void InitializeGammaTable(float gammaValue)
         {

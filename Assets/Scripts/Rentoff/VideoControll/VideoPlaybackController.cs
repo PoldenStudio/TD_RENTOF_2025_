@@ -624,11 +624,15 @@ public class VideoPlaybackController : MonoBehaviour
             _heldPanelIndex = -1;
             _isPanelHoldActive = false;
             _mediaPlayer.PlaybackSpeed = 1f;
+
+            _accumulatedTimeDelta = 0f;
+            _effectStartTime = 0f;
+
             _mediaPlayer.SeekToTime(0f);
             _mediaPlayer.SeekToFrame(0);
             _mediaPlayer.Play();
             ClearSwipeHistory();
-            Debug.Log("[VideoPlaybackController] Скорость видео 1");
+            Debug.Log("[VideoPlaybackController] Скорость видео 1, воспроизведение с начала");
         }
     }
 
@@ -658,8 +662,12 @@ public class VideoPlaybackController : MonoBehaviour
         if (_mediaPlayer != null)
         {
             _mediaPlayer.PlaybackSpeed = 1f;
+            _mediaPlayer.SeekToTime(0f);
+            _effectStartTime = 0f;
+            _accumulatedTimeDelta = 0f;
         }
     }
+
 
     private void OnValidate()
     {
