@@ -6,8 +6,8 @@ public class CometController : MonoBehaviour
 {
     [SerializeField] private RectTransform cometRect;
     [SerializeField] private float travelDuration = 1f;
-    [SerializeField] private Vector2 startOffset = new Vector2(-0.5f, 0f); // Relative to left edge
-    [SerializeField] private Vector2 endOffset = new Vector2(0.5f, 0f);    // Relative to right edge
+    [SerializeField] private Vector2 startOffset = new(-0.5f, 0f);
+    [SerializeField] private Vector2 endOffset = new(0.5f, 0f);    
     private Coroutine _travelCoroutine;
     private Action _onCometFinishedCallback;
 
@@ -31,9 +31,6 @@ public class CometController : MonoBehaviour
         //gameObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Starts the comet travel animation.
-    /// </summary>
     public Coroutine StartCometTravel(Action onFinished = null)
     {
         if (_travelCoroutine != null)
@@ -77,17 +74,12 @@ public class CometController : MonoBehaviour
 
         Debug.Log("[CometController] Comet animation completed");
 
-        // Invoke the callback before hiding the comet
         _onCometFinishedCallback?.Invoke();
         _onCometFinishedCallback = null;
 
-        // Hide the comet after animation
         //gameObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Resets the comet position to the starting position.
-    /// </summary>
     public void ResetComet()
     {
         if (_travelCoroutine != null)

@@ -8,8 +8,6 @@ namespace InitializationFramework
 {
     public class InitializePlayers : MonoBehaviour, IInitializable
     {
-        [SerializeField]
-        GlobalSettings gs;
 
         [SerializeField]
         List<Media> players;
@@ -18,13 +16,14 @@ namespace InitializationFramework
         private string _defaultModeMovieName;
         //старое видео при начале корутины дожно останавливаться, а новое должно начинаться с нуля
         private bool _isIdleMode = true;
+        public Settings settings;
 
         public IEnumerator Initialize(System.Action<Object> OnFinished)
         {
             gameObject.SetActive(true);
 
-            _idleModeMovieName = gs.contentSettings.idleModeMovieName;
-            _defaultModeMovieName = gs.contentSettings.defaultModeMovieName;
+            _idleModeMovieName = settings.idleModeMovieName;
+            _defaultModeMovieName = settings.defaultModeMovieName;
 
             string initialMoviePath = _idleModeMovieName;
 

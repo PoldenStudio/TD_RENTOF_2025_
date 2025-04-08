@@ -20,6 +20,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private SPItouchPanel spiTouchPanel;
     [SerializeField] private EffectsManager effectsManager;
     [SerializeField] private SunManager sunManager;
+    [SerializeField] private SPItouchPanel touchPanel;
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 1f;
@@ -29,13 +30,6 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float soundFadeDuration = 1f;
     [SerializeField] private float cometDelayInTransition = 1f;
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
-
-    [SerializeField] private float transitionToIdleDelay = 10f;
-    [SerializeField] private float sunTransitionDuration = 1.5f;
-    [SerializeField] private SPItouchPanel touchPanel;
-
-    private float idleStartTime;
-    private float lastInteractionTime;
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
@@ -126,6 +120,7 @@ public class StateManager : MonoBehaviour
 
         yield return videoPlayer.SwitchToDefaultMode();
         soundManager?.StartFadeIn(soundFadeDuration);
+        SetState(AppState.Active, CurrentState);
 
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
@@ -133,7 +128,6 @@ public class StateManager : MonoBehaviour
 
         yield return new WaitForSeconds(swipeReactivateDelay);
 
-        SetState(AppState.Active, CurrentState);
         sunManager.SetAppState(AppState.Active);
         playbackController.SetSwipeControlEnabled(true);
         Debug.Log("[StateManager] Transition to Active mode completed.");
@@ -159,6 +153,7 @@ public class StateManager : MonoBehaviour
 
         soundManager?.StartFadeOut(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
+        yield return null;
 
         SetState(AppState.Idle, CurrentState);
         CompleteTransitionToIdle();
@@ -166,8 +161,7 @@ public class StateManager : MonoBehaviour
 
     private void CompleteTransitionToIdle()
     {
-        bool fadeCompleted = false;
-        curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
+        curtainController.FadeCurtain(false, () => { });
 
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();

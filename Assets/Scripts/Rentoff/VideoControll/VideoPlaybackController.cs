@@ -17,9 +17,6 @@ public class VideoPlaybackController : MonoBehaviour
         HoldAccelerating
     }
 
-    [SerializeField] private bool restoreSpeedAfterHold = false;
-    [SerializeField] private bool returnToZeroOnRelease = true;
-
     private PlaybackState _state = PlaybackState.Normal;
     private PlaybackState _previousState;
     private IMediaPlayer _mediaPlayer;
@@ -56,7 +53,6 @@ public class VideoPlaybackController : MonoBehaviour
     private const float maxTargetSpeed = 13f;
     private const float minSlowSpeedAmount = 0.25f;
     private const float skipTime = 0.25f;
-    private const float startfromTime = 0.3f;
     private bool _isReversePlayback = false;
 
     private const float MAX_REVERSE_SPEED = -13f;
@@ -608,34 +604,13 @@ public class VideoPlaybackController : MonoBehaviour
     {
         if (newState == AppState.Idle)
         {
-            ResetToIdleMode();
+            ResetState();
         }
-    }
-
-    private void ResetToIdleMode()
-    {
-        if (_mediaPlayer != null)
+        if (newState == AppState.Active)
         {
-            _currentSpeed = 1f;
-            _immediateTargetSpeed = 1f;
-            _finalTargetSpeed = 1f;
-            _isReversePlayback = false;
-            _state = PlaybackState.Normal;
-            _heldPanelIndex = -1;
-            _isPanelHoldActive = false;
-            _mediaPlayer.PlaybackSpeed = 1f;
-
-            _accumulatedTimeDelta = 0f;
-            _effectStartTime = 0f;
-
-            _mediaPlayer.SeekToTime(0f);
-            _mediaPlayer.SeekToFrame(0);
-            _mediaPlayer.Play();
-            ClearSwipeHistory();
-            Debug.Log("[VideoPlaybackController] Скорость видео 1, воспроизведение с начала");
+            ResetState();
         }
     }
-
 
     void OnEnable()
     {

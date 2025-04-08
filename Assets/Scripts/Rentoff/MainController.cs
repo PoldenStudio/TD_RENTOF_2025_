@@ -22,7 +22,6 @@ public class MainController : MonoBehaviour
 
     [Header("Demolition Media")]
     [SerializeField] private Media _demolitionMedia;
-    [SerializeField] private string _mediaUrl = "test_Malva.mp4";
 
     private IMediaPlayer _mediaPlayer;
     private InputReader _activeInputReader;
@@ -32,7 +31,7 @@ public class MainController : MonoBehaviour
     [SerializeField] private int maxRestartAttempts = 3; 
     [SerializeField] private float restartInterval = 5f;     
     private int[] _portRestartAttempts;                      
-    private Queue<int> _restartQueue = new Queue<int>();     
+    private Queue<int> _restartQueue = new();     
     private bool _isHandlingRestarts = false;                
 
     private void Awake()
@@ -111,15 +110,6 @@ public class MainController : MonoBehaviour
 
         if (panelGridVisualizer != null)
             panelGridVisualizer.Init(Settings.Instance.rows, Settings.Instance.cols, Settings.Instance.segments);
-
-        string mediaPath = System.IO.Path.Combine(Application.streamingAssetsPath, _mediaUrl);
-        Debug.Log("[MainController] Opening media at path: " + mediaPath);
-
-        if (!_mediaPlayer.Open(mediaPath))
-        {
-            Debug.LogError("[MainController] Failed to open media: " + _mediaUrl);
-            return;
-        }
 
         if (stateManager != null)
         {

@@ -243,6 +243,14 @@ namespace LEDControl
             return result;
         }
 
+        private StringBuilder GetStringBuilderForStrip(int stripIndex)
+        {
+            if (!stringBuilderCache.ContainsKey(stripIndex))
+            {
+                stringBuilderCache[stripIndex] = new StringBuilder();
+            }
+            return stringBuilderCache[stripIndex];
+        }
 
         private Color32[] GetPixelBuffer(int stripIndex, int totalLEDs, Color32 defaultColor)
         {

@@ -4,6 +4,10 @@ public class Settings : MonoBehaviour
 {
     public static Settings Instance { get; private set; }
 
+    [Header("Video Settings")]
+    public string defaultModeMovieName = "";
+    public string idleModeMovieName = "";
+
     [Header("Grid Settings")]
     public int rows = 5;
     public int cols = 5;

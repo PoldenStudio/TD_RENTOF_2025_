@@ -1,4 +1,3 @@
-// IMediaPlayer.cs
 using DemolitionStudios.DemolitionMedia;
 
 public interface IMediaPlayer

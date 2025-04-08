@@ -16,6 +16,7 @@ namespace LEDControl
         [Header("DMX Settings")]
         public string comPortName = "COM3";
         public int baudRate = 250000;
+        [SerializeField] private bool autoCalculateOffsets = false;
 
         [Header("Frame Rate Control")]
         public float baseFramesPerSecond = 120f;
@@ -23,6 +24,12 @@ namespace LEDControl
         private int currentFrameSkipCounter = 0;
         private float currentSpeed = 1f;
 
+
+        [Header("Debug Options")]
+        [SerializeField] private Text debugText;
+        public bool enableFrameDebug = false;
+
+        [Header("Brightness")]
         [Range(0f, 3f)]
         public float globalBrightness = 1.0f;
         private float defaultGlobalBrightness;
@@ -36,11 +43,6 @@ namespace LEDControl
         public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode }
 
         [SerializeField] private List<LEDStrip> ledStrips = new();
-        [SerializeField] private Text debugText;
-        [SerializeField] private bool autoCalculateOffsets = false;
-
-        [Header("Debug Options")]
-        public bool enableFrameDebug = false;
 
         [Header("Kinetic Control Settings")]
         [SerializeField] private AnimationCurve kineticControlCurve;
@@ -52,6 +54,9 @@ namespace LEDControl
         [Range(1, 512)] public int secondKineticHeightDmxChannel1 = 3;
         [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
 
+        public bool idleMode = true;
+        public bool wasIdled = false;
+
         private int relocatedSecondKineticHeightChannel1;
         private int relocatedSecondKineticHeightChannel2;
 
@@ -60,18 +65,15 @@ namespace LEDControl
 
         private byte[] FrameBuffer = new byte[513];
 
-        public bool idleMode = true;
-
         private IMediaPlayer mediaPlayer;
         private float kineticStartTime = 0f;
-        private bool isKineticPaused = false; // Added to track kinetic pause state
 
         private int totalLedChannels = 0;
         private int relocatedKineticHeightChannel1;
         private int relocatedKineticHeightChannel2;
         private bool kineticChannelsRelocated = false;
+
         private bool confirmTime;
-        public bool wasIdled = false;
         public float DefaultGlobalBrightness => defaultGlobalBrightness;
 
         private int kineticTargetIndex = 0;

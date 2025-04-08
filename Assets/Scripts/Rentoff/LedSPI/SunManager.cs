@@ -652,15 +652,6 @@ namespace LEDControl
             return HashCode.Combine(stripIndex, appState, sunMode);
         }
 
-        private StringBuilder GetStringBuilderForStrip(int stripIndex)
-        {
-            if (!stringBuilderCache.ContainsKey(stripIndex))
-            {
-                stringBuilderCache[stripIndex] = new StringBuilder();
-            }
-            return stringBuilderCache[stripIndex];
-        }
-
         public void OnSunSettingsChanged()
         {
             InvalidateCache(CacheInvalidationReason.SunSettingsChange);
