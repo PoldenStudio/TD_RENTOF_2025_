@@ -20,7 +20,6 @@ public class SerialInputReader : InputReader
     [SerializeField] private bool MultipleTouchPerSegmentAsHexBitmask = false;
 
     [Header("References")]
-    [SerializeField] private CurtainController curtainController;
     [SerializeField] private SwipeDetector swipeDetector;
     [SerializeField] private StateManager stateManager;
 
@@ -83,13 +82,6 @@ public class SerialInputReader : InputReader
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Idle)
-            {
-                curtainController.AddSwipeProgress(0.3f);
-            }
-        }
 
         if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Active && (Time.time - _lastNonZeroTouchTime > idleTimeout))
         {

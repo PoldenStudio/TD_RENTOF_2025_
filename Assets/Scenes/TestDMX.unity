@@ -448,13 +448,9 @@ MonoBehaviour:
   initOrder:
   - {fileID: 42588766}
   - {fileID: 1562741570}
-  - {fileID: 174591558}
-  - {fileID: 770569957}
   - {fileID: 1597980940}
   - {fileID: 31414344}
-  - {fileID: 1299263583}
   - {fileID: 1213853303}
-  - {fileID: 1012292523}
   - {fileID: 1585652905}
   - {fileID: 280193377}
   deinitOrder:
@@ -593,12 +589,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   initOnEnable: 1
   initOrder:
-  - {fileID: 2002335496}
   - {fileID: 1712025731}
   - {fileID: 1631245014}
   - {fileID: 427341739}
   - {fileID: 4009982808809277425}
-  - {fileID: 1549342324}
   deinitOrder:
   - {fileID: 2123512495}
   - {fileID: 1468392492163732497}
@@ -1380,7 +1374,7 @@ MonoBehaviour:
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 03000000030000000300000002000000
-  currentSunModes: 00000000000000000000000000000000
+  currentSunModes: 01000000010000000000000000000000
   stripSettings: []
   monochromeStripSettings:
   - globalColor:
@@ -1424,11 +1418,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   warmSunSettingsIdle:
-    pixelCount: 10
-    baseCycleLength: 241
-    activeIntervals: []
-    brightnessMultiplier: 1
-    gaussianSpreadFactor: 3
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 60
+      endTime: 140
+    brightnessMultiplier: 2
+    gaussianSpreadFactor: 1
     centerColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -1436,11 +1432,13 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4286611584
   coldSunSettingsIdle:
-    pixelCount: 10
-    baseCycleLength: 241
-    activeIntervals: []
-    brightnessMultiplier: 1
-    gaussianSpreadFactor: 3
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 0
+      endTime: 43
+    brightnessMultiplier: 2
+    gaussianSpreadFactor: 1
     centerColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -1448,11 +1446,15 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4286611584
   warmSunSettingsActive:
-    pixelCount: 10
-    baseCycleLength: 241
-    activeIntervals: []
-    brightnessMultiplier: 1
-    gaussianSpreadFactor: 3
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 90
+      endTime: 120
+    - startTime: 138
+      endTime: 158
+    brightnessMultiplier: 2
+    gaussianSpreadFactor: 1
     centerColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -1460,11 +1462,15 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4286611584
   coldSunSettingsActive:
-    pixelCount: 10
-    baseCycleLength: 241
-    activeIntervals: []
-    brightnessMultiplier: 1
-    gaussianSpreadFactor: 3
+    pixelCount: 15
+    baseCycleLength: 180
+    activeIntervals:
+    - startTime: 35
+      endTime: 80
+    - startTime: 173
+      endTime: 199
+    brightnessMultiplier: 2
+    gaussianSpreadFactor: 1
     centerColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -1472,7 +1478,7 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4286611584
   sunFadeDuration: 1
-  dataSender: {fileID: 1299263587}
+  dataSender: {fileID: 0}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData
   currentSpeedRaw: 1

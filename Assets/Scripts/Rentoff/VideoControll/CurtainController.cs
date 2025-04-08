@@ -12,7 +12,7 @@ public class CurtainController : MonoBehaviour
     [Header("Animation Settings")]
     [SerializeField] private float slideDuration = 2f;
     [SerializeField] private float fadeDuration = 0.5f;
-    [SerializeField] private float slideSpeed = 15f; // Units of progress per second
+    [SerializeField] private float slideSpeed = 15f;
 
     [Tooltip("True => instant snapping, False => uses a smooth Easing for motion.")]
     public bool instantMove = false;
@@ -23,8 +23,10 @@ public class CurtainController : MonoBehaviour
     [SerializeField] private float inactivityCloseDelay = 4f;
 
     [Header("Swipe Logic")]
-    [Tooltip("How many consecutive swipes in the opposite direction are treated as continuing the current direction.")]
+    [Tooltip("How many consecutive swipes in the opposite direction are treated as continuing the current direction")]
     [SerializeField] private int oppositeSwipeTolerance = 1;
+
+    [SerializeField] private StateManager stateManager;
 
     private readonly float _finalApproachDelay = 0.3f;
 
@@ -65,6 +67,14 @@ public class CurtainController : MonoBehaviour
     private void Update()
     {
         HandleInactivity();
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Idle)
+            {
+                AddSwipeProgress(0.3f);
+            }
+        }
     }
 
     private void HandleInactivity()

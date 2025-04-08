@@ -175,7 +175,7 @@ MonoBehaviour:
   swipeProgressMultiplier: 3
   inactivityCloseDelay: 4
   oppositeSwipeTolerance: 2
-  stateManager: {fileID: 1213853305}
+  stateManager: {fileID: 0}
 --- !u!114 &31414347
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -449,12 +449,8 @@ MonoBehaviour:
   - {fileID: 42588766}
   - {fileID: 1562741570}
   - {fileID: 174591558}
-  - {fileID: 770569957}
-  - {fileID: 1597980940}
   - {fileID: 31414344}
-  - {fileID: 1299263583}
   - {fileID: 1213853303}
-  - {fileID: 1012292523}
   - {fileID: 1585652905}
   - {fileID: 280193377}
   deinitOrder:
@@ -598,7 +594,6 @@ MonoBehaviour:
   - {fileID: 1631245014}
   - {fileID: 427341739}
   - {fileID: 4009982808809277425}
-  - {fileID: 1549342324}
   deinitOrder:
   - {fileID: 2123512495}
   - {fileID: 1468392492163732497}
