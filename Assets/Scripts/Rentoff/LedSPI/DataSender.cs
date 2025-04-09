@@ -289,7 +289,7 @@ namespace LEDControl
             string colorData = displayMode switch
             {
                 DisplayMode.GlobalColor => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor),
-                DisplayMode.SegmentColor => GetHexDataForSegmentColors(stripIndex, dataMode, stripManager, colorProcessor),
+                DisplayMode.SegmentColors => GetHexDataForSegmentColors(stripIndex, dataMode, stripManager, colorProcessor),
                 DisplayMode.SpeedSynthMode when dataMode is DataMode.RGB or DataMode.RGBW
                     => effectsManager.GetHexDataForSpeedSynthMode(stripIndex, dataMode, stripManager, colorProcessor),
                 DisplayMode.SunMovement => SunManager.GetHexDataForSunMovement(stripIndex, dataMode, stripManager, colorProcessor),

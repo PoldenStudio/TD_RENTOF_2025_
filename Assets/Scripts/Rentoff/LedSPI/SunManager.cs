@@ -11,12 +11,8 @@ namespace LEDControl
     public class SunManager : MonoBehaviour
     {
         [Header("Sun Movement Settings")]
-        [Header("Idle")]
-        public SunMovementSettings warmSunSettingsIdle = new();
-        public SunMovementSettings coldSunSettingsIdle = new();
-        [Header("Active")]
-        public SunMovementSettings warmSunSettingsActive = new();
-        public SunMovementSettings coldSunSettingsActive = new();
+        public SunMovementSettings idleSunSettings = new();
+        public SunMovementSettings activeSunSettings = new();
 
         [Header("Transition Settings")]
         public float sunFadeDuration = 1.0f;
@@ -59,11 +55,13 @@ namespace LEDControl
             Cold
         }
 
+
         [Serializable]
         public struct TimeInterval
         {
             public float startTime;
             public float endTime;
+            public SunMode sunMode; // Warm или Cold
         }
 
         [Serializable]
@@ -71,23 +69,13 @@ namespace LEDControl
         {
             [Tooltip("Total number of LEDs the sun occupies at its base brightness.")]
             public int pixelCount = 10;
-
             public float baseCycleLength = 241f;
-
-            public List<TimeInterval> activeIntervals = new();
-
+            public List<TimeInterval> intervals = new(); // Интервалы с SunMode
             [Tooltip("Global brightness multiplier for this sun effect.")]
             public float brightnessMultiplier = 1f;
-
             [Tooltip("Controls the blurriness of the sun edges. Higher values = more blurry edges.")]
             [Range(1f, 5f)]
             public float gaussianSpreadFactor = 3f;
-
-            [Tooltip("Color of the sun in the center (brightest part).")]
-            public Color32 centerColor = Color.white;
-
-            [Tooltip("Color of the sun at the edges (dimmest part).")]
-            public Color32 edgeColor = new Color32(128, 128, 128, 255);
 
             public override string ToString()
             {
@@ -299,10 +287,8 @@ namespace LEDControl
 
             BakedSunStripData stripData = new BakedSunStripData { stripIndex = stripIndex };
 
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(SunMode.Warm, warmSunSettingsIdle, StateManager.AppState.Idle, totalLEDs, hexPerPixel, dataMode, blackHexValue));
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(SunMode.Cold, coldSunSettingsIdle, StateManager.AppState.Idle, totalLEDs, hexPerPixel, dataMode, blackHexValue));
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(SunMode.Warm, warmSunSettingsActive, StateManager.AppState.Active, totalLEDs, hexPerPixel, dataMode, blackHexValue));
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(SunMode.Cold, coldSunSettingsActive, StateManager.AppState.Active, totalLEDs, hexPerPixel, dataMode, blackHexValue));
+            stripData.stateData.Add(PreBakeSunDataForStateAndMode(stripIndex, StateManager.AppState.Idle, totalLEDs, hexPerPixel, dataMode, blackHexValue, idleSunSettings));
+            stripData.stateData.Add(PreBakeSunDataForStateAndMode(stripIndex, StateManager.AppState.Active, totalLEDs, hexPerPixel, dataMode, blackHexValue, activeSunSettings));
 
             stripData.stateData.RemoveAll(sd => sd.hexFrames == null || sd.hexFrames.Count == 0);
 
@@ -310,49 +296,27 @@ namespace LEDControl
             return stripData;
         }
 
-        private void UpdateSunFade()
-        {
-            if (_isSunFading)
-            {
-                float elapsed = Time.time - _sunFadeStartTime;
-                _currentSunFadeFactor = Mathf.Clamp01(1f - (elapsed / _sunFadeDuration));
-
-                if (_currentSunFadeFactor <= 0f)
-                {
-                    _isSunFading = false;
-                    _currentSunFadeFactor = 1f;
-
-                    _currentAppState = _targetAppState;
-
-                    ResetSunMovementPhase();
-                    InvalidateCache(CacheInvalidationReason.AppStateChange);
-                }
-
-                ClearSunCache();
-            }
-        }
-
         private BakedSunStateData PreBakeSunDataForStateAndMode(
-            SunMode sunMode,
-            SunMovementSettings settings,
+            int stripIndex,
             StateManager.AppState appState,
             int totalLEDs,
             int hexPerPixel,
             DataMode dataMode,
-            string blackHexValue)
+            string blackHexValue,
+            SunMovementSettings settingsRef)
         {
-            int stateKey = GenerateStateKey(appState, sunMode);
+            int stateKey = GenerateStateKey(appState);
             var stateData = new BakedSunStateData { stateKey = stateKey };
 
-            if (settings == null || settings.baseCycleLength <= 0f)
+            if (settingsRef == null || settingsRef.baseCycleLength <= 0f)
             {
-                Debug.LogWarning($"Skipping bake for state {appState}, mode {sunMode}: Invalid settings or cycle length.");
+                Debug.LogWarning($"Skipping bake for state {appState}: Invalid settings or cycle length.");
                 return stateData;
             }
 
-            Debug.Log($"Baking state {appState}, mode {sunMode}, key {stateKey} for {dataMode}...");
+            Debug.Log($"Baking state {appState}, key {stateKey} for strip {stripIndex}...");
 
-            float totalCycleLength = settings.baseCycleLength;
+            float totalCycleLength = settingsRef.baseCycleLength;
             int frameCount = Mathf.Max(1, Mathf.CeilToInt(totalCycleLength * preBakeFrameRate));
             float frameDuration = totalCycleLength / frameCount;
 
@@ -370,90 +334,78 @@ namespace LEDControl
                 StringBuilder currentFrameHex = new StringBuilder(totalLEDs * hexPerPixel);
 
                 bool isActiveTime = false;
+                SunMode currentSunMode = SunMode.Warm; // По умолчанию Warm
 
-                if (settings.activeIntervals != null)
+                foreach (var interval in settingsRef.intervals)
                 {
-                    foreach (var interval in settings.activeIntervals)
+                    if (interval.endTime <= interval.startTime) continue;
+
+                    if (currentTime >= interval.startTime && currentTime < interval.endTime)
                     {
-                        if (interval.endTime <= interval.startTime) continue;
+                        isActiveTime = true;
+                        currentSunMode = interval.sunMode; // Определяем текущий SunMode из интервала
+                        float intervalDuration = interval.endTime - interval.startTime;
+                        float activeTime = currentTime - interval.startTime;
+                        float progress = Mathf.Clamp01(activeTime / intervalDuration);
 
-                        float adjustedStartTime = interval.startTime;
-                        float adjustedEndTime = interval.endTime;
+                        float sunRadius = Mathf.Max(1f, settingsRef.pixelCount) * 1f;
+                        float virtualLength = totalLEDs + 2 * sunRadius;
+                        float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
+                        float sigma = sunRadius / Mathf.Max(0.1f, settingsRef.gaussianSpreadFactor);
+                        float denominator = 2f * sigma * sigma;
+                        if (denominator <= 0f) denominator = 0.001f;
 
-                        if (currentTime >= adjustedStartTime && currentTime <= adjustedEndTime)
+                        for (int i = 0; i < totalLEDs; i++)
                         {
-                            isActiveTime = true;
-                            float intervalDuration = adjustedEndTime - adjustedStartTime;
-                            float activeTime = currentTime - adjustedStartTime;
-                            float progress = Mathf.Clamp01(activeTime / intervalDuration);
-
-                            float sunRadius = Mathf.Max(1f, settings.pixelCount) * 1f;
-                            float virtualLength = totalLEDs + 2 * sunRadius;
-                            float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
-                            float sigma = sunRadius / Mathf.Max(0.1f, settings.gaussianSpreadFactor);
-                            float denominator = 2f * sigma * sigma;
-                            if (denominator <= 0f) denominator = 0.001f;
-
-                            for (int i = 0; i < totalLEDs; i++)
-                            {
-                                float distance = Mathf.Abs(i - sunPositionContinuous);
-                                float brightnessFactor = Mathf.Exp(-(distance * distance) / denominator);
-
-                                // Interpolate between center and edge colors based on brightness factor
-                                Color32 interpolatedColor = InterpolateColor(settings.centerColor, settings.edgeColor, 1f - brightnessFactor);
-                                pixelColor.r = (byte)(interpolatedColor.r * brightnessFactor);
-                                pixelColor.g = (byte)(interpolatedColor.g * brightnessFactor);
-                                pixelColor.b = (byte)(interpolatedColor.b * brightnessFactor);
-
-                                string pixelHex = "";
-
-                                float stripBrightness = 1f;
-                                float stripGamma = 2.2f;
-                                bool stripGammaEnabled = false;
-
-                                switch (dataMode)
-                                {
-                                    case DataMode.Monochrome1Color:
-                                    case DataMode.Monochrome2Color:
-                                        pixelHex = colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                                        break;
-                                    case DataMode.RGB:
-                                        pixelHex = colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                                        break;
-                                    case DataMode.RGBW:
-                                        pixelHex = colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                                        break;
-                                    default:
-                                        pixelHex = "00"; // Default to black monochrome
-                                        break;
-                                }
-                                currentFrameHex.Append(pixelHex);
-                            }
-                            break;
+                            float distance = Mathf.Abs(i - sunPositionContinuous);
+                            float brightnessFactor = Mathf.Exp(-(distance * distance) / denominator);
+                            byte brightnessValue = (byte)Mathf.Clamp(255f * brightnessFactor, 0, 255);
+                            pixelBrightness[i] = Math.Max(pixelBrightness[i], brightnessValue);
                         }
+                        break;
                     }
                 }
-                if (!isActiveTime)
+
+                StringBuilder frameHexBuilder = new StringBuilder(totalLEDs * hexPerPixel);
+                Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode); // Берем цвет солнца из StripDataManager
+
+                for (int i = 0; i < totalLEDs; i++)
                 {
-                    Array.Clear(pixelBrightness, 0, totalLEDs);
+                    pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
+                    pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
+                    pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
+
+                    string pixelHex = "";
+
+                    float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
+                    float stripGamma = stripDataManager.GetStripGamma(stripIndex);
+                    bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
+
+                    switch (dataMode)
+                    {
+                        case DataMode.Monochrome1Color:
+                        case DataMode.Monochrome2Color:
+                            pixelHex = colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                            break;
+                        case DataMode.RGB:
+                            pixelHex = colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                            break;
+                        case DataMode.RGBW:
+                            pixelHex = colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                            break;
+                        default:
+                            pixelHex = "00"; // Default to black monochrome
+                            break;
+                    }
+                    frameHexBuilder.Append(pixelHex);
                 }
 
-                string optimizedHex = OptimizeHexStringForBaking(currentFrameHex.ToString(), blackHexValue, hexPerPixel); // Optimize each frame
+                string optimizedHex = OptimizeHexStringForBaking(frameHexBuilder.ToString(), blackHexValue, hexPerPixel);
                 stateData.hexFrames.Add(optimizedHex);
             }
 
-            Debug.Log($"Baked state {appState}, mode {sunMode} for {dataMode}: {frameCount} frames, duration {frameDuration:F3}s");
+            Debug.Log($"Baked state {appState} for strip {stripIndex}: {frameCount} frames, duration {frameDuration:F3}s");
             return stateData;
-        }
-
-        private Color32 InterpolateColor(Color32 colorA, Color32 colorB, float t)
-        {
-            return new Color32(
-                (byte)Mathf.Lerp(colorA.r, colorB.r, t),
-                (byte)Mathf.Lerp(colorA.g, colorB.g, t),
-                (byte)Mathf.Lerp(colorA.b, colorB.b, t),
-                (byte)Mathf.Lerp(colorA.a, colorB.a, t)
-            );
         }
 
         private string OptimizeHexStringForBaking(string hexString, string blackHex, int hexPerPixel)
@@ -493,10 +445,11 @@ namespace LEDControl
                 {
                     _currentAppState = state;
                     ResetSunMovementPhase();
-                    InvalidateCache(CacheInvalidationReason.AppStateChange); // Invalidate on state change
+                    InvalidateCache(CacheInvalidationReason.AppStateChange);
                 }
             }
         }
+
         private void ResetSunMovementPhase()
         {
             _sunMovementPhase = 0f;
@@ -508,6 +461,28 @@ namespace LEDControl
             _sunFadeStartTime = Time.time;
             _isSunFading = true;
             _currentSunFadeFactor = 1f;
+        }
+
+        private void UpdateSunFade()
+        {
+            if (_isSunFading)
+            {
+                float elapsed = Time.time - _sunFadeStartTime;
+                _currentSunFadeFactor = Mathf.Clamp01(1f - (elapsed / _sunFadeDuration));
+
+                if (_currentSunFadeFactor <= 0f)
+                {
+                    _isSunFading = false;
+                    _currentSunFadeFactor = 1f;
+
+                    _currentAppState = _targetAppState;
+
+                    ResetSunMovementPhase();
+                    InvalidateCache(CacheInvalidationReason.AppStateChange);
+                }
+
+                ClearSunCache();
+            }
         }
 
         private void ClearSunCache()
@@ -529,7 +504,7 @@ namespace LEDControl
         {
             UpdateSunFade();
 
-            SunMovementSettings settingsRef = GetCurrentSunSettingsForRuntime(0, _currentAppState);
+            SunMovementSettings settingsRef = GetCurrentSunSettingsForRuntime(_currentAppState);
             if (settingsRef == null || settingsRef.baseCycleLength <= 0f) return;
 
             float currentSpeed = CurrentSunSpeed;
@@ -551,16 +526,12 @@ namespace LEDControl
             ClearSunCache();
         }
 
-        private SunMovementSettings GetCurrentSunSettingsForRuntime(int stripIndex, StateManager.AppState state)
+        private SunMovementSettings GetCurrentSunSettingsForRuntime(StateManager.AppState state)
         {
-            if (stripDataManager == null || stripIndex < 0 || stripIndex >= stripDataManager.currentSunModes.Count)
-                return null;
-
-            SunMode sunMode = stripDataManager.GetSunMode(stripIndex);
             return state switch
             {
-                StateManager.AppState.Idle => sunMode == SunMode.Warm ? warmSunSettingsIdle : coldSunSettingsIdle,
-                _ => sunMode == SunMode.Warm ? warmSunSettingsActive : coldSunSettingsActive
+                StateManager.AppState.Idle => idleSunSettings,
+                _ => activeSunSettings
             };
         }
 
@@ -595,7 +566,7 @@ namespace LEDControl
                 return "";
             }
 
-            int cacheKey = GetCacheKey(stripIndex, _currentAppState, stripManager.GetSunMode(stripIndex));
+            int cacheKey = GetCacheKey(stripIndex, _currentAppState);
 
             if (hexCache.TryGetValue(cacheKey, out string cachedHex) &&
                 lastUpdateTime.TryGetValue(cacheKey, out float lastUpdate) &&
@@ -606,7 +577,7 @@ namespace LEDControl
 
             if (stripIndex < 0 || stripIndex >= stripManager.currentSunModes.Count) return "";
             SunMode sunMode = stripManager.GetSunMode(stripIndex);
-            int stateKey = GenerateStateKey(_currentAppState, sunMode);
+            int stateKey = GenerateStateKey(_currentAppState);
 
             if (preloadedStateData.TryGetValue(stripIndex, out var stateInfoDict) &&
                 stateInfoDict.TryGetValue(stateKey, out BakedSunStateData stateData))
@@ -620,7 +591,7 @@ namespace LEDControl
                     return "";
                 }
 
-                SunMovementSettings currentSettings = GetCurrentSunSettingsForRuntime(stripIndex, _currentAppState);
+                SunMovementSettings currentSettings = GetCurrentSunSettingsForRuntime(_currentAppState);
                 if (currentSettings == null || currentSettings.baseCycleLength <= 0f) return "";
 
                 float currentCycleTime = _sunMovementPhase * currentSettings.baseCycleLength;
@@ -629,7 +600,6 @@ namespace LEDControl
 
                 string hexData = stateData.hexFrames[currentFrame];
 
-                // Cache the result
                 hexCache[cacheKey] = hexData;
                 lastUpdateTime[cacheKey] = Time.time;
 
@@ -642,14 +612,23 @@ namespace LEDControl
             }
         }
 
-        private int GenerateStateKey(StateManager.AppState state, SunMode sunMode)
+        private int GenerateStateKey(StateManager.AppState state)
         {
-            return ((int)state << 1) | (int)sunMode;
+            return (int)state; // Теперь ключ зависит только от AppState (Idle/Active)
         }
 
-        private int GetCacheKey(int stripIndex, StateManager.AppState appState, SunMode sunMode)
+        private int GetCacheKey(int stripIndex, StateManager.AppState appState)
         {
-            return HashCode.Combine(stripIndex, appState, sunMode);
+            return HashCode.Combine(stripIndex, appState);
+        }
+
+        private StringBuilder GetStringBuilderForStrip(int stripIndex)
+        {
+            if (!stringBuilderCache.ContainsKey(stripIndex))
+            {
+                stringBuilderCache[stripIndex] = new StringBuilder();
+            }
+            return stringBuilderCache[stripIndex];
         }
 
         public void OnSunSettingsChanged()
@@ -658,7 +637,6 @@ namespace LEDControl
         }
 
 #if UNITY_EDITOR
-
         [CustomEditor(typeof(SunManager))]
         public class SunManagerEditor : Editor
         {

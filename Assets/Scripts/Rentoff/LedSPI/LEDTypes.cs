@@ -7,9 +7,9 @@ namespace LEDControl
     public enum DisplayMode
     {
         GlobalColor,
-        SegmentColor,
         SpeedSynthMode,
-        SunMovement
+        SunMovement,
+        SegmentColors
     }
 
     public enum DataMode
