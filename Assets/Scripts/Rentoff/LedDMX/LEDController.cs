@@ -24,7 +24,6 @@ namespace LEDControl
         private int currentFrameSkipCounter = 0;
         private float currentSpeed = 1f;
 
-
         [Header("Debug Options")]
         [SerializeField] private Text debugText;
         public bool enableFrameDebug = false;
@@ -74,15 +73,16 @@ namespace LEDControl
         private bool kineticChannelsRelocated = false;
 
         private bool confirmTime;
+
         public float DefaultGlobalBrightness => defaultGlobalBrightness;
 
-        private int kineticTargetIndex = 0;
+        // Переменные для хранения текущих значений кинетики
         private float kineticCurrentValue = 0f;
-        private float kineticTargetValue = 0f;
-
-        private int secondKineticTargetIndex = 0;
         private float secondKineticCurrentValue = 0f;
-        private float secondKineticTargetValue = 0f;
+
+        private bool kineticPaused = false;
+        private float pausedKineticValue = 0f;
+        private float pausedSecondKineticValue = 0f;
 
         private void Awake()
         {
@@ -179,7 +179,7 @@ namespace LEDControl
 
         public void UpdateSynthParameters(float speed)
         {
-            if (currentSpeed != speed)
+            if (!Mathf.Approximately(currentSpeed, speed))
             {
                 currentSpeed = speed;
 
@@ -192,9 +192,12 @@ namespace LEDControl
                 else
                 {
                     kineticPaused = false;
+                    // При выходе из паузы сбрасываем время, чтобы избежать прыжка
+                    kineticStartTime = Time.time;
                 }
             }
         }
+
         private void HandleStateChanged(AppState newState)
         {
             Debug.Log("[LEDController] State changed to " + newState);
@@ -305,11 +308,6 @@ namespace LEDControl
             }
         }
 
-        private bool kineticPaused = false;
-        private float pausedKineticValue = 0f;
-        private float pausedSecondKineticValue = 0f;
-
-
         void UpdateKineticControl()
         {
             if (idleMode)
@@ -330,13 +328,13 @@ namespace LEDControl
             if (!confirmTime)
             {
                 videoLength = mediaPlayer.DurationSeconds;
+                // Если длительность недопустима – задаём значение по умолчанию
+                if (videoLength <= 0f)
+                    videoLength = 1f;
                 kineticStartTime = Time.time;
-
-                kineticTargetIndex = 0;
-                secondKineticTargetIndex = 0;
+                // Сбрасываем кинетические значения при старте
                 kineticCurrentValue = 0f;
                 secondKineticCurrentValue = 0f;
-
                 confirmTime = true;
             }
 
@@ -346,11 +344,19 @@ namespace LEDControl
                 return;
             }
 
+            // Вычисляем время с учётом currentSpeed и нормализуем по длительности видео для цикличности
             float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
-            float normalizedTime = (elapsedTime / videoLength) % 1f;
+            float normalizedTime = (elapsedTime % videoLength) / videoLength;
 
-            UpdateStepwiseKinetic(kineticControlCurve, ref kineticTargetIndex, ref kineticCurrentValue, ref kineticTargetValue, relocatedKineticHeightChannel1, relocatedKineticHeightChannel2, normalizedTime);
-            UpdateStepwiseKinetic(secondKineticControlCurve, ref secondKineticTargetIndex, ref secondKineticCurrentValue, ref secondKineticTargetValue, relocatedSecondKineticHeightChannel1, relocatedSecondKineticHeightChannel2, normalizedTime);
+            // Получаем новые значения из кривых от 0 до 1
+            float newKineticValue = kineticControlCurve.Evaluate(normalizedTime);
+            float newSecondKineticValue = secondKineticControlCurve.Evaluate(normalizedTime);
+
+            // Плавное приближение (сглаживание) текущих значений
+            kineticCurrentValue = SmoothApproach(kineticCurrentValue, newKineticValue, 2f);
+            secondKineticCurrentValue = SmoothApproach(secondKineticCurrentValue, newSecondKineticValue, 2f);
+
+            SetKineticDMXChannels(kineticCurrentValue, secondKineticCurrentValue);
         }
 
         private void SetKineticDMXChannels(float kineticValue1, float kineticValue2)
@@ -376,55 +382,9 @@ namespace LEDControl
             WriteToDMXChannel(FrameBuffer, channel2, secondByte);
         }
 
-
-
         private float SmoothApproach(float current, float target, float speed)
         {
             return Mathf.MoveTowards(current, target, speed * Time.fixedDeltaTime);
-        }
-
-        private void UpdateStepwiseKinetic(AnimationCurve curve, ref int targetIndex, ref float currentValue, ref float targetValue, int channel1, int channel2, float normalizedTime)
-        {
-            if (curve.length == 0)
-                return;
-
-            // ищем следующую ключевую точку, если время прошло целевую
-            while (targetIndex < curve.length && normalizedTime >= curve.keys[targetIndex].time)
-            {
-                targetIndex++;
-            }
-
-            // если вышли за пределы — начинаем заново
-            if (targetIndex >= curve.length)
-            {
-                targetIndex = 0;
-            }
-
-            targetValue = curve.Evaluate(curve.keys[targetIndex].time);
-
-            // плавно двигаем к целевому уровню
-            currentValue = SmoothApproach(currentValue, targetValue, 2f); // скорость плавности
-
-            float curveValue = Mathf.Clamp01(currentValue);
-
-            //ограничения
-            float max = 255f;
-            float min = 0f;
-
-            // переводим в два байта
-            float minCombinedValue = 0f;
-            float maxCombinedValue = (max - min) * 256f + (max - min);
-
-            float combinedValue = Mathf.Lerp(minCombinedValue, maxCombinedValue, curveValue);
-
-            float firstByteValue = Mathf.Floor(combinedValue / 256f) + min;
-            float secondByteValue = (combinedValue % 256f) + min;
-
-            byte firstByte = (byte)Mathf.Clamp(firstByteValue, min, max);
-            byte secondByte = (byte)Mathf.Clamp(secondByteValue, min, max);
-
-            WriteToDMXChannel(FrameBuffer, channel1, firstByte);
-            WriteToDMXChannel(FrameBuffer, channel2, secondByte);
         }
 
         int GetChannelsPerLed(LEDStrip strip)
@@ -465,9 +425,15 @@ namespace LEDControl
 
                         switch (j)
                         {
-                            case 0: WriteToDMXChannel(FrameBuffer, absChannel, r); break;
-                            case 1: WriteToDMXChannel(FrameBuffer, absChannel, g); break;
-                            case 2: WriteToDMXChannel(FrameBuffer, absChannel, b); break;
+                            case 0:
+                                WriteToDMXChannel(FrameBuffer, absChannel, r);
+                                break;
+                            case 1:
+                                WriteToDMXChannel(FrameBuffer, absChannel, g);
+                                break;
+                            case 2:
+                                WriteToDMXChannel(FrameBuffer, absChannel, b);
+                                break;
                             case 3:
                                 byte w = (byte)(Mathf.Min(r, g, b) * 0.8f);
                                 WriteToDMXChannel(FrameBuffer, absChannel, w);
@@ -518,11 +484,21 @@ namespace LEDControl
 
                         switch (j)
                         {
-                            case 0: WriteToDMXChannel(FrameBuffer, absChannel, r); break;
-                            case 1: WriteToDMXChannel(FrameBuffer, absChannel, g); break;
-                            case 2: WriteToDMXChannel(FrameBuffer, absChannel, b); break;
-                            case 3: WriteToDMXChannel(FrameBuffer, absChannel, w); break;
-                            case 4: WriteToDMXChannel(FrameBuffer, absChannel, cw); break;
+                            case 0:
+                                WriteToDMXChannel(FrameBuffer, absChannel, r);
+                                break;
+                            case 1:
+                                WriteToDMXChannel(FrameBuffer, absChannel, g);
+                                break;
+                            case 2:
+                                WriteToDMXChannel(FrameBuffer, absChannel, b);
+                                break;
+                            case 3:
+                                WriteToDMXChannel(FrameBuffer, absChannel, w);
+                                break;
+                            case 4:
+                                WriteToDMXChannel(FrameBuffer, absChannel, cw);
+                                break;
                         }
                     }
                 }
