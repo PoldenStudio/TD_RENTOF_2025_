@@ -148,7 +148,6 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
-    // Для отладки: принудительно включить управление свайпами
     public void ForceEnableSwipeControl()
     {
         _swipeControlEnabled = true;
@@ -307,6 +306,7 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
+
     private void ActivateMouseHoldMode()
     {
         if (_state != PlaybackState.HoldAccelerating)
@@ -324,6 +324,51 @@ public class VideoPlaybackController : MonoBehaviour
             ClearSwipeHistory();
 
             Debug.Log("[VideoPlaybackController] Mouse hold mode activated");
+        }
+    }
+
+    public void OnMouseHoldDetected(SwipeDetector.MouseHoldData holdData)
+    {
+        if (_mediaPlayer == null || !_swipeControlEnabled)
+            return;
+
+        Debug.Log($"[VideoPlaybackController] OnMouseHoldDetected: isStart={holdData.isStart}, duration={holdData.duration:F2}s");
+
+        if (holdData.isStart)
+        {
+            if (_state == PlaybackState.HoldAccelerating)
+                return;
+
+            // Активируем режим удержания, аналогично удержанию панели
+            _isMouseHolding = true;
+            _mouseHoldStartTime = Time.time;
+            _processedMouseHold = false;
+            _mouseHoldPosition = holdData.position;
+
+            // Переход в режим удержания для остановки видео
+            _previousState = _state;
+            _state = PlaybackState.HoldAccelerating;
+            _effectStartSpeed = _currentSpeed;
+            _immediateTargetSpeed = 0f;
+            _finalTargetSpeed = 0f;
+            _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
+            _phaseTimer = 0f;
+            _reachedZero = false;
+            _holdZeroTime = 0f;
+            _isHolding = true;
+
+            ClearSwipeHistory();
+            Debug.Log("[VideoPlaybackController] Activated mouse hold mode");
+        }
+        else
+        {
+            // Завершение удержания мыши
+            _isMouseHolding = false;
+
+            if (_state == PlaybackState.HoldAccelerating)
+            {
+                HandleMouseHoldRelease();
+            }
         }
     }
 
@@ -350,13 +395,8 @@ public class VideoPlaybackController : MonoBehaviour
                 _holdZeroTime = _mediaPlayer.CurrentTime;
             }
 
-            Debug.Log("[VideoPlaybackController] Mouse hold released, resuming playback");
+            Debug.Log("[VideoPlaybackController] Released mouse hold, resuming playback");
         }
-
-        // Сбрасываем все связанные с удержанием мыши переменные
-        _isMouseHolding = false;
-        _processedMouseHold = false;
-        _mouseHasMovedTooMuch = false;
     }
 
     private float CalculateMouseSwipeImpact(float speed, float duration)

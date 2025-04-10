@@ -32,10 +32,19 @@ public class SwipeDetector : MonoBehaviour
         public bool isFinalSwipe;
     }
 
+    public struct MouseHoldData
+    {
+        public Vector2 position;
+        public Vector2 endPosition;
+        public float duration;
+        public bool isStart;
+    }
+
     public event Action<SwipeData> SwipeDetected;
     public event Action<int, bool> PanelPressed;
     public event Action<RelativeSwipeData> RelativeSwipeDetected;
     public event Action<MouseSwipeData> MouseSwipeDetected;
+    public event Action<MouseHoldData> MouseHoldDetected;
 
     private class PanelActivation
     {
@@ -280,6 +289,29 @@ public class SwipeDetector : MonoBehaviour
 
             SwipeDetected?.Invoke(standardSwipe);
         }
+    }
+
+    public void ProcessMouseHold(Vector2 position, Vector2 endPosition, float duration, bool isStart)
+    {
+        // Создаем структуру данных об удержании
+        MouseHoldData holdData = new MouseHoldData
+        {
+            position = position,
+            endPosition = endPosition,
+            duration = duration,
+            isStart = isStart
+        };
+
+        // Вызываем событие
+        MouseHoldDetected?.Invoke(holdData);
+
+        // Передаем событие в контроллер воспроизведения
+        if (_playbackController != null)
+        {
+            _playbackController.OnMouseHoldDetected(holdData);
+        }
+
+        Debug.Log($"[SwipeDetector] Mouse hold {(isStart ? "started" : "ended")}: position={position}, duration={duration:F2}s");
     }
 
     private Vector2 GetPanelPos(int globalIndex)
