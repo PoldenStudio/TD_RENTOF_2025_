@@ -133,21 +133,21 @@ public class MIDISoundManager : MonoBehaviour
         if (!isActive && muteWhenNeutral) return;
 
 
-        MidiManager.Instance.SendMidiNoteOff(loopMidiDeviceId, 0, midiChannel, 3, 0);
-        /*        lastNoteTime += deltaTime;
-                lastCCSendTime += deltaTime;
+        //MidiManager.Instance.SendMidiNoteOff(loopMidiDeviceId, 0, midiChannel, 3, 0);
+        lastNoteTime += deltaTime;
+        lastCCSendTime += deltaTime;
 
-                if (isActive && lastNoteTime >= interval)
-                {
-                    GenerateNote();
-                    lastNoteTime = 0f;
-                }
+        if (isActive && lastNoteTime >= interval)
+        {
+            GenerateNote();
+            lastNoteTime = 0f;
+        }
 
-                if (sendCC && lastCCSendTime >= ccSendInterval)
-                {
-                    SendCC();
-                    lastCCSendTime = 0f;
-                }*/
+        if (sendCC && lastCCSendTime >= ccSendInterval)
+        {
+            SendCC();
+            lastCCSendTime = 0f;
+        }
     }
 
     /*

@@ -253,8 +253,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff8ded810d01bf4aa9c5393eee58a47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultModeMovieName: Active_mode.mov
-  idleModeMovieName: Idle_mode.mov
+  defaultModeMovieName: 120fps_184s.mov
+  idleModeMovieName: 120fps_184s.mov
   CurtainMovieName: 
   CometMovieName: 
   rows: 1
@@ -411,7 +411,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portNames:
-  - COM25
+  - COM27
   baudRate: 115200
   dataTimeout: 1
   idleTimeout: 180
@@ -1429,7 +1429,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90212b2feae384689065f9fe14050f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalLEDsPerStrip: 82000000820000008200000018010000
+  totalLEDsPerStrip: 8c0000008c0000003c00000018010000
   ledsPerSegment: 1
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
@@ -1767,6 +1767,26 @@ MonoBehaviour:
       rgba: 4278190080
     - serializedVersion: 2
       rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
   - segments:
     - serializedVersion: 2
       rgba: 4278190080
@@ -2028,147 +2048,27 @@ MonoBehaviour:
       rgba: 4278190080
     - serializedVersion: 2
       rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
+    - serializedVersion: 2
+      rgba: 4278190080
   - segments:
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
     - serializedVersion: 2
       rgba: 4278190080
     - serializedVersion: 2
@@ -2866,33 +2766,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   idleSunSettings:
     pixelCount: 10
-    baseCycleLength: 180
+    baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 30
-      sunMode: 0
-    - startTime: 50
-      endTime: 60
+      endTime: 184
       sunMode: 1
-    - startTime: 80
-      endTime: 90
-      sunMode: 0
-    brightnessMultiplier: 3
+    brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   activeSunSettings:
     pixelCount: 10
-    baseCycleLength: 180
+    baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 40
+      endTime: 184
       sunMode: 0
-    - startTime: 60
-      endTime: 70
-      sunMode: 1
-    - startTime: 80
-      endTime: 120
-      sunMode: 0
-    brightnessMultiplier: 3
+    brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
   dataSender: {fileID: 1299263587}
@@ -2993,6 +2881,10 @@ PrefabInstance:
     - target: {fileID: 343249743887430585, guid: f222a48f5ac7d584da7fa7343a2be8ac, type: 3}
       propertyPath: m_Name
       value: Panel
+      objectReference: {fileID: 0}
+    - target: {fileID: 343249743887430585, guid: f222a48f5ac7d584da7fa7343a2be8ac, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -3162,7 +3054,7 @@ GameObject:
   - component: {fileID: 1012292525}
   - component: {fileID: 1012292528}
   m_Layer: 0
-  m_Name: InitSound
+  m_Name: InitVideoSound
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3326,7 +3218,7 @@ MonoBehaviour:
   baseVolume: 1
   parameterSmoothing: 5
   volumeFadeRange: 1
-  muteAtHighSpeed: 0
+  muteAtHighSpeed: 1
   highSpeedThreshold: 2
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
@@ -3439,6 +3331,7 @@ MonoBehaviour:
   soundFadeDuration: 1
   cometDelayInTransition: 1
   sunFadeOutOnTransitionDuration: 0.5
+  idleTimeout: 180
 --- !u!114 &1213853306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3728,7 +3621,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a4b716bd85f4764b8eb27bbcefe132f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  loopMidiDeviceId: Rentoff
+  loopMidiDeviceId: M1-P27-O0
   midiChannel: 1
   rtpMidiPort: 5004
   neutralSpeed: 1
@@ -4604,6 +4497,9 @@ MonoBehaviour:
   continuousUpdateInterval: 0.05
   enableDebug: 1
   sendContinuousUpdates: 1
+  holdThresholdTime: 0.5
+  maxHoldMovement: 5
+  enableHoldDetection: 1
   speedMultiplier: 1
   distanceMultiplier: 1
   responseVelocityCurve:

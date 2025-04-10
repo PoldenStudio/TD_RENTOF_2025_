@@ -30,6 +30,8 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float soundFadeDuration = 1f;
     [SerializeField] private float cometDelayInTransition = 1f;
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
+    [SerializeField] private float idleTimeout = 180.0f;
+
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
@@ -60,6 +62,13 @@ public class StateManager : MonoBehaviour
         {
             StartCoroutine(TransitionToIdleCoroutine());
         }
+
+/*        if (CurrentState == AppState.Active && (Time.time - _lastNonZeroTouchTime > idleTimeout))
+        {
+            StartTransitionToIdle();
+        }
+*/
+
     }
 
     private void OnCurtainFull()
@@ -248,6 +257,6 @@ public class StateManager : MonoBehaviour
         }
 
         Debug.Log("[StateManager] SwitchToIdle workflow completed.");
-        curtainController.SetOnCurtainFullCallback(OnCurtainFull);
+        //curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
 }

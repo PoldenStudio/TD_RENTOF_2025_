@@ -85,7 +85,7 @@ public class SerialInputReader : InputReader
 
         if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Active && (Time.time - _lastNonZeroTouchTime > idleTimeout))
         {
-            stateManager.StartTransitionToIdle();
+            //stateManager.StartTransitionToIdle();
         }
 
         if (!IsConnected())
