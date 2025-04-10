@@ -174,9 +174,9 @@ MonoBehaviour:
   maxXPosition: 0
   instantMove: 0
   targetProgressThreshold: 1
-  swipeProgressMultiplier: 3
+  swipeProgressMultiplier: 1
   inactivityCloseDelay: 4
-  oppositeSwipeTolerance: 2
+  oppositeSwipeTolerance: 0
   _demolitionMedia: {fileID: 275200804}
   stateManager: {fileID: 1213853305}
 --- !u!114 &31414347
@@ -3793,7 +3793,7 @@ MonoBehaviour:
   fastSwipeTimeThreshold: 0.05
   maintainSpeedThreshold: 5
   mouseSensitivity: 0.005
-  mouseCurtainSensitivity: 0.1
+  mouseCurtainSensitivity: 0.35
   mouseMinimumImpact: 0.5
   mouseMaximumImpact: 8
   mouseResponseCurve:
