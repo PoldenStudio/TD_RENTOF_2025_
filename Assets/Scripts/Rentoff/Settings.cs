@@ -7,6 +7,8 @@ public class Settings : MonoBehaviour
     [Header("Video Settings")]
     public string defaultModeMovieName = "";
     public string idleModeMovieName = "";
+    public string CurtainMovieName = "";
+    public string CometMovieName = "";
 
     [Header("Grid Settings")]
     public int rows = 5;

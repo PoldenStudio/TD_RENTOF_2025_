@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System;
+using DemolitionStudios.DemolitionMedia;
 
 public class CometController : MonoBehaviour
 {
@@ -11,6 +12,10 @@ public class CometController : MonoBehaviour
     private Coroutine _travelCoroutine;
     private Action _onCometFinishedCallback;
 
+    [Header("Demolition Media")]
+    [SerializeField] private Media _demolitionMedia;
+    private IMediaPlayer _mediaPlayer;
+
     private void Awake()
     {
         if (cometRect == null)
@@ -19,17 +24,29 @@ public class CometController : MonoBehaviour
         }
         else
         {
-            // Find parent Canvas and set high sort order
             Canvas canvas = GetComponentInParent<Canvas>();
             if (canvas != null)
             {
                 canvas.overrideSorting = true;
                 canvas.sortingOrder = 100;
-                Debug.Log("[CometController] Set canvas sortingOrder to 100.");
             }
         }
         //gameObject.SetActive(false);
     }
+
+    private void Start()
+    {
+        if (_demolitionMedia == null)
+        {
+            Debug.LogError("[CometController] Demolition Media is not assigned!");
+            return;
+        }
+
+        _mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
+        _mediaPlayer.Pause();
+    }
+
+
 
     public Coroutine StartCometTravel(Action onFinished = null)
     {

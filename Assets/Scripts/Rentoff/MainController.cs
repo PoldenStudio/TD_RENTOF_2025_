@@ -12,6 +12,7 @@ public class MainController : MonoBehaviour
     public bool useSerialInput = true;
     public SerialInputReader serialInputReader;
     public TestInputReader testInputReader;
+    public MouseInputReader mouseInputReader; // Добавлено поле для MouseInputReader
 
     [Header("Modules")]
     public SwipeDetector swipeDetector;
@@ -28,11 +29,14 @@ public class MainController : MonoBehaviour
 
 
     [Header("Port Restart Logic")]
-    [SerializeField] private int maxRestartAttempts = 3; 
-    [SerializeField] private float restartInterval = 5f;     
-    private int[] _portRestartAttempts;                      
-    private Queue<int> _restartQueue = new();     
-    private bool _isHandlingRestarts = false;                
+    [SerializeField] private int maxRestartAttempts = 3;
+    [SerializeField] private float restartInterval = 5f;
+    private int[] _portRestartAttempts;
+    private Queue<int> _restartQueue = new();
+    private bool _isHandlingRestarts = false;
+
+    [Header("Mouse Input Configuration")]
+    [SerializeField] private bool enableMouseInput = true; // Управление включением ввода мыши
 
     private void Awake()
     {
@@ -40,7 +44,6 @@ public class MainController : MonoBehaviour
 
     private void Start()
     {
-
         if (_demolitionMedia == null)
         {
             Debug.LogError("[MainController] Demolition Media is not assigned!");
@@ -56,7 +59,6 @@ public class MainController : MonoBehaviour
         }
         videoPlaybackController.Init(_mediaPlayer);
 
-
         if (useSerialInput)
         {
             if (serialInputReader == null)
@@ -67,7 +69,6 @@ public class MainController : MonoBehaviour
             _activeInputReader = serialInputReader;
 
         }
-
         else
         {
             if (testInputReader == null)
@@ -77,7 +78,6 @@ public class MainController : MonoBehaviour
             }
             _activeInputReader = testInputReader;
 
-
             if (panelGridVisualizer != null)
                 panelGridVisualizer.SetTestMode(true);
         }
@@ -85,13 +85,20 @@ public class MainController : MonoBehaviour
         _activeInputReader.enabled = true;
         serialInputReader.OnPortDisconnected += HandlePortDisconnected;
 
-        if (swipeDetector == null)
-        {
-            Debug.LogError("[MainController] SwipeDetector is not assigned!");
-            return;
-        }
-        _activeInputReader.InputReceived += swipeDetector.OnInputReceived;
+        // Корректная подписка на все события SwipeDetector
         swipeDetector.SwipeDetected += videoPlaybackController.OnSwipeDetected;
+        swipeDetector.RelativeSwipeDetected += videoPlaybackController.OnRelativeSwipeDetected;
+        swipeDetector.PanelPressed += videoPlaybackController.OnPanelPressed;
+
+        // Добавляем подписку на события мыши
+        swipeDetector.MouseSwipeDetected += videoPlaybackController.OnMouseSwipeDetected;
+
+        // В активном состоянии сразу включаем управление свайпами
+        if (stateManager.CurrentState == AppState.Active)
+        {
+            videoPlaybackController.SetSwipeControlEnabled(true);
+            Debug.Log("[MainController] SwipeControl enabled at start");
+        }
 
         if (useSerialInput)
         {
@@ -99,14 +106,12 @@ public class MainController : MonoBehaviour
         }
         else
         {
-
             if (panelGridVisualizer != null)
             {
                 panelGridVisualizer.PanelTouched += TestPanelTouched;
                 panelGridVisualizer.MouseDragEnded += TestSwipeDetected;
             }
         }
-
 
         if (panelGridVisualizer != null)
             panelGridVisualizer.Init(Settings.Instance.rows, Settings.Instance.cols, Settings.Instance.segments);
@@ -121,29 +126,63 @@ public class MainController : MonoBehaviour
 
         if (serialInputReader.portNames != null)
         {
-
             _portRestartAttempts = new int[serialInputReader.portNames.Length];
         }
+
+        // Принудительно включаем свайп-контроль для тестирования
+        videoPlaybackController.SetSwipeControlEnabled(true);
+        Debug.Log("[MainController] SwipeControl enabled at startup for testing");
     }
 
     public void DisableOnState(AppState state)
     {
-        if (stateManager.CurrentState == AppState.Active)
+        // Более четкое управление подписками в зависимости от состояния
+        if (state == AppState.Active)
         {
-            swipeDetector.SwipeDetected += videoPlaybackController.OnSwipeDetected;
+            // В активном состоянии нам нужны все обработчики
+                swipeDetector.SwipeDetected += videoPlaybackController.OnSwipeDetected;
+
+                swipeDetector.MouseSwipeDetected += videoPlaybackController.OnMouseSwipeDetected;
+
+                swipeDetector.PanelPressed += videoPlaybackController.OnPanelPressed;
+
+            // В активном состоянии не нужен RelativeSwipe (для шторки)
             swipeDetector.RelativeSwipeDetected -= videoPlaybackController.OnRelativeSwipeDetected;
+
+            Debug.Log("[MainController] State ACTIVE: Regular swipes, mouse swipes and panel presses enabled");
         }
-        else if (stateManager.CurrentState == AppState.Idle)
+        else if (state == AppState.Idle)
         {
-            swipeDetector.SwipeDetected += videoPlaybackController.OnSwipeDetected;
-            swipeDetector.RelativeSwipeDetected -= videoPlaybackController.OnRelativeSwipeDetected;
+            // В режиме ожидания нам нужны только события для управления шторкой
+            swipeDetector.SwipeDetected -= videoPlaybackController.OnSwipeDetected;
+
+                swipeDetector.MouseSwipeDetected += videoPlaybackController.OnMouseSwipeDetected;
+
+                swipeDetector.RelativeSwipeDetected += videoPlaybackController.OnRelativeSwipeDetected;
+
+            swipeDetector.PanelPressed -= videoPlaybackController.OnPanelPressed;
+
+            Debug.Log("[MainController] State IDLE: Mouse swipes and relative swipes enabled for curtain control");
         }
-        else if (stateManager.CurrentState == AppState.Transition)
+        else if (state == AppState.Transition)
         {
+            // В переходном состоянии отключаем все события
             swipeDetector.SwipeDetected -= videoPlaybackController.OnSwipeDetected;
             swipeDetector.RelativeSwipeDetected -= videoPlaybackController.OnRelativeSwipeDetected;
+            swipeDetector.MouseSwipeDetected -= videoPlaybackController.OnMouseSwipeDetected;
+            swipeDetector.PanelPressed -= videoPlaybackController.OnPanelPressed;
+
+            Debug.Log("[MainController] State TRANSITION: All swipe detection disabled");
+        }
+
+        // Принудительно включаем свайп-контроль для тестирования
+        if (state == AppState.Active)
+        {
+            videoPlaybackController.SetSwipeControlEnabled(true);
+            Debug.Log("[MainController] SwipeControl enabled for Active state");
         }
     }
+
     private void HandlePortDisconnected(int portIndex)
     {
         if (!useSerialInput || _activeInputReader != serialInputReader)
@@ -248,7 +287,6 @@ public class MainController : MonoBehaviour
 
     public void SetInputMode(bool serial)
     {
-
         if (_activeInputReader != null)
         {
             _activeInputReader.InputReceived -= OnInputReceived;
@@ -298,6 +336,17 @@ public class MainController : MonoBehaviour
         }
     }
 
+    // Метод для переключения ввода мыши
+    public void ToggleMouseInput(bool enable)
+    {
+        enableMouseInput = enable;
+        if (mouseInputReader != null)
+        {
+            mouseInputReader.enabled = enable;
+            Debug.Log($"[MainController] Mouse input {(enable ? "enabled" : "disabled")}");
+        }
+    }
+
     private void OnDestroy()
     {
         if (_mediaPlayer != null)
@@ -323,13 +372,20 @@ public class MainController : MonoBehaviour
             panelGridVisualizer.MouseDragEnded -= TestSwipeDetected;
         }
 
-        swipeDetector.SwipeDetected -= videoPlaybackController.OnSwipeDetected;
-        swipeDetector.RelativeSwipeDetected -= videoPlaybackController.OnRelativeSwipeDetected;
-        swipeDetector.PanelPressed -= videoPlaybackController.OnPanelPressed;
+        // Отписка от всех событий
+
+        if (swipeDetector != null && videoPlaybackController != null)
+        {
+            swipeDetector.SwipeDetected -= videoPlaybackController.OnSwipeDetected;
+            swipeDetector.RelativeSwipeDetected -= videoPlaybackController.OnRelativeSwipeDetected;
+            swipeDetector.PanelPressed -= videoPlaybackController.OnPanelPressed;
+            swipeDetector.MouseSwipeDetected -= videoPlaybackController.OnMouseSwipeDetected;
+        }
 
         if (stateManager != null)
         {
             stateManager.OnStateChanged -= videoPlaybackController.OnStateChanged;
+            stateManager.OnStateChanged -= DisableOnState;
         }
     }
 }

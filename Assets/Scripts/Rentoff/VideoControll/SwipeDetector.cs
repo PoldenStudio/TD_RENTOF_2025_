@@ -21,9 +21,21 @@ public class SwipeDetector : MonoBehaviour
         public int shift;
     }
 
+    public struct MouseSwipeData
+    {
+        public Vector2 startPosition;
+        public Vector2 endPosition;
+        public Vector2 direction;
+        public float speed;
+        public float duration;
+        public float distance;
+        public bool isFinalSwipe;
+    }
+
     public event Action<SwipeData> SwipeDetected;
     public event Action<int, bool> PanelPressed;
     public event Action<RelativeSwipeData> RelativeSwipeDetected;
+    public event Action<MouseSwipeData> MouseSwipeDetected;
 
     private class PanelActivation
     {
@@ -240,6 +252,36 @@ public class SwipeDetector : MonoBehaviour
         }
     }
 
+    public void ProcessMouseSwipe(Vector2 startPos, Vector2 endPos, float duration, float speed, Vector2 direction, bool isFinal)
+    {
+        MouseSwipeData data = new()
+        {
+            startPosition = startPos,
+            endPosition = endPos,
+            direction = direction,
+            speed = speed,
+            duration = duration,
+            distance = Vector2.Distance(startPos, endPos),
+            isFinalSwipe = isFinal
+        };
+
+        MouseSwipeDetected?.Invoke(data);
+
+        if (isFinal)
+        {
+            SwipeData standardSwipe = new()
+            {
+                direction = direction,
+                speed = speed / 1000f,
+                panelsCount = 2,
+                avgTimeBetween = duration / 2f,
+                isSmoothDrag = true
+            };
+
+            SwipeDetected?.Invoke(standardSwipe);
+        }
+    }
+
     private Vector2 GetPanelPos(int globalIndex)
     {
         int cols = Settings.Instance.cols;
@@ -263,9 +305,8 @@ public class SwipeDetector : MonoBehaviour
         int localY = indexInSegment / cols;
         int localX = indexInSegment % cols;
 
-        // Assuming a layout where segments extend horizontally, and ports also extend horizontally
         float globalX = localX + segmentIndex * cols + portIndex * cols * segmentsPerPort;
-        float globalY = -localY; // To make the origin top-left and Y increasing downwards
+        float globalY = -localY;
 
         Vector2 pos = new Vector2(globalX, globalY);
         Debug.Log($"GetPanelPos: globalIndex={globalIndex}, portIdx={portIndex}, segIdx={segmentIndex}, localX={localX}, localY={localY}, pos={pos}");

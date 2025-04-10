@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
+using DemolitionStudios.DemolitionMedia;
 
 public class CurtainController : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private RectTransform curtainRect;
-    [SerializeField] private Image curtainImage;
+    [SerializeField] private Transform curtainObject;
+    [SerializeField] private MeshRenderer curtainRenderer;
 
     [Header("Animation Settings")]
     [SerializeField] private float slideDuration = 2f;
     [SerializeField] private float fadeDuration = 0.5f;
     [SerializeField] private float slideSpeed = 15f;
+    [SerializeField] private float minXPosition = -1032f;
+    [SerializeField] private float maxXPosition = 0f;
 
     [Tooltip("True => instant snapping, False => uses a smooth Easing for motion.")]
     public bool instantMove = false;
@@ -26,6 +28,9 @@ public class CurtainController : MonoBehaviour
     [Tooltip("How many consecutive swipes in the opposite direction are treated as continuing the current direction")]
     [SerializeField] private int oppositeSwipeTolerance = 1;
 
+    [Header("Demolition Media")]
+    [SerializeField] private Media _demolitionMedia;
+    private IMediaPlayer _mediaPlayer;
     [SerializeField] private StateManager stateManager;
 
     private readonly float _finalApproachDelay = 0.3f;
@@ -50,18 +55,33 @@ public class CurtainController : MonoBehaviour
 
     private void Awake()
     {
-        if (curtainRect == null || curtainImage == null)
-            return;
-
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas != null)
+        if (curtainObject == null || curtainRenderer == null)
         {
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = 100;
+            Debug.LogError("[CurtainController] References not set!");
+            return;
         }
 
-        ApplyCurtainProgress(0f);
+        // Initialize position
+        curtainObject.localPosition = new Vector3(
+            minXPosition,
+            curtainObject.localPosition.y,
+            curtainObject.localPosition.z
+        );
+
         SetCurtainAlpha(1f);
+    }
+
+    private void Start()
+    {
+        if (_demolitionMedia == null)
+        {
+            Debug.LogError("[CurtainController] Demolition Media is not assigned!");
+            return;
+        }
+
+        _mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
+
+        _mediaPlayer.Pause();
     }
 
     private void Update()
@@ -244,12 +264,14 @@ public class CurtainController : MonoBehaviour
 
     private void SetCurtainPosition(float normalizedPosition)
     {
-        if (curtainRect == null || curtainRect.parent == null) return;
-        if (!(curtainRect.parent is RectTransform parentRect)) return;
+        if (curtainObject == null) return;
 
-        float screenWidth = parentRect.rect.width;
-        float targetX = Mathf.Lerp(-screenWidth, 0, normalizedPosition);
-        curtainRect.anchoredPosition = new Vector2(targetX, curtainRect.anchoredPosition.y);
+        float targetX = Mathf.Lerp(minXPosition, maxXPosition, normalizedPosition);
+        curtainObject.localPosition = new Vector3(
+            targetX,
+            curtainObject.localPosition.y,
+            curtainObject.localPosition.z
+        );
     }
 
     private void CheckCurtainFullState()
@@ -296,9 +318,9 @@ public class CurtainController : MonoBehaviour
     {
         ResetInactivityTimer();
 
-        if (curtainImage != null)
+        if (curtainRenderer != null)
         {
-            curtainImage.enabled = true;
+            curtainRenderer.enabled = true;
             SetCurtainAlpha(1f);
         }
 
@@ -329,7 +351,6 @@ public class CurtainController : MonoBehaviour
         onComplete?.Invoke();
     }
 
-
     public Coroutine FadeCurtain(bool fadeIn, Action onComplete = null)
     {
         if (_fadeCoroutine != null)
@@ -338,8 +359,8 @@ public class CurtainController : MonoBehaviour
             _fadeCoroutine = null;
         }
 
-        if (curtainImage != null)
-            curtainImage.enabled = true;
+        if (curtainRenderer != null)
+            curtainRenderer.enabled = true;
 
         _fadeCoroutine = StartCoroutine(FadeAnimationSafe(fadeIn, onComplete));
         return _fadeCoroutine;
@@ -347,15 +368,15 @@ public class CurtainController : MonoBehaviour
 
     private IEnumerator FadeAnimationSafe(bool fadeIn, Action onComplete)
     {
-        if (curtainImage == null)
+        if (curtainRenderer == null)
         {
-            Debug.LogError("[CurtainController] Fade failed - curtainImage is null");
+            Debug.LogError("[CurtainController] Fade failed - curtainRenderer is null");
             onComplete?.Invoke();
             _fadeCoroutine = null;
             yield break;
         }
 
-        float startAlpha = curtainImage.color.a;
+        float startAlpha = curtainRenderer.material.color.a;
         float targetAlpha = fadeIn ? 1f : 0f;
 
         if (Mathf.Abs(startAlpha - targetAlpha) < 0.01f)
@@ -384,8 +405,8 @@ public class CurtainController : MonoBehaviour
     {
         if (!fadedIn)
         {
-            if (curtainImage != null && curtainImage.color.a <= 0.01f)
-                curtainImage.enabled = false;
+            if (curtainRenderer != null && curtainRenderer.material.color.a <= 0.01f)
+                curtainRenderer.enabled = false;
             _onCurtainFadedCallback?.Invoke();
         }
         onComplete?.Invoke();
@@ -394,12 +415,11 @@ public class CurtainController : MonoBehaviour
 
     private void SetCurtainAlpha(float alpha)
     {
-        if (curtainImage == null) return;
+        if (curtainRenderer == null) return;
 
-        Color c = curtainImage.color;
+        Color c = curtainRenderer.material.color;
         c.a = alpha;
-        curtainImage.color = c;
-        curtainImage.raycastTarget = (alpha > 0.01f);
+        curtainRenderer.material.color = c;
     }
 
     public void SetOnCurtainFullCallback(Action callback)
@@ -435,10 +455,10 @@ public class CurtainController : MonoBehaviour
 
         SetCurrentProgressInternal(0f);
 
-        if (curtainImage != null)
+        if (curtainRenderer != null)
         {
             SetCurtainAlpha(1f);
-            curtainImage.enabled = true;
+            curtainRenderer.enabled = true;
         }
     }
 

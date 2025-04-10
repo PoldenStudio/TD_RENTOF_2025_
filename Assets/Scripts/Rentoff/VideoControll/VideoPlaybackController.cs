@@ -86,12 +86,37 @@ public class VideoPlaybackController : MonoBehaviour
     [Tooltip("If the target speed magnitude exceeds this value, it will not return to normal speed automatically.")]
     [SerializeField] private float maintainSpeedThreshold = 5f;
 
+    [Header("Mouse Swipe Settings")]
+    [SerializeField] private float mouseSensitivity = 0.002f; // Увеличено для лучшего отклика
+    [SerializeField] private float mouseCurtainSensitivity = 0.5f;
+    [SerializeField] private float mouseMinimumImpact = 1.0f; // Увеличено для лучшего отклика
+    [SerializeField] private float mouseMaximumImpact = 8.0f;
+    [SerializeField] private AnimationCurve mouseResponseCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    [SerializeField] private bool preferMouseHorizontalDirection = true;
+    [SerializeField] private bool enableMouseSwipeContinuousUpdate = true; // Включено по умолчанию
+
+    [Header("Mouse Hold Settings")]
+    [SerializeField] private bool enableMouseHold = true; // Параметр для включения удержания мышью
+    [SerializeField] private float mouseHoldThreshold = 0.5f; // Порог удержания мыши (в секундах)
+    [SerializeField] private float mouseHoldMovementThreshold = 5.0f; // Макс. движение в пикселях для определения удержания на месте
 
     [Header("Accidental Swipe Filtering")]
     [SerializeField] private bool enableSwipeFiltering = true;
     [SerializeField] private int swipeHistoryCapacity = 5;
     [SerializeField][Range(0.5f, 1f)] private float swipeIgnoreThreshold = 0.8f;
     private Queue<int> _swipeDirectionHistory;
+
+    // Переменные для мышиного ввода
+    private Vector2 _lastMouseSwipeDir;
+    private float _lastMouseSwipeSpeed;
+    private float _lastMouseSwipeTime;
+    private bool _waitingForMouseSwipeRelease = false;
+    private bool _isMouseHolding = false;
+    private float _mouseHoldStartTime = 0f;
+    private Vector2 _mouseHoldPosition;
+    private bool _processedMouseHold = false;
+    private Vector2 _mouseHoldStartPosition; // Начальная позиция для проверки движения при удержании
+    private bool _mouseHasMovedTooMuch = false; // Флаг того, что мышь двигалась слишком много для удержания
 
 
     private void Awake()
@@ -124,6 +149,13 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
+    // Для отладки: принудительно включить управление свайпами
+    public void ForceEnableSwipeControl()
+    {
+        _swipeControlEnabled = true;
+        Debug.Log("[VideoPlaybackController] Swipe control FORCED enabled");
+    }
+
     public void Init(IMediaPlayer player)
     {
         _mediaPlayer = player;
@@ -132,6 +164,258 @@ public class VideoPlaybackController : MonoBehaviour
             Debug.LogError("[VideoPlaybackController] MediaPlayer is null after Init!");
         }
         ResetState();
+    }
+
+    public void OnMouseSwipeDetected(MouseSwipeData mouseSwipeData)
+    {
+        if (_mediaPlayer == null)
+            return;
+
+        Debug.Log($"[VideoPlaybackController] OnMouseSwipeDetected called: dir=({mouseSwipeData.direction.x:F2},{mouseSwipeData.direction.y:F2}), " +
+           $"speed={mouseSwipeData.speed:F0}, distance={mouseSwipeData.distance:F0}, isFinal={mouseSwipeData.isFinalSwipe}");
+
+        // Защита от дублирования событий с очень малым интервалом
+        if (Time.time - _lastMouseSwipeTime < 0.01f)
+            return;
+
+        _lastMouseSwipeTime = Time.time;
+
+        // Обработка направления свайпа
+        Vector2 direction = mouseSwipeData.direction;
+        Vector2 significantDir = direction;
+
+        // Предпочитаем горизонтальное направление если нужно
+        if (preferMouseHorizontalDirection)
+        {
+            if (Mathf.Abs(direction.x) > 0.3f)
+            {
+                significantDir = new Vector2(Mathf.Sign(direction.x), 0).normalized;
+            }
+        }
+
+        _lastMouseSwipeDir = significantDir;
+        _lastMouseSwipeSpeed = mouseSwipeData.speed;
+
+        // Обработка удержания мышью
+        if (enableMouseHold && !mouseSwipeData.isFinalSwipe)
+        {
+            // Если это начало нового удержания
+            if (!_isMouseHolding)
+            {
+                _isMouseHolding = true;
+                _mouseHoldStartTime = Time.time;
+                _mouseHoldPosition = mouseSwipeData.startPosition;
+                _mouseHoldStartPosition = mouseSwipeData.startPosition; // Сохраняем начальную позицию
+                _processedMouseHold = false;
+                _mouseHasMovedTooMuch = false;
+                Debug.Log($"[VideoPlaybackController] Mouse hold started at {_mouseHoldPosition}");
+            }
+            else
+            {
+                // Проверяем, не двигается ли мышь слишком сильно для удержания
+                float distanceMoved = Vector2.Distance(_mouseHoldStartPosition, mouseSwipeData.endPosition);
+                if (distanceMoved > mouseHoldMovementThreshold)
+                {
+                    _mouseHasMovedTooMuch = true;
+                    Debug.Log($"[VideoPlaybackController] Mouse moved too much for hold: {distanceMoved:F1} pixels > threshold {mouseHoldMovementThreshold}");
+                }
+            }
+
+            // Проверяем, достигли ли мы порога удержания и не обработали его ранее и мышь не двигалась слишком много
+            float holdDuration = Time.time - _mouseHoldStartTime;
+
+            if (holdDuration >= mouseHoldThreshold && !_processedMouseHold && _swipeControlEnabled && !_mouseHasMovedTooMuch)
+            {
+                // Активируем режим удержания (стоп-кадр)
+                Debug.Log("[VideoPlaybackController] Mouse hold threshold reached, activating hold mode");
+                ActivateMouseHoldMode();
+                _processedMouseHold = true;
+            }
+
+            return; // Выходим, так как это просто часть удержания, а не свайп
+        }
+        else if (mouseSwipeData.isFinalSwipe && _isMouseHolding)
+        {
+            // Окончание удержания мыши
+            Debug.Log("[VideoPlaybackController] Mouse hold released");
+            HandleMouseHoldRelease();
+
+            // Если удержание было коротким или мы переместили мышь достаточно далеко,
+            // то обрабатываем как обычный свайп
+            if (!_processedMouseHold || _mouseHasMovedTooMuch)
+            {
+                // Продолжаем выполнение как обычный свайп
+                Debug.Log("[VideoPlaybackController] Processing as regular swipe after hold release");
+            }
+            else
+            {
+                return; // Выходим, если это было просто окончание удержания
+            }
+        }
+
+        // Обработка свайпа в зависимости от текущего состояния
+        if (stateManager != null && (stateManager.CurrentState == AppState.Active))
+        {
+            if (!_swipeControlEnabled)
+            {
+                Debug.Log("[VideoPlaybackController] Swipe control is disabled, ignoring mouse swipe");
+                return;
+            }
+
+            CancelHoldState();
+
+            if (_state == PlaybackState.HoldAccelerating)
+                return;
+
+            // Используем горизонтальное направление свайпа (1 или -1)
+            int currentSwipeDirection = significantDir.x > 0 ? 1 : -1;
+
+            // Фильтрация случайных свайпов в неправильном направлении
+            if (enableSwipeFiltering && IsAccidentalSwipe(currentSwipeDirection))
+            {
+                Debug.Log($"[VideoPlaybackController] Accidental mouse swipe detected and ignored. Direction: {currentSwipeDirection}");
+                return;
+            }
+
+            // Рассчитываем влияние свайпа на скорость
+            float swipeImpact = CalculateMouseSwipeImpact(mouseSwipeData.speed, mouseSwipeData.duration);
+
+            // Важное исправление: инвертируем направление для соответствия логике свайпов по панелям
+            // Свайп вправо должен замедлять, свайп влево должен ускорять
+            Vector2 correctedDirection = new Vector2(-significantDir.x, significantDir.y);
+
+            // Создаем данные свайпа, совместимые с существующей логикой
+            SwipeData convertedSwipeData = new SwipeData
+            {
+                direction = correctedDirection,
+                speed = swipeImpact,
+                panelsCount = 2,
+                avgTimeBetween = mouseSwipeData.isFinalSwipe ? 0.03f : 0.08f, // Используем фиксированные значения для стабильности
+                isSmoothDrag = true
+            };
+
+            // Определяем, следует ли обрабатывать этот свайп
+            bool shouldProcess = mouseSwipeData.isFinalSwipe || enableMouseSwipeContinuousUpdate;
+
+            if (shouldProcess)
+            {
+                if (_speedChangeCoroutine != null)
+                {
+                    StopCoroutine(_speedChangeCoroutine);
+                }
+
+                _lastSwipeData = convertedSwipeData;
+                _speedChangeCoroutine = StartCoroutine(ApplySpeedChangeWithDelay(convertedSwipeData));
+
+                if (enableSwipeFiltering)
+                {
+                    AddSwipeToHistory(currentSwipeDirection);
+                }
+
+                _waitingForMouseSwipeRelease = !mouseSwipeData.isFinalSwipe;
+
+                Debug.Log($"[VideoPlaybackController] Mouse swipe processed: dir={currentSwipeDirection}, impact={swipeImpact}, speed={mouseSwipeData.speed:F0}, applied direction={correctedDirection}");
+            }
+        }
+        else if (stateManager != null && (stateManager.CurrentState == AppState.Idle))
+        {
+            // Обработка свайпа мышью для состояния Idle (для открытия "занавеса")
+            HandleMouseCurtainSwipe(mouseSwipeData);
+        }
+    }
+
+    // Метод для активации режима удержания мышью
+    private void ActivateMouseHoldMode()
+    {
+        if (_state != PlaybackState.HoldAccelerating)
+        {
+            _previousState = _state;
+            _state = PlaybackState.HoldAccelerating;
+            _effectStartSpeed = _currentSpeed;
+            _immediateTargetSpeed = 0f;
+            _finalTargetSpeed = 0f;
+            _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
+            _phaseTimer = 0f;
+            _reachedZero = false;
+            _holdZeroTime = 0f;
+            _isHolding = true;
+            ClearSwipeHistory();
+
+            Debug.Log("[VideoPlaybackController] Mouse hold mode activated");
+        }
+    }
+
+    private void HandleMouseHoldRelease()
+    {
+        if (_state == PlaybackState.HoldAccelerating && _isHolding)
+        {
+            _isHolding = false;
+
+            if (Mathf.Abs(_currentSpeed) > skipTime)
+            {
+                _state = PlaybackState.Decelerating;
+                _effectStartSpeed = _currentSpeed;
+                _finalTargetSpeed = _currentSpeed > 0 ? 1f : -1f;
+                _decelerationDuration = CalculateDecelerationDuration(Mathf.Abs(_currentSpeed));
+                _phaseTimer = 0f;
+            }
+            else
+            {
+                _state = PlaybackState.Normal;
+                _currentSpeed = 0f;
+                _immediateTargetSpeed = 0f;
+                _finalTargetSpeed = 0f;
+                _holdZeroTime = _mediaPlayer.CurrentTime;
+            }
+
+            Debug.Log("[VideoPlaybackController] Mouse hold released, resuming playback");
+        }
+
+        // Сбрасываем все связанные с удержанием мыши переменные
+        _isMouseHolding = false;
+        _processedMouseHold = false;
+        _mouseHasMovedTooMuch = false;
+    }
+
+    private float CalculateMouseSwipeImpact(float speed, float duration)
+    {
+        // Улучшенный алгоритм для более точного расчета влияния
+        float normalizedSpeed = Mathf.Min(1.0f, speed * mouseSensitivity);
+        float curvedImpact = mouseResponseCurve.Evaluate(normalizedSpeed);
+
+        // Используем длительность для корректировки воздействия
+        // Более короткие свайпы имеют более сильное воздействие
+        float durationFactor = Mathf.Lerp(1.0f, 0.5f, Mathf.Min(1.0f, duration));
+
+        float finalImpact = Mathf.Lerp(mouseMinimumImpact, mouseMaximumImpact, curvedImpact) * durationFactor;
+
+        Debug.Log($"[VideoPlaybackController] Mouse impact calculation: normalizedSpeed={normalizedSpeed:F3}, curvedImpact={curvedImpact:F3}, durationFactor={durationFactor:F3}, finalImpact={finalImpact:F3}");
+
+        return finalImpact;
+    }
+
+    private void HandleMouseCurtainSwipe(MouseSwipeData mouseSwipeData)
+    {
+        if (curtainController == null || !mouseSwipeData.isFinalSwipe)
+            return;
+
+        // Используем в основном горизонтальную составляющую для шторки
+        float horizontalFactor = mouseSwipeData.direction.x;
+
+        // Вычисляем величину изменения прогресса шторки
+        float progressChange = horizontalFactor * (mouseSwipeData.distance / Screen.width) * mouseCurtainSensitivity;
+
+        // Инвертируем для интуитивного управления (свайп вправо открывает шторку)
+        progressChange = -progressChange;
+
+        Debug.Log($"[VideoPlaybackController] Mouse curtain progress change: {progressChange:F3}, factor: {horizontalFactor:F2}");
+
+        curtainController.AddSwipeProgress(progressChange);
+
+        if (curtainController.IsCurtainFull)
+        {
+            Debug.Log("[VideoPlaybackController] Curtain is fully open by mouse swipe");
+        }
     }
 
     public void OnSwipeDetected(SwipeData swipeData)
@@ -187,12 +471,12 @@ public class VideoPlaybackController : MonoBehaviour
 
         if (currentDirection == 1 && backwardRatio >= swipeIgnoreThreshold)
         {
-            return true; 
+            return true;
         }
 
         if (currentDirection == -1 && forwardRatio >= swipeIgnoreThreshold)
         {
-            return true; 
+            return true;
         }
 
         return false;
@@ -305,6 +589,11 @@ public class VideoPlaybackController : MonoBehaviour
         _effectStartTime = _mediaPlayer.CurrentTime;
         _accumulatedTimeDelta = 0f;
         _lastSwipeData = swipeData;
+
+        Debug.Log($"[VideoPlaybackController] Applied speed change: dir={directionFactor}, " +
+                 $"change={speedChangeAmount:F2}, target={_immediateTargetSpeed:F2}, final={_finalTargetSpeed:F2}, " +
+                 $"acc_dur={_accelerationDuration:F2}, dec_dur={_decelerationDuration:F2}");
+
         UpdateDebugText();
     }
 
@@ -323,7 +612,6 @@ public class VideoPlaybackController : MonoBehaviour
         }
         else
         {
-            // Ensure division by zero doesn't happen if thresholds are equal
             float range = slowSwipeTimeThreshold - fastSwipeTimeThreshold;
             if (range <= 0) return minSlowSpeedAmount;
 
@@ -400,6 +688,12 @@ public class VideoPlaybackController : MonoBehaviour
             _isPanelHoldActive = false;
             _isHolding = false;
             ClearSwipeHistory();
+        }
+
+        // Также отменяем удержание мышью, если оно активно
+        if (_isMouseHolding)
+        {
+            HandleMouseHoldRelease();
         }
     }
 
@@ -492,7 +786,7 @@ public class VideoPlaybackController : MonoBehaviour
                 float holdProgress = Mathf.Clamp01(_phaseTimer / _decelerationDuration);
                 float holdTargetDecelSpeed = QuadraticEaseOut(_effectStartSpeed, 0f, holdProgress);
 
-                if (_isHolding && Mathf.Abs(holdTargetDecelSpeed) <= skipTime)
+                if ((_isHolding || _isMouseHolding) && Mathf.Abs(holdTargetDecelSpeed) <= skipTime)
                 {
                     holdTargetDecelSpeed = 0f;
                 }
@@ -518,7 +812,7 @@ public class VideoPlaybackController : MonoBehaviour
                     _accumulatedTimeDelta = 0f;
                 }
 
-                if (_phaseTimer >= _decelerationDuration && !_isHolding)
+                if (_phaseTimer >= _decelerationDuration && !_isHolding && !_isMouseHolding)
                 {
                     _state = PlaybackState.Normal;
                     _currentSpeed = 0f;
@@ -576,11 +870,30 @@ public class VideoPlaybackController : MonoBehaviour
         };
 
         string panelInfo = _swipeControlEnabled ? $"Panels: {_lastSwipeData.panelsCount}, Avg Time: {_lastSwipeData.avgTimeBetween:F3}s" : "Swipe Disabled";
-        string holdInfo = $"Hold: idx={_heldPanelIndex}, act={_isPanelHoldActive}, dur={_holdDuration:F1}s, reachedZero={_reachedZero}";
+        string holdInfo = $"Hold: panel={_heldPanelIndex}, panel_act={_isPanelHoldActive}, mouse_act={_isMouseHolding}, moved={_mouseHasMovedTooMuch}";
         string swipeHistoryInfo = $"SwipeHist: [{string.Join(",", _swipeDirectionHistory)}]";
-        string swipeTimings = $"SlowT: {slowSwipeTimeThreshold:F2}, FastT: {fastSwipeTimeThreshold:F2}";
+        string mouseInfo = $"Mouse: dir=({_lastMouseSwipeDir.x:F2},{_lastMouseSwipeDir.y:F2}), spd={_lastMouseSwipeSpeed:F0}";
 
-        debugText.text = $"Current Speed: {_currentSpeed:F2}×\nState: {stateInfo}\n{panelInfo}\n{holdInfo}\n{swipeHistoryInfo}\n{swipeTimings}";
+        debugText.text = $"Current Speed: {_currentSpeed:F2}×\nState: {stateInfo}\n{panelInfo}\n{holdInfo}\n{swipeHistoryInfo}\n{mouseInfo}";
+    }
+
+    // Для отладки: тестовый метод для проверки обработки мышиных свайпов
+    public void TestMouseSwipe(float speed = 1000, float directionX = 1, float directionY = 0)
+    {
+        Debug.Log("[VideoPlaybackController] Testing mouse swipe processing...");
+
+        MouseSwipeData testData = new MouseSwipeData
+        {
+            startPosition = new Vector2(100, 100),
+            endPosition = new Vector2(500, 100),
+            direction = new Vector2(directionX, directionY).normalized,
+            speed = speed,
+            duration = 0.5f,
+            distance = 400,
+            isFinalSwipe = true
+        };
+
+        OnMouseSwipeDetected(testData);
     }
 
     public void SetNormalSpeed()
@@ -595,6 +908,9 @@ public class VideoPlaybackController : MonoBehaviour
             _mediaPlayer.PlaybackSpeed = 1f;
             _heldPanelIndex = -1;
             _isPanelHoldActive = false;
+            _isMouseHolding = false;
+            _processedMouseHold = false;
+            _mouseHasMovedTooMuch = false;
             ClearSwipeHistory();
             Debug.Log("[VideoPlaybackController] Reset to normal speed");
         }
@@ -609,6 +925,8 @@ public class VideoPlaybackController : MonoBehaviour
         if (newState == AppState.Active)
         {
             ResetState();
+            // В активном состоянии сразу включаем управление свайпами
+            SetSwipeControlEnabled(true);
         }
     }
 
@@ -632,6 +950,10 @@ public class VideoPlaybackController : MonoBehaviour
         _previousSpeed = 0f;
         _holdZeroTime = 0f;
         _isHolding = false;
+        _waitingForMouseSwipeRelease = false;
+        _isMouseHolding = false;
+        _processedMouseHold = false;
+        _mouseHasMovedTooMuch = false;
         ClearSwipeHistory();
 
         if (_mediaPlayer != null)
@@ -642,7 +964,6 @@ public class VideoPlaybackController : MonoBehaviour
             _accumulatedTimeDelta = 0f;
         }
     }
-
 
     private void OnValidate()
     {
