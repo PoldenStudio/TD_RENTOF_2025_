@@ -69,10 +69,22 @@ public class SwipeDetector : MonoBehaviour
     private bool _isSmoothDragSequence = false;
     private List<int> _processedIndices = new();
 
+    private void Awake()
+    {
+        if (stateManager == null)
+        {
+            stateManager = FindObjectOfType<StateManager>();
+            if (stateManager == null)
+            {
+                Debug.LogError("[SwipeDetector] StateManager not assigned and not found in scene!");
+            }
+        }
+    }
+
     public void OnInputReceived(bool[] panelStates)
     {
         float currentTime = Time.time;
-        bool anyPressed = false;
+        bool anyPressedThisFrame = false;
 
         for (int globalIndex = 0; globalIndex < panelStates.Length; globalIndex++)
         {
@@ -80,9 +92,12 @@ public class SwipeDetector : MonoBehaviour
 
             if (isPressed)
             {
-                anyPressed = true;
-                PanelPressed?.Invoke(globalIndex, true);
-                _playbackController?.OnPanelPressed(globalIndex, true);
+                anyPressedThisFrame = true;
+                if (!_currentlyPressedPanels.Contains(globalIndex))
+                {
+                    PanelPressed?.Invoke(globalIndex, true);
+                    _playbackController?.OnPanelPressed(globalIndex, true);
+                }
 
                 if (!_currentlyPressedPanels.Contains(globalIndex))
                 {
@@ -93,18 +108,23 @@ public class SwipeDetector : MonoBehaviour
                         (currentTime - _activationHistory.Last().time) > maxTimeBetweenPresses)
                     {
                         ResetSwipeData();
-                        Debug.Log("Resetting Swipe Data due to time gap");
+                        Debug.Log("[SwipeDetector] Resetting Swipe Data due to time gap");
                     }
 
                     _activationHistory.Add(new PanelActivation { index = globalIndex, time = currentTime });
                     _lastTouchTime = currentTime;
                     _isSwipeInProgress = true;
 
-                    if (stateManager.CurrentState == AppState.Active)
+                    if (stateManager != null)
+                    {
+                        stateManager.ResetIdleTimer();
+                    }
+
+                    if (stateManager != null && stateManager.CurrentState == AppState.Active)
                     {
                         TryDetectSwipe(false);
                     }
-                    else if (stateManager.CurrentState == AppState.Idle)
+                    else if (stateManager != null && stateManager.CurrentState == AppState.Idle)
                     {
                         TryDetectRelativeSwipe();
                     }
@@ -122,11 +142,10 @@ public class SwipeDetector : MonoBehaviour
             }
         }
 
-        if (!anyPressed && _isSmoothDragSequence && _isSwipeInProgress)
+        if (!anyPressedThisFrame && _isSmoothDragSequence && _isSwipeInProgress)
         {
             _isSwipeInProgress = false;
             _isSmoothDragSequence = false;
-            ResetSwipeData();
         }
     }
 
@@ -134,31 +153,36 @@ public class SwipeDetector : MonoBehaviour
     {
         float currentTime = Time.time;
 
-        if (_activationHistory.Count > 0 && (currentTime - _lastTouchTime) >= swipeFinishDelay)
+        if (_isSwipeInProgress && _activationHistory.Count > 0)
         {
-            if (_isSwipeInProgress)
+            if ((currentTime - _lastTouchTime) >= swipeFinishDelay)
             {
-                if (stateManager.CurrentState == AppState.Active)
+                if (stateManager != null && stateManager.CurrentState == AppState.Active)
                 {
                     TryDetectSwipe(false);
                 }
-                else if (stateManager.CurrentState == AppState.Idle)
+                else if (stateManager != null && stateManager.CurrentState == AppState.Idle)
                 {
                     TryDetectRelativeSwipe();
                 }
                 _isSwipeInProgress = false;
+                ResetSwipeData();
+                Debug.Log("[SwipeDetector] Swipe finalized due to inactivity timeout.");
             }
-            ResetSwipeData();
-        }
-        else if (_activationHistory.Count > 0 && (currentTime - _activationHistory[0].time) > maxSwipeDuration)
-        {
-            if (_isSwipeInProgress)
+            else if ((currentTime - _activationHistory[0].time) > maxSwipeDuration)
             {
-                TryDetectSwipe(false);
-                TryDetectRelativeSwipe();
+                if (stateManager != null && stateManager.CurrentState == AppState.Active)
+                {
+                    TryDetectSwipe(false);
+                }
+                else if (stateManager != null && stateManager.CurrentState == AppState.Idle)
+                {
+                    TryDetectRelativeSwipe();
+                }
                 _isSwipeInProgress = false;
+                ResetSwipeData();
+                Debug.Log("[SwipeDetector] Swipe finalized due to max duration timeout.");
             }
-            ResetSwipeData();
         }
     }
 
@@ -213,7 +237,7 @@ public class SwipeDetector : MonoBehaviour
             speed = speed,
             panelsCount = validActivations.Count,
             avgTimeBetween = avgDt,
-            isSmoothDrag = _isSmoothDragSequence && avgDt > 0.2f
+            isSmoothDrag = _isSmoothDragSequence
         };
 
         SwipeDetected?.Invoke(data);
@@ -221,8 +245,6 @@ public class SwipeDetector : MonoBehaviour
 
         if (!isInProgress)
         {
-            foreach (var act in validActivations)
-                _processedIndices.Add(act.index);
         }
     }
 
@@ -276,6 +298,11 @@ public class SwipeDetector : MonoBehaviour
 
         MouseSwipeDetected?.Invoke(data);
 
+        if (stateManager != null)
+        {
+            stateManager.ResetIdleTimer();
+        }
+
         if (isFinal)
         {
             SwipeData standardSwipe = new()
@@ -293,7 +320,6 @@ public class SwipeDetector : MonoBehaviour
 
     public void ProcessMouseHold(Vector2 position, Vector2 endPosition, float duration, bool isStart)
     {
-        // Создаем структуру данных об удержании
         MouseHoldData holdData = new MouseHoldData
         {
             position = position,
@@ -302,10 +328,13 @@ public class SwipeDetector : MonoBehaviour
             isStart = isStart
         };
 
-        // Вызываем событие
         MouseHoldDetected?.Invoke(holdData);
 
-        // Передаем событие в контроллер воспроизведения
+        if (isStart && stateManager != null)
+        {
+            stateManager.ResetIdleTimer();
+        }
+
         if (_playbackController != null)
         {
             _playbackController.OnMouseHoldDetected(holdData);
@@ -316,16 +345,29 @@ public class SwipeDetector : MonoBehaviour
 
     private Vector2 GetPanelPos(int globalIndex)
     {
+        if (Settings.Instance == null)
+        {
+            Debug.LogError("Settings.Instance is null!");
+            return Vector2.zero;
+        }
+
         int cols = Settings.Instance.cols;
         int rows = Settings.Instance.rows;
         int segmentsPerPort = Settings.Instance.segments;
+
+        if (cols <= 0 || rows <= 0 || segmentsPerPort <= 0)
+        {
+            Debug.LogError($"Invalid settings: cols={cols}, rows={rows}, segments={segmentsPerPort}");
+            return Vector2.zero;
+        }
+
         int panelsPerSegment = cols * rows;
         int panelsPerPort = panelsPerSegment * segmentsPerPort;
-        int numPorts = _serialInputReader != null ? _serialInputReader.portNames.Length : 1;
+        int numPorts = (_serialInputReader != null && _serialInputReader.portNames != null) ? _serialInputReader.portNames.Length : 1;
 
-        if (panelsPerPort == 0)
+        if (panelsPerSegment <= 0 || panelsPerPort <= 0)
         {
-            Debug.LogError("panelsPerPort is zero, cannot calculate panel position.");
+            Debug.LogError($"panelsPerSegment={panelsPerSegment} or panelsPerPort={panelsPerPort} is zero or negative, cannot calculate panel position.");
             return Vector2.zero;
         }
 
@@ -341,7 +383,7 @@ public class SwipeDetector : MonoBehaviour
         float globalY = -localY;
 
         Vector2 pos = new Vector2(globalX, globalY);
-        Debug.Log($"GetPanelPos: globalIndex={globalIndex}, portIdx={portIndex}, segIdx={segmentIndex}, localX={localX}, localY={localY}, pos={pos}");
+        // Debug.Log($"GetPanelPos: globalIndex={globalIndex}, portIdx={portIndex}, segIdx={segmentIndex}, localX={localX}, localY={localY}, pos={pos}");
         return pos;
     }
 }

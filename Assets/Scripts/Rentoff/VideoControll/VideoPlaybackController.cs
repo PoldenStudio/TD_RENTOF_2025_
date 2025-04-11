@@ -148,12 +148,6 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
-    public void ForceEnableSwipeControl()
-    {
-        _swipeControlEnabled = true;
-        Debug.Log("[VideoPlaybackController] Swipe control FORCED enabled");
-    }
-
     public void Init(IMediaPlayer player)
     {
         _mediaPlayer = player;

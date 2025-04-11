@@ -253,8 +253,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff8ded810d01bf4aa9c5393eee58a47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultModeMovieName: 120fps_184s.mov
-  idleModeMovieName: 120fps_184s.mov
+  defaultModeMovieName: Idle_mode.mov
+  idleModeMovieName: Active_mode.mov
   CurtainMovieName: 
   CometMovieName: 
   rows: 1
@@ -3323,7 +3323,7 @@ MonoBehaviour:
   spiTouchPanel: {fileID: 1299263586}
   effectsManager: {fileID: 770569963}
   sunManager: {fileID: 770569965}
-  touchPanel: {fileID: 1299263586}
+  swipeDetector: {fileID: 0}
   curtainFullWait: 1
   swipeReactivateDelay: 0.5
   fadeOutDuration: 1
