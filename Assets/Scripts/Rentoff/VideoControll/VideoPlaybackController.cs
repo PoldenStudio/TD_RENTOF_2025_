@@ -12,7 +12,6 @@ public class VideoPlaybackController : MonoBehaviour
     private enum PlaybackState
     {
         Normal,
-        Accelerating,
         Decelerating,
         HoldAccelerating
     }
@@ -23,14 +22,8 @@ public class VideoPlaybackController : MonoBehaviour
 
     [SerializeField] private Settings settings;
 
-    private float _currentSpeed = 1f;   
-    private float _immediateTargetSpeed = 1f;
-    private float _effectStartSpeed = 1f;
+    private float _currentSpeed = 1f;
     private float _finalTargetSpeed = 1f;
-
-    private float _accelerationDuration = 0f;
-    private float _decelerationDuration = 0f;
-    private float _phaseTimer = 0f;
 
     private float _effectStartTime = 0f;
     private float _accumulatedTimeDelta = 0f;
@@ -67,7 +60,14 @@ public class VideoPlaybackController : MonoBehaviour
     private bool _swipeControlEnabled = false;
 
     private float _velocity = 0f;
-    private float _smoothTime = 2f;
+
+    [Header("Mouse swipe Timings")]
+    [SerializeField] private float _smoothTimeNormal = 0.15f;
+    [SerializeField] private float _smoothTimeSwipeMin = 0.1f;
+    [SerializeField] private float _smoothTimeSwipeMax = 0.3f;
+    [SerializeField] private float _smoothTimeHoldMin = 0.1f;
+    [SerializeField] private float _smoothTimeHoldMax = 0.4f;
+    private float _phaseTimer;
     private bool _reachedZero = false;
     private float _previousSpeed = 0f;
     private float _holdZeroTime = 0f;
@@ -78,7 +78,7 @@ public class VideoPlaybackController : MonoBehaviour
     [SerializeField] private float slowSwipeTimeThreshold = 0.1f;
     [Tooltip("Average time between touches less than or equal to this will be considered a FAST swipe.")]
     [SerializeField] private float fastSwipeTimeThreshold = 0.05f;
-    [Tooltip("If the target speed magnitude exceeds this value, it will not return to normal speed automatically.")]
+    [Tooltip("If the target speed magnitude exceeds this value, it will NOT return to normal speed automatically.")]
     [SerializeField] private float maintainSpeedThreshold = 5f;
 
     [Header("Mouse Swipe Settings")]
@@ -125,10 +125,10 @@ public class VideoPlaybackController : MonoBehaviour
 
     public void UpdateSynthParameters()
     {
-        _SoundManager.UpdateSynthParameters(_currentSpeed);
-        _MIDISoundManager.UpdateSynthParameters(_currentSpeed);
-        _LEDController.UpdateSynthParameters(_currentSpeed);
-        _SPItouchPanel.UpdateSynthParameters(_currentSpeed);
+        _SoundManager?.UpdateSynthParameters(_currentSpeed);
+        _MIDISoundManager?.UpdateSynthParameters(_currentSpeed);
+        _LEDController?.UpdateSynthParameters(_currentSpeed);
+        _SPItouchPanel?.UpdateSynthParameters(_currentSpeed);
     }
 
     public void SetSwipeControlEnabled(bool enabled)
@@ -137,8 +137,9 @@ public class VideoPlaybackController : MonoBehaviour
         Debug.Log($"[VideoPlaybackController] Swipe control enabled: {enabled}");
         if (!enabled)
         {
-            curtainController.ResetCurtainProgress();
+            curtainController?.ResetCurtainProgress();
             ClearSwipeHistory();
+            SetNormalSpeed();
         }
     }
 
@@ -154,7 +155,7 @@ public class VideoPlaybackController : MonoBehaviour
 
     public void OnMouseSwipeDetected(MouseSwipeData mouseSwipeData)
     {
-        if (_mediaPlayer == null)
+        if (_mediaPlayer == null || stateManager == null)
             return;
 
         if (Time.time - _lastMouseSwipeTime < 0.01f)
@@ -174,38 +175,7 @@ public class VideoPlaybackController : MonoBehaviour
         _lastMouseSwipeDir = significantDir;
         _lastMouseSwipeSpeed = mouseSwipeData.speed;
 
-        if (enableMouseHold && !mouseSwipeData.isFinalSwipe)
-        {
-            if (!_isMouseHolding)
-            {
-                _isMouseHolding = true;
-                _mouseHoldStartTime = Time.time;
-                _mouseHoldPosition = mouseSwipeData.startPosition;
-                _mouseHoldStartPosition = mouseSwipeData.startPosition;
-                _processedMouseHold = false;
-                _mouseHasMovedTooMuch = false;
-            }
-            else
-            {
-                float distanceMoved = Vector2.Distance(_mouseHoldStartPosition, mouseSwipeData.endPosition);
-                if (distanceMoved > mouseHoldMovementThreshold)
-                {
-                    _mouseHasMovedTooMuch = true;
-                }
-            }
-
-            return;
-        }
-        else if (mouseSwipeData.isFinalSwipe && _isMouseHolding)
-        {
-            HandleMouseHoldRelease();
-            if (!_processedMouseHold || _mouseHasMovedTooMuch)
-            {
-                Debug.Log("[VideoPlaybackController] Handle as normal swipe after hold release");
-            }
-        }
-
-        if (stateManager != null && (stateManager.CurrentState == AppState.Active))
+        if (stateManager.CurrentState == AppState.Active)
         {
             if (!_swipeControlEnabled)
             {
@@ -213,44 +183,70 @@ public class VideoPlaybackController : MonoBehaviour
                 return;
             }
 
-            CancelHoldState();
-            if (_state == PlaybackState.HoldAccelerating)
+            if (enableMouseHold && !mouseSwipeData.isFinalSwipe)
+            {
+                if (!_isMouseHolding)
+                {
+                    _isMouseHolding = true;
+                    _mouseHoldStartTime = Time.time;
+                    _mouseHoldPosition = mouseSwipeData.startPosition;
+                    _mouseHoldStartPosition = mouseSwipeData.startPosition;
+                    _processedMouseHold = false;
+                    _mouseHasMovedTooMuch = false;
+                }
+                else
+                {
+                    float distanceMoved = Vector2.Distance(_mouseHoldStartPosition, mouseSwipeData.endPosition);
+                    if (distanceMoved > mouseHoldMovementThreshold)
+                    {
+                        _mouseHasMovedTooMuch = true;
+                    }
+                }
                 return;
-
-            int currentSwipeDirection = significantDir.x > 0 ? 1 : -1;
-            if (enableSwipeFiltering && IsAccidentalSwipe(currentSwipeDirection))
+            }
+            else if (mouseSwipeData.isFinalSwipe && _isMouseHolding)
             {
-                Debug.Log($"[VideoPlaybackController] Mouse swipe ignored as accidental. Dir={currentSwipeDirection}");
-                return;
+                HandleMouseHoldRelease();
+                if (_processedMouseHold && !_mouseHasMovedTooMuch)
+                {
+                    return;
+                }
             }
 
-            float swipeImpact = CalculateMouseSwipeImpact(mouseSwipeData.speed, mouseSwipeData.duration);
-
-            Vector2 correctedDirection = new Vector2(-significantDir.x, significantDir.y);
-            SwipeData convertedSwipeData = new SwipeData
+            if (mouseSwipeData.isFinalSwipe || !enableMouseHold)
             {
-                direction = correctedDirection,
-                speed = swipeImpact,
-                panelsCount = 2,
-                avgTimeBetween = 0.08f,
-                isSmoothDrag = true
-            };
+                CancelHoldState();
+                int currentSwipeDirection = significantDir.x > 0 ? 1 : -1;
+                if (enableSwipeFiltering && IsAccidentalSwipe(currentSwipeDirection))
+                {
+                    Debug.Log($"[VideoPlaybackController] Mouse swipe ignored as accidental. Dir={currentSwipeDirection}");
+                    return;
+                }
 
-            if (mouseSwipeData.isFinalSwipe)
-            {
-                convertedSwipeData.avgTimeBetween = 0.03f;
+                float swipeImpact = CalculateMouseSwipeImpact(mouseSwipeData.speed, mouseSwipeData.duration);
+
+                Vector2 correctedDirection = new Vector2(-significantDir.x, significantDir.y);
+                SwipeData convertedSwipeData = new SwipeData
+                {
+                    direction = correctedDirection,
+                    speed = swipeImpact,
+                    panelsCount = 2,
+                    avgTimeBetween = mouseSwipeData.duration > 0 ? mouseSwipeData.duration / 2f : 0.08f,
+                    isSmoothDrag = true
+                };
+
+                ApplySpeedChange(convertedSwipeData);
+
+                if (enableSwipeFiltering)
+                {
+                    AddSwipeToHistory(currentSwipeDirection);
+                }
+
+                _waitingForMouseSwipeRelease = false;
             }
 
-            ApplySpeedChange(convertedSwipeData);
-
-            if (enableSwipeFiltering)
-            {
-                AddSwipeToHistory(currentSwipeDirection);
-            }
-
-            _waitingForMouseSwipeRelease = !mouseSwipeData.isFinalSwipe;
         }
-        else if (stateManager != null && (stateManager.CurrentState == AppState.Idle))
+        else if (stateManager.CurrentState == AppState.Idle)
         {
             HandleMouseCurtainSwipe(mouseSwipeData);
         }
@@ -283,16 +279,17 @@ public class VideoPlaybackController : MonoBehaviour
 
             _previousState = _state;
             _state = PlaybackState.HoldAccelerating;
-            _effectStartSpeed = _currentSpeed;
-            _immediateTargetSpeed = 0f;
             _finalTargetSpeed = 0f;
-            _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
+
+            float smoothTimeHold = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeHoldMax, Mathf.InverseLerp(1f, maxTargetSpeed, Mathf.Abs(_currentSpeed)));
             _phaseTimer = 0f;
             _reachedZero = false;
             _holdZeroTime = 0f;
             _isHolding = true;
+            _velocity = 0f;
 
             ClearSwipeHistory();
+            Debug.Log("[VideoPlaybackController] Mouse Hold Started");
         }
         else
         {
@@ -309,23 +306,25 @@ public class VideoPlaybackController : MonoBehaviour
         if (_state == PlaybackState.HoldAccelerating && _isHolding)
         {
             _isHolding = false;
+            _processedMouseHold = true;
+
             if (Mathf.Abs(_currentSpeed) > skipTime)
             {
                 _state = PlaybackState.Decelerating;
-                _effectStartSpeed = _currentSpeed;
-                _finalTargetSpeed = _currentSpeed > 0 ? 1f : -1f;
-                _decelerationDuration = CalculateDecelerationDuration(Mathf.Abs(_currentSpeed));
-                _phaseTimer = 0f;
+                _finalTargetSpeed = Mathf.Sign(_currentSpeed) * 1f;
+
+                float smoothTimeRelease = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeNormal, 0.5f);
+                _velocity = 0f;
+                Debug.Log("[VideoPlaybackController] Mouse hold release => resuming smoothly");
             }
             else
             {
                 _state = PlaybackState.Normal;
                 _currentSpeed = 0f;
-                _immediateTargetSpeed = 0f;
                 _finalTargetSpeed = 0f;
                 _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
+                Debug.Log("[VideoPlaybackController] Mouse hold release => stopped");
             }
-            Debug.Log("[VideoPlaybackController] Mouse hold release => resuming");
         }
         _isMouseHolding = false;
     }
@@ -334,46 +333,41 @@ public class VideoPlaybackController : MonoBehaviour
     {
         float normSpeed = Mathf.Min(1.0f, speed * mouseSensitivity);
         float curved = mouseResponseCurve.Evaluate(normSpeed);
-        float durFactor = Mathf.Lerp(1.0f, 0.5f, Mathf.Min(1.0f, duration));
+        float durFactor = Mathf.Lerp(1.0f, 0.5f, Mathf.Min(1.0f, duration / 0.5f));
         float impact = Mathf.Lerp(mouseMinimumImpact, mouseMaximumImpact, curved) * durFactor;
         return impact;
     }
 
     public void OnSwipeDetected(SwipeData swipeData)
     {
-        if (_mediaPlayer == null) return;
+        if (_mediaPlayer == null || stateManager == null || stateManager.CurrentState != AppState.Active) return;
+        if (!_swipeControlEnabled) return;
 
-        if (stateManager != null && stateManager.CurrentState == AppState.Active)
+        CancelHoldState();
+
+        int dir = swipeData.direction.x > 0 ? 1 : -1;
+        if (enableSwipeFiltering && IsAccidentalSwipe(dir))
         {
-            CancelHoldState();
+            Debug.Log($"[VideoPlaybackController] Accidental swipe ignored. Dir={dir}");
+            return;
+        }
 
-            if (_state == PlaybackState.HoldAccelerating)
-                return;
+        ApplySpeedChange(swipeData);
 
-            int dir = swipeData.direction.x > 0 ? 1 : -1;
-            if (enableSwipeFiltering && IsAccidentalSwipe(dir))
-            {
-                Debug.Log($"[VideoPlaybackController] Accidental swipe ignored. Dir={dir}");
-                return;
-            }
-
-            ApplySpeedChange(swipeData);
-
-            if (enableSwipeFiltering)
-            {
-                AddSwipeToHistory(dir);
-            }
+        if (enableSwipeFiltering)
+        {
+            AddSwipeToHistory(dir);
         }
     }
 
     public void OnRelativeSwipeDetected(RelativeSwipeData relativeSwipeData)
     {
-        if (_mediaPlayer == null) return;
+        if (_mediaPlayer == null || stateManager == null) return;
 
-        if (stateManager != null && stateManager.CurrentState == AppState.Transition)
+        if (stateManager.CurrentState == AppState.Transition)
             return;
 
-        if (stateManager != null && stateManager.CurrentState == AppState.Idle)
+        if (stateManager.CurrentState == AppState.Idle)
         {
             HandleCurtainSwipe(relativeSwipeData);
         }
@@ -384,10 +378,7 @@ public class VideoPlaybackController : MonoBehaviour
         if (curtainController == null) return;
 
         float progressIncrement = rsd.shift / (float)settings.cols;
-        if (rsd.shift < 0)
-            progressIncrement = Mathf.Abs(progressIncrement);
-        else
-            progressIncrement = -Mathf.Abs(progressIncrement);
+        progressIncrement = rsd.shift < 0 ? Mathf.Abs(progressIncrement) : -Mathf.Abs(progressIncrement);
 
         curtainController.AddSwipeProgress(progressIncrement);
     }
@@ -396,10 +387,8 @@ public class VideoPlaybackController : MonoBehaviour
     {
         _lastSwipeData = swipeData;
 
-        _effectStartSpeed = _currentSpeed;
         int directionFactor = swipeData.direction.x > 0 ? 1 : -1;
-
-        directionFactor *= -1;
+        directionFactor *= -1; 
 
         float avgTime = swipeData.avgTimeBetween;
         int pCount = swipeData.panelsCount;
@@ -411,36 +400,38 @@ public class VideoPlaybackController : MonoBehaviour
             speedChangeAmount *= panelsMultiplier;
         }
 
-        _immediateTargetSpeed = _currentSpeed + directionFactor * speedChangeAmount;
-        _immediateTargetSpeed = Mathf.Clamp(_immediateTargetSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
+        float newPotentialTargetSpeed = _currentSpeed + directionFactor * speedChangeAmount;
+        newPotentialTargetSpeed = Mathf.Clamp(newPotentialTargetSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
 
-        float speedRatio = Mathf.InverseLerp(fastSwipeTimeThreshold, 0f, avgTime);
-        _accelerationDuration = Mathf.Lerp(2f, 5f, speedRatio);
-
-        _phaseTimer = 0f;
-        _state = PlaybackState.Accelerating;
-
-        if (Mathf.Abs(_immediateTargetSpeed) > maintainSpeedThreshold)
+        if (Mathf.Abs(newPotentialTargetSpeed) > maintainSpeedThreshold)
         {
-            _finalTargetSpeed = _immediateTargetSpeed;
-            _decelerationDuration = 0f;
+            _finalTargetSpeed = newPotentialTargetSpeed;
         }
         else
         {
-            if (Mathf.Abs(_immediateTargetSpeed) > 0.1f)
-                _finalTargetSpeed = Mathf.Sign(_immediateTargetSpeed) * 1f;
+            if (Mathf.Abs(newPotentialTargetSpeed) < skipTime)
+            {
+                _finalTargetSpeed = 0f;
+            }
+            else if (Mathf.Abs(newPotentialTargetSpeed) < 1f)
+            {
+                _finalTargetSpeed = Mathf.Sign(newPotentialTargetSpeed) * 1f;
+            }
             else
-                _finalTargetSpeed = directionFactor > 0 ? 1f : -1f;
-
-            _decelerationDuration = CalculateDecelerationDuration(Mathf.Abs(_immediateTargetSpeed));
+            {
+                _finalTargetSpeed = newPotentialTargetSpeed;
+            }
         }
-
         _finalTargetSpeed = Mathf.Clamp(_finalTargetSpeed, MAX_REVERSE_SPEED, maxTargetSpeed);
 
-        _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
-        _accumulatedTimeDelta = 0f;
+        if (_state != PlaybackState.HoldAccelerating)
+        {
+            _state = PlaybackState.Decelerating;
+        }
 
-        Debug.Log($"[VideoPlaybackController] ApplySpeedChange => dir={directionFactor}, immediate={_immediateTargetSpeed:F2}, final={_finalTargetSpeed:F2}");
+        _velocity = 0f;
+
+        Debug.Log($"[VideoPlaybackController] ApplySpeedChange => dir={directionFactor}, potentialTarget={newPotentialTargetSpeed:F2}, finalTarget={_finalTargetSpeed:F2}");
     }
 
     private float CalculateSpeedChangeAmount(float avgTimeBetween)
@@ -455,6 +446,7 @@ public class VideoPlaybackController : MonoBehaviour
         else if (isFastSwipe)
         {
             float t = 1f - avgTimeBetween / fastSwipeTimeThreshold;
+            t = Mathf.Clamp01(t);
             return Mathf.Lerp(2f, 4f, t);
         }
         else
@@ -463,6 +455,7 @@ public class VideoPlaybackController : MonoBehaviour
             if (range <= 0f) return minSlowSpeedAmount;
 
             float t = (slowSwipeTimeThreshold - avgTimeBetween) / range;
+            t = Mathf.Clamp01(t);
             return Mathf.Lerp(minSlowSpeedAmount, 2f, t);
         }
     }
@@ -497,8 +490,8 @@ public class VideoPlaybackController : MonoBehaviour
             _heldPanelIndex = -1;
             _isPanelHoldActive = false;
             _isHolding = false;
+            ClearSwipeHistory();
         }
-        ClearSwipeHistory();
     }
 
     private void HandleReleaseAfterHold()
@@ -508,18 +501,17 @@ public class VideoPlaybackController : MonoBehaviour
             if (Mathf.Abs(_currentSpeed) > skipTime)
             {
                 _state = PlaybackState.Decelerating;
-                _effectStartSpeed = _currentSpeed;
-                _finalTargetSpeed = _currentSpeed > 0 ? 1f : -1f;
-                _decelerationDuration = CalculateDecelerationDuration(Mathf.Abs(_currentSpeed));
-                _phaseTimer = 0f;
+                _finalTargetSpeed = Mathf.Sign(_currentSpeed) * 1f;
+                _velocity = 0f;
+                Debug.Log("[VideoPlaybackController] Panel hold release => resuming smoothly");
             }
             else
             {
                 _state = PlaybackState.Normal;
                 _currentSpeed = 0f;
-                _immediateTargetSpeed = 0f;
                 _finalTargetSpeed = 0f;
                 _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
+                Debug.Log("[VideoPlaybackController] Panel hold release => stopped");
             }
         }
     }
@@ -533,145 +525,116 @@ public class VideoPlaybackController : MonoBehaviour
             _isPanelHoldActive = false;
             _isHolding = false;
             ClearSwipeHistory();
+            Debug.Log("[VideoPlaybackController] Panel hold cancelled by swipe");
         }
 
         if (_isMouseHolding)
         {
             HandleMouseHoldRelease();
+            Debug.Log("[VideoPlaybackController] Mouse hold cancelled by swipe");
         }
-    }
-
-    private float CalculateDecelerationDuration(float currentSpeedAbs)
-    {
-        float normSpeed = Mathf.InverseLerp(1f, maxTargetSpeed, currentSpeedAbs);
-        return Mathf.Lerp(MIN_DECELERATION_DURATION, MAX_DECELERATION_DURATION, normSpeed);
-    }
-
-    private float CalculateDecelerationDurationFromHold(float currentSpeedAbs)
-    {
-        float normSpeed = Mathf.InverseLerp(1f, maxTargetSpeed, currentSpeedAbs);
-        return Mathf.Lerp(MIN_DECELERATION_DURATION, MAX_DECELERATION_DURATION_FROM_HOLD, normSpeed);
     }
 
     private void Update()
     {
         UpdateMediaPlayer();
-        if (_mediaPlayer == null || (!_swipeControlEnabled && _state == PlaybackState.Normal))
+        if (_mediaPlayer == null)
             return;
 
         _previousSpeed = _currentSpeed;
-        HandleHoldAcceleration();
+        HandlePanelHoldActivation();
         UpdatePlaybackState();
         UpdateDebugText();
     }
 
-    private void HandleHoldAcceleration()
+    private void HandlePanelHoldActivation()
     {
-        if (_isPanelHoldActive && _heldPanelIndex >= 0)
+        if (_isPanelHoldActive && _heldPanelIndex >= 0 && !_isHolding)
         {
             _holdDuration = Time.time - _holdStartTime;
-            if (_holdDuration >= HOLD_THRESHOLD && _state != PlaybackState.HoldAccelerating)
+            if (_holdDuration >= HOLD_THRESHOLD)
             {
+                _isHolding = true;
                 _previousState = _state;
                 _state = PlaybackState.HoldAccelerating;
-                _effectStartSpeed = _currentSpeed;
-                _immediateTargetSpeed = 0f;
                 _finalTargetSpeed = 0f;
-                _decelerationDuration = CalculateDecelerationDurationFromHold(Mathf.Abs(_currentSpeed));
                 _phaseTimer = 0f;
                 _reachedZero = false;
                 _holdZeroTime = 0f;
+                _velocity = 0f;
                 ClearSwipeHistory();
+                Debug.Log("[VideoPlaybackController] Panel Hold Activated");
             }
         }
     }
 
     private void UpdatePlaybackState()
     {
-        _previousState = _state;
+        _previousSpeed = _currentSpeed;
         float dt = Time.deltaTime;
+        float currentSmoothTime = 0;
 
         switch (_state)
         {
-            case PlaybackState.Accelerating:
-                _phaseTimer += dt;
-                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, _immediateTargetSpeed, ref _velocity, _smoothTime, maxTargetSpeed, dt);
-
-                if (_phaseTimer >= _accelerationDuration)
-                {
-                    _currentSpeed = _immediateTargetSpeed;
-                    if (_decelerationDuration > 0f && !Mathf.Approximately(_immediateTargetSpeed, _finalTargetSpeed))
-                    {
-                        _state = PlaybackState.Decelerating;
-                        _effectStartSpeed = _currentSpeed;
-                        _phaseTimer = 0f;
-                    }
-                    else
-                    {
-                        _state = PlaybackState.Normal;
-                    }
-                }
-                break;
-
             case PlaybackState.Decelerating:
-                _phaseTimer += dt;
-                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, _finalTargetSpeed, ref _velocity, _smoothTime, maxTargetSpeed, dt);
+                float targetSpeedMagnitude = Mathf.Abs(_finalTargetSpeed);
+                currentSmoothTime = Mathf.Lerp(_smoothTimeSwipeMin, _smoothTimeSwipeMax, Mathf.InverseLerp(1f, maxTargetSpeed, targetSpeedMagnitude));
+                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, _finalTargetSpeed, ref _velocity, currentSmoothTime, maxTargetSpeed, dt);
 
-                if (_phaseTimer >= _decelerationDuration)
+                if (Mathf.Abs(_currentSpeed - _finalTargetSpeed) < 0.01f)
                 {
                     _currentSpeed = _finalTargetSpeed;
                     _state = PlaybackState.Normal;
+                    _velocity = 0f; 
+                    Debug.Log($"[VideoPlaybackController] Deceleration complete. Final speed: {_currentSpeed:F2}");
                 }
+
                 break;
 
             case PlaybackState.HoldAccelerating:
-                _phaseTimer += dt;
-                float holdProgress = Mathf.Clamp01(_phaseTimer / _decelerationDuration);
-                float holdTargetDecelSpeed = QuadraticEaseOut(_effectStartSpeed, 0f, holdProgress);
-
-                if ((_isHolding || _isMouseHolding) && Mathf.Abs(holdTargetDecelSpeed) <= skipTime)
-                {
-                    holdTargetDecelSpeed = 0f;
-                }
-                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, holdTargetDecelSpeed, ref _velocity, _smoothTime, maxTargetSpeed, dt);
+                currentSmoothTime = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeHoldMax, Mathf.InverseLerp(1f, maxTargetSpeed, Mathf.Abs(_previousSpeed)));
+                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, 0f, ref _velocity, currentSmoothTime, maxTargetSpeed, dt);
 
                 if (Mathf.Abs(_currentSpeed) <= skipTime)
                 {
                     if (!_reachedZero)
                     {
                         _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
-                        _currentSpeed = 0;
+                        _currentSpeed = 0f;
                         _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
                         _accumulatedTimeDelta = 0f;
                     }
                     _reachedZero = true;
                 }
-
-                if ((_previousSpeed < 0 && _currentSpeed > 0) ||
-                    (_previousSpeed > 0 && _currentSpeed < 0))
+                else
                 {
-                    _currentSpeed = 0;
-                    _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
-                    _accumulatedTimeDelta = 0f;
+                    _reachedZero = false;
                 }
 
-                if (_phaseTimer >= _decelerationDuration && !_isHolding && !_isMouseHolding)
+                if ((_previousSpeed < 0 && _currentSpeed >= 0) || (_previousSpeed > 0 && _currentSpeed <= 0))
                 {
-                    _state = PlaybackState.Normal;
-                    _currentSpeed = 0f;
+                    if (!_reachedZero)
+                    {
+                        _currentSpeed = 0f;
+                        _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
+                        _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
+                        _accumulatedTimeDelta = 0f;
+                        _reachedZero = true;
+                        Debug.Log("[VideoPlaybackController] Speed crossed zero during hold");
+                    }
+                }
+
+                if (!_isHolding && !_isMouseHolding)
+                {
+                    HandleReleaseAfterHold();
                 }
                 break;
 
             case PlaybackState.Normal:
-                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, _finalTargetSpeed, ref _velocity, _smoothTime, maxTargetSpeed, dt);
+                currentSmoothTime = _smoothTimeNormal;
+                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, _finalTargetSpeed, ref _velocity, currentSmoothTime, maxTargetSpeed, dt);
                 break;
         }
-    }
-
-    private float QuadraticEaseOut(float start, float end, float value)
-    {
-        end -= start;
-        return -end * value * (value - 2) + start;
     }
 
     private void UpdateMediaPlayer()
@@ -689,7 +652,11 @@ public class VideoPlaybackController : MonoBehaviour
             }
             else if (_state == PlaybackState.HoldAccelerating && _reachedZero)
             {
-                _mediaPlayer.SeekToTime(_holdZeroTime);
+
+                if (Mathf.Abs(_currentSpeed) < 0.01f)
+                { 
+                    _mediaPlayer.SeekToTime(_holdZeroTime);
+                }
             }
         }
     }
@@ -697,7 +664,13 @@ public class VideoPlaybackController : MonoBehaviour
     private float WrapTime(float time, float duration)
     {
         if (duration <= 0f) return 0f;
-        return ((time % duration) + duration) % duration;
+
+        float wrappedTime = time % duration;
+        if (wrappedTime < 0)
+        {
+            wrappedTime += duration;
+        }
+        return wrappedTime;
     }
 
     private void UpdateDebugText()
@@ -706,20 +679,18 @@ public class VideoPlaybackController : MonoBehaviour
 
         string stateInfo = _state switch
         {
-            PlaybackState.Accelerating =>
-                $"Acc (target={_immediateTargetSpeed:F2}, final={_finalTargetSpeed:F2}, elapsed={_phaseTimer:F1}/{_accelerationDuration:F1})",
             PlaybackState.Decelerating =>
-                $"Dec (speed={_currentSpeed:F2}, final={_finalTargetSpeed:F2}, left={_decelerationDuration - _phaseTimer:F1}/{_decelerationDuration:F1})",
+                $"Dec (speed={_currentSpeed:F2}, final={_finalTargetSpeed:F2})",
             PlaybackState.HoldAccelerating =>
-                $"Hold Stop (speed={_currentSpeed:F2})",
-            _ => $"Normal (final={_finalTargetSpeed:F2})"
+                $"Hold Stop (speed={_currentSpeed:F2}, reachedZero={_reachedZero})",
+            _ => $"Normal (speed={_currentSpeed:F2}, target={_finalTargetSpeed:F2})"
         };
 
         string panelText = _swipeControlEnabled
-            ? $"Panels={_lastSwipeData.panelsCount}, avgT={_lastSwipeData.avgTimeBetween:F3}s"
+            ? $"Panels={(_lastSwipeData.panelsCount > 0 ? _lastSwipeData.panelsCount : 0)}, avgT={(_lastSwipeData.avgTimeBetween > 0 ? _lastSwipeData.avgTimeBetween : 0):F3}s"
             : "Swipe Disabled";
-        string holdText = $"Hold: panel={_heldPanelIndex}, active={_isPanelHoldActive}, mouse={_isMouseHolding}, moved={_mouseHasMovedTooMuch}";
-        string histText = $"SwipeHist: [{string.Join(",", _swipeDirectionHistory)}]";
+        string holdText = $"Hold: panel={_heldPanelIndex}, active={_isPanelHoldActive}, mouse={_isMouseHolding}, general={_isHolding}";
+        string histText = $"SwipeHist: [{string.Join(",", _swipeDirectionHistory?.ToArray() ?? new int[0])}]";
         string mouseText = $"Mouse dir=({_lastMouseSwipeDir.x:F2},{_lastMouseSwipeDir.y:F2}), spd={_lastMouseSwipeSpeed:F0}";
 
         debugText.text =
@@ -736,7 +707,6 @@ public class VideoPlaybackController : MonoBehaviour
         if (_mediaPlayer != null)
         {
             _currentSpeed = 1f;
-            _immediateTargetSpeed = 1f;
             _finalTargetSpeed = 1f;
             _isReversePlayback = false;
             _state = PlaybackState.Normal;
@@ -746,6 +716,8 @@ public class VideoPlaybackController : MonoBehaviour
             _isMouseHolding = false;
             _processedMouseHold = false;
             _mouseHasMovedTooMuch = false;
+            _velocity = 0f;
+            _isHolding = false;
             ClearSwipeHistory();
 
             Debug.Log("[VideoPlaybackController] SetNormalSpeed => speed=1×");
@@ -760,7 +732,6 @@ public class VideoPlaybackController : MonoBehaviour
         }
         if (newState == AppState.Active)
         {
-            ResetState();
             SetSwipeControlEnabled(true);
         }
     }
@@ -773,14 +744,12 @@ public class VideoPlaybackController : MonoBehaviour
     private void ResetState()
     {
         _currentSpeed = 1f;
-        _immediateTargetSpeed = 1f;
         _finalTargetSpeed = 1f;
         _isReversePlayback = false;
         _state = PlaybackState.Normal;
         _heldPanelIndex = -1;
         _isPanelHoldActive = false;
         _lastPanelReleaseTime = 0f;
-        _swipeControlEnabled = false;
         _reachedZero = false;
         _previousSpeed = 0f;
         _holdZeroTime = 0f;
@@ -789,20 +758,30 @@ public class VideoPlaybackController : MonoBehaviour
         _isMouseHolding = false;
         _processedMouseHold = false;
         _mouseHasMovedTooMuch = false;
+        _velocity = 0f;
+        _effectStartTime = 0f;
+        _accumulatedTimeDelta = 0f;
         ClearSwipeHistory();
 
         if (_mediaPlayer != null)
         {
             _mediaPlayer.PlaybackSpeed = 1f;
-            _mediaPlayer.SeekToTime(0f);
-            _effectStartTime = 0f;
-            _accumulatedTimeDelta = 0f;
+
+            if (_mediaPlayer.DurationSeconds > 0)
+            {
+                _mediaPlayer.SeekToTime(0f);
+            }
+            else
+            {
+                Debug.LogWarning("[VideoPlaybackController] MediaPlayer duration is zero or unknown, cannot seek to 0.");
+            }
         }
+        Debug.Log("[VideoPlaybackController] State Reset");
     }
 
     private bool IsAccidentalSwipe(int currentDirection)
     {
-        if (_swipeDirectionHistory.Count == 0)
+        if (_swipeDirectionHistory == null || _swipeDirectionHistory.Count == 0)
             return false;
 
         int forwardCount = _swipeDirectionHistory.Count(d => d == 1);
@@ -825,6 +804,7 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void AddSwipeToHistory(int direction)
     {
+        if (_swipeDirectionHistory == null) return;
         if (_swipeDirectionHistory.Count >= swipeHistoryCapacity)
         {
             _swipeDirectionHistory.Dequeue();
@@ -834,6 +814,6 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void ClearSwipeHistory()
     {
-        _swipeDirectionHistory.Clear();
+        _swipeDirectionHistory?.Clear();
     }
 }

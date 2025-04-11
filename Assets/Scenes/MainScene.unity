@@ -3789,12 +3789,17 @@ MonoBehaviour:
   curtainController: {fileID: 31414346}
   _LEDController: {fileID: 1597980945}
   _SPItouchPanel: {fileID: 1299263586}
+  _smoothTimeNormal: 0.3
+  _smoothTimeSwipeMin: 0.5
+  _smoothTimeSwipeMax: 1.4
+  _smoothTimeHoldMin: 0.4
+  _smoothTimeHoldMax: 1
   slowSwipeTimeThreshold: 0.1
   fastSwipeTimeThreshold: 0.05
   maintainSpeedThreshold: 5
-  mouseSensitivity: 0.005
+  mouseSensitivity: 0.002
   mouseCurtainSensitivity: 0.35
-  mouseMinimumImpact: 0.5
+  mouseMinimumImpact: 1
   mouseMaximumImpact: 8
   mouseResponseCurve:
     serializedVersion: 2
@@ -3824,7 +3829,7 @@ MonoBehaviour:
   enableMouseSwipeContinuousUpdate: 1
   enableMouseHold: 1
   mouseHoldThreshold: 0.5
-  mouseHoldMovementThreshold: 10
+  mouseHoldMovementThreshold: 5
   enableSwipeFiltering: 0
   swipeHistoryCapacity: 5
   swipeIgnoreThreshold: 0.8
