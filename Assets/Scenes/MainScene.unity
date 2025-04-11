@@ -253,7 +253,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff8ded810d01bf4aa9c5393eee58a47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultModeMovieName: Idle_mode.mov
+  defaultModeMovieName: Active_mode.mov
   idleModeMovieName: Idle_mode.mov
   CurtainMovieName: Idle_mode.mov
   CometMovieName: 
@@ -1429,9 +1429,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90212b2feae384689065f9fe14050f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalLEDsPerStrip: 8c0000008c0000003c00000018010000
+  totalLEDsPerStrip: 8c0000008c0000003000000018010000
   ledsPerSegment: 01000000010000000100000001000000
-  stripEnabled: 01010101
+  stripEnabled: 00000101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 02000000020000000200000001000000
   currentSunModes: 00000000000000000000000000000000
@@ -1463,10 +1463,10 @@ MonoBehaviour:
       rgba: 4294967295
   - warmColor:
       serializedVersion: 2
-      rgba: 4278236415
+      rgba: 4294966784
     coldColor:
       serializedVersion: 2
-      rgba: 4294940160
+      rgba: 4278518015
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
@@ -2170,30 +2170,6 @@ MonoBehaviour:
       rgba: 4278190080
     - serializedVersion: 2
       rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
-    - serializedVersion: 2
-      rgba: 4278190080
   - segments:
     - serializedVersion: 2
       rgba: 4278190080
@@ -2781,8 +2757,11 @@ MonoBehaviour:
     baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 184
+      endTime: 92
       sunMode: 0
+    - startTime: 92
+      endTime: 184
+      sunMode: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
@@ -3326,8 +3305,8 @@ MonoBehaviour:
   spiTouchPanel: {fileID: 1299263586}
   effectsManager: {fileID: 770569963}
   sunManager: {fileID: 770569965}
-  swipeDetector: {fileID: 0}
-  curtainFullWait: 1
+  swipeDetector: {fileID: 2002335498}
+  curtainFullWait: 0
   swipeReactivateDelay: 0.5
   fadeOutDuration: 1
   fadeInDuration: 1

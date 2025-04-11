@@ -23,7 +23,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private SwipeDetector swipeDetector;
 
     [Header("Transition Parameters")]
-    [SerializeField] private float curtainFullWait = 1f;
+    [SerializeField] private float curtainFullWait = 0f;
     [SerializeField] private float swipeReactivateDelay = 0.5f;
     [SerializeField] private float fadeOutDuration = 0.5f;
     [SerializeField] private float fadeInDuration = 0.5f;
@@ -59,6 +59,18 @@ public class StateManager : MonoBehaviour
             }
         }
     }
+
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            StartTransitionToIdle();
+        }
+    }
+
+
+
 
     void Start()
     {

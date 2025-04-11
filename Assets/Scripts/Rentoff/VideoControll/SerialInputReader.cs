@@ -83,10 +83,10 @@ public class SerialInputReader : InputReader
     private void Update()
     {
 
-        if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Active && (Time.time - _lastNonZeroTouchTime > idleTimeout))
+/*        if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Active && (Time.time - _lastNonZeroTouchTime > idleTimeout))
         {
             //stateManager.StartTransitionToIdle();
-        }
+        }*/
 
         if (!IsConnected())
         {
