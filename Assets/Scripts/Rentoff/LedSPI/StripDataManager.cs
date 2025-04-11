@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using LEDControl;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using static LEDControl.SunManager;
 
 namespace LEDControl
@@ -27,17 +28,20 @@ namespace LEDControl
 
         [Tooltip("Включена ли гамма-коррекция для ленты")]
         public bool enableGammaCorrection = false;
-
-        [Tooltip("Размер солнца в пикселях (только для режима SunMovement)")]
-        [Range(1, 100)] // Пример диапазона, можно изменить
-        public int sunPixelCount = 10;
     }
 
     [Serializable]
     public class SunColorSettings
     {
-        public Color32 warmColor = new Color32(255, 180, 0, 255); // Цвет тёплого солнца
-        public Color32 coldColor = new Color32(0, 150, 255, 255); // Цвет холодного солнца
+        public Color32 warmColor = new Color32(255, 180, 0, 255);
+        public Color32 coldColor = new Color32(0, 150, 255, 255);
+    }
+
+    [Serializable]
+    public class SunStripSettings
+    {
+        [Tooltip("Number of LEDs the sun occupies for this specific strip.")]
+        public int pixelCount = 10;
     }
 
     [ExecuteInEditMode]
@@ -59,6 +63,9 @@ namespace LEDControl
 
         [Header("Sun Color Settings (for strips in SunMovement mode)")]
         public List<SunColorSettings> sunColorSettings = new();
+
+        [Header("Sun Strip Settings (for strips in SunMovement mode)")]
+        public List<SunStripSettings> sunStripSettings = new();
 
         [Header("Monochrome Settings")]
         public List<MonochromeStripSettings> monochromeStripSettings = new()
@@ -90,6 +97,7 @@ namespace LEDControl
         private List<StripSettings> previousStripSettings = new();
         private List<SunMode> previousSunModes = new();
         private List<SunColorSettings> previousSunColorSettings = new();
+        private List<SunStripSettings> previousSunStripSettings = new();
 
         private void OnValidate()
         {
@@ -139,6 +147,12 @@ namespace LEDControl
             {
                 while (sunColorSettings.Count < totalLEDsPerStrip.Count) sunColorSettings.Add(new SunColorSettings());
                 while (sunColorSettings.Count > totalLEDsPerStrip.Count) sunColorSettings.RemoveAt(sunColorSettings.Count - 1);
+            }
+
+            if (sunStripSettings.Count != totalLEDsPerStrip.Count)
+            {
+                while (sunStripSettings.Count < totalLEDsPerStrip.Count) sunStripSettings.Add(new SunStripSettings());
+                while (sunStripSettings.Count > totalLEDsPerStrip.Count) sunStripSettings.RemoveAt(sunStripSettings.Count - 1);
             }
 
             if (stripSegmentColors.Count != totalLEDsPerStrip.Count)
@@ -277,6 +291,16 @@ namespace LEDControl
             };
         }
 
+        public int GetSunPixelCountForStrip(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= sunStripSettings.Count)
+            {
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return 10;
+            }
+            return sunStripSettings[stripIndex].pixelCount;
+        }
+
         public void CachePreviousValues()
         {
             previousMonochromeStripSettings.Clear();
@@ -294,6 +318,7 @@ namespace LEDControl
             previousStripSettings = new List<StripSettings>(stripSettings);
             previousSunModes = new List<SunMode>(currentSunModes);
             previousSunColorSettings = new List<SunColorSettings>(sunColorSettings);
+            previousSunStripSettings = new List<SunStripSettings>(sunStripSettings);
         }
 
         public bool CheckForChanges()
@@ -302,7 +327,7 @@ namespace LEDControl
             if (stripSegmentColors.Count != previousSegmentColors.Count || monochromeStripSettings.Count != previousMonochromeStripSettings.Count ||
                 rgbStripSettings.Count != previousRGBStripSettings.Count || currentDisplayModes.Count != previousDisplayModes.Count ||
                 currentDataModes.Count != previousDataModes.Count || stripEnabled.Count != previousStripEnabled.Count || stripSettings.Count != previousStripSettings.Count ||
-                sunColorSettings.Count != previousSunColorSettings.Count || currentSunModes.Count != previousSunModes.Count)
+                sunColorSettings.Count != previousSunColorSettings.Count || sunStripSettings.Count != previousSunStripSettings.Count)
                 return true;
 
             for (int stripIndex = 0; stripIndex < stripSegmentColors.Count; stripIndex++)
@@ -317,23 +342,25 @@ namespace LEDControl
 
             for (int i = 0; i < monochromeStripSettings.Count; i++)
             {
-                if (i >= previousMonochromeStripSettings.Count) { colorsChanged = true; break; } // Added check for index bounds
                 if (monochromeStripSettings[i].globalColor.IsDifferent(previousMonochromeStripSettings[i].globalColor) ||
                     monochromeStripSettings[i].synthColor.IsDifferent(previousMonochromeStripSettings[i].synthColor)) { colorsChanged = true; break; }
             }
 
             for (int i = 0; i < rgbStripSettings.Count; i++)
             {
-                if (i >= previousRGBStripSettings.Count) { colorsChanged = true; break; } // Added check for index bounds
                 if (rgbStripSettings[i].globalColor.IsDifferent(previousRGBStripSettings[i].globalColor) ||
                     rgbStripSettings[i].synthColor.IsDifferent(previousRGBStripSettings[i].synthColor)) { colorsChanged = true; break; }
             }
 
             for (int i = 0; i < sunColorSettings.Count; i++)
             {
-                if (i >= previousSunColorSettings.Count) { colorsChanged = true; break; } // Added check for index bounds
                 if (sunColorSettings[i].warmColor.IsDifferent(previousSunColorSettings[i].warmColor) ||
                     sunColorSettings[i].coldColor.IsDifferent(previousSunColorSettings[i].coldColor)) { colorsChanged = true; break; }
+            }
+
+            for (int i = 0; i < sunStripSettings.Count; i++)
+            {
+                if (sunStripSettings[i].pixelCount != previousSunStripSettings[i].pixelCount) { colorsChanged = true; break; }
             }
 
             if (!currentDisplayModes.SequenceEqual(previousDisplayModes) || !currentDataModes.SequenceEqual(previousDataModes) ||
@@ -341,10 +368,8 @@ namespace LEDControl
 
             for (int i = 0; i < stripSettings.Count; i++)
             {
-                if (i >= previousStripSettings.Count) { colorsChanged = true; break; } // Added check for index bounds
                 if (stripSettings[i].brightness != previousStripSettings[i].brightness || stripSettings[i].gammaValue != previousStripSettings[i].gammaValue ||
-                    stripSettings[i].enableGammaCorrection != previousStripSettings[i].enableGammaCorrection ||
-                    stripSettings[i].sunPixelCount != previousStripSettings[i].sunPixelCount) // Added check for sunPixelCount
+                    stripSettings[i].enableGammaCorrection != previousStripSettings[i].enableGammaCorrection)
                 {
                     colorsChanged = true;
                     break;
@@ -371,12 +396,6 @@ namespace LEDControl
             return stripSettings[stripIndex].enableGammaCorrection;
         }
 
-        public int GetSunPixelCount(int stripIndex)
-        {
-            if (stripIndex < 0 || stripIndex >= stripSettings.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return 10; }
-            return stripSettings[stripIndex].sunPixelCount;
-        }
-
         public Color32 GetSynthColorForStrip(int stripIndex)
         {
             switch (currentDataModes[stripIndex])
@@ -397,7 +416,7 @@ namespace LEDControl
 
         public SunMode GetSunMode(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= currentSunModes.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return SunMode.Warm; }
+            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return SunMode.Warm; }
             return currentSunModes[stripIndex];
         }
     }
@@ -415,11 +434,9 @@ public class StripDataManagerEditor : Editor
     private void OnEnable()
     {
         LEDControl.StripDataManager manager = (LEDControl.StripDataManager)target;
-        if (manager.totalLEDsPerStrip != null)
-        {
-            stripFoldouts = new bool[manager.totalLEDsPerStrip.Count];
-            for (int i = 0; i < manager.totalLEDsPerStrip.Count; i++) stripFoldouts[i] = false;
-        }
+        int stripCount = manager.totalLEDsPerStrip.Count;
+        stripFoldouts = new bool[stripCount];
+        for (int i = 0; i < stripCount; i++) stripFoldouts[i] = false;
     }
 
     public override void OnInspectorGUI()
@@ -434,7 +451,6 @@ public class StripDataManagerEditor : Editor
         LEDControl.StripDataManager manager = (LEDControl.StripDataManager)target;
         serializedObject.Update();
 
-        // Basic settings
         EditorGUILayout.LabelField("Общие настройки", headerStyle);
         EditorGUI.indentLevel++;
         SerializedProperty ledsPerStripProperty = serializedObject.FindProperty("totalLEDsPerStrip");
@@ -448,24 +464,15 @@ public class StripDataManagerEditor : Editor
         EditorGUI.indentLevel--;
         EditorGUILayout.Space();
 
-        // Strip-specific settings
         EditorGUILayout.LabelField("Настройки лент", headerStyle);
-        int stripCount = manager.totalLEDsPerStrip?.Count ?? 0;
-
-        // Ensure stripFoldouts has the correct size
-        if (stripFoldouts == null || stripFoldouts.Length != stripCount)
-        {
-            stripFoldouts = new bool[stripCount];
-            // Optionally copy existing foldout states if possible, but simplest to reset
-        }
-
-
+        int stripCount = manager.totalLEDsPerStrip.Count;
         SerializedProperty stripEnabledProperty = serializedObject.FindProperty("stripEnabled");
         SerializedProperty dataModesProperty = serializedObject.FindProperty("currentDataModes");
         SerializedProperty displayModesProperty = serializedObject.FindProperty("currentDisplayModes");
         SerializedProperty sunModesProperty = serializedObject.FindProperty("currentSunModes");
         SerializedProperty stripSettingsProperty = serializedObject.FindProperty("stripSettings");
         SerializedProperty sunColorSettingsProperty = serializedObject.FindProperty("sunColorSettings");
+        SerializedProperty sunStripSettingsProperty = serializedObject.FindProperty("sunStripSettings");
         SerializedProperty segmentColorsProperty = serializedObject.FindProperty("stripSegmentColors");
 
         for (int stripIndex = 0; stripIndex < stripCount; stripIndex++)
@@ -473,129 +480,103 @@ public class StripDataManagerEditor : Editor
             EditorGUILayout.BeginVertical(boxStyle);
             EditorGUILayout.BeginHorizontal();
             stripFoldouts[stripIndex] = EditorGUILayout.Foldout(stripFoldouts[stripIndex], $" Лента #{stripIndex + 1}", true, stripHeaderStyle);
-            if (stripEnabledProperty.arraySize > stripIndex) // Check index bounds
-            {
-                SerializedProperty enabledProp = stripEnabledProperty.GetArrayElementAtIndex(stripIndex);
-                EditorGUILayout.PropertyField(enabledProp, GUIContent.none, GUILayout.Width(20));
-            }
+            SerializedProperty enabledProp = stripEnabledProperty.GetArrayElementAtIndex(stripIndex);
+            EditorGUILayout.PropertyField(enabledProp, GUIContent.none, GUILayout.Width(20));
             EditorGUILayout.EndHorizontal();
 
             if (stripFoldouts[stripIndex])
             {
                 EditorGUI.indentLevel++;
                 EditorGUI.BeginChangeCheck();
+                SerializedProperty dataModeProp = dataModesProperty.GetArrayElementAtIndex(stripIndex);
+                EditorGUILayout.PropertyField(dataModeProp, new GUIContent("Тип ленты"));
+                SerializedProperty displayModeProp = displayModesProperty.GetArrayElementAtIndex(stripIndex);
+                EditorGUILayout.PropertyField(displayModeProp, new GUIContent("Режим отображения"));
 
-                // Ensure properties exist before accessing
-                if (dataModesProperty.arraySize > stripIndex && displayModesProperty.arraySize > stripIndex)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    SerializedProperty dataModeProp = dataModesProperty.GetArrayElementAtIndex(stripIndex);
-                    EditorGUILayout.PropertyField(dataModeProp, new GUIContent("Тип ленты"));
-                    SerializedProperty displayModeProp = displayModesProperty.GetArrayElementAtIndex(stripIndex);
-                    EditorGUILayout.PropertyField(displayModeProp, new GUIContent("Режим отображения"));
+                    serializedObject.ApplyModifiedProperties();
+                    manager.InitializeStripData();
+                    serializedObject.Update();
+                }
 
-                    if (EditorGUI.EndChangeCheck())
+                LEDControl.DisplayMode displayMode = (LEDControl.DisplayMode)displayModeProp.enumValueIndex;
+                LEDControl.DataMode dataMode = (LEDControl.DataMode)dataModeProp.enumValueIndex;
+
+                SerializedProperty stripSettingsProp = stripSettingsProperty.GetArrayElementAtIndex(stripIndex);
+                SerializedProperty brightnessProp = stripSettingsProp.FindPropertyRelative("brightness");
+                SerializedProperty gammaValueProp = stripSettingsProp.FindPropertyRelative("gammaValue");
+                SerializedProperty enableGammaProp = stripSettingsProp.FindPropertyRelative("enableGammaCorrection");
+
+                EditorGUILayout.PropertyField(brightnessProp, new GUIContent("Яркость ленты"));
+                EditorGUILayout.PropertyField(enableGammaProp, new GUIContent("Включить гамма-коррекцию"));
+                if (enableGammaProp.boolValue) EditorGUILayout.PropertyField(gammaValueProp, new GUIContent("Значение гаммы"));
+
+                if (displayMode == LEDControl.DisplayMode.GlobalColor)
+                {
+                    if (dataMode == LEDControl.DataMode.Monochrome1Color || dataMode == LEDControl.DataMode.Monochrome2Color)
                     {
-                        serializedObject.ApplyModifiedProperties();
-                        manager.InitializeStripData();
-                        serializedObject.Update();
-                    }
-
-                    LEDControl.DisplayMode displayMode = (LEDControl.DisplayMode)displayModeProp.enumValueIndex;
-                    LEDControl.DataMode dataMode = (LEDControl.DataMode)dataModeProp.enumValueIndex;
-
-                    if (stripSettingsProperty.arraySize > stripIndex) // Check index bounds
-                    {
-                        SerializedProperty stripSettingsProp = stripSettingsProperty.GetArrayElementAtIndex(stripIndex);
-                        SerializedProperty brightnessProp = stripSettingsProp.FindPropertyRelative("brightness");
-                        SerializedProperty gammaValueProp = stripSettingsProp.FindPropertyRelative("gammaValue");
-                        SerializedProperty enableGammaProp = stripSettingsProp.FindPropertyRelative("enableGammaCorrection");
-                        SerializedProperty sunPixelCountProp = stripSettingsProp.FindPropertyRelative("sunPixelCount"); // NEW PROPERTY
-
-                        EditorGUILayout.PropertyField(brightnessProp, new GUIContent("Яркость ленты"));
-                        EditorGUILayout.PropertyField(enableGammaProp, new GUIContent("Включить гамма-коррекцию"));
-                        if (enableGammaProp.boolValue) EditorGUILayout.PropertyField(gammaValueProp, new GUIContent("Значение гаммы"));
-
-                        if (displayMode == LEDControl.DisplayMode.GlobalColor)
+                        int monoIndex = manager.GetMonochromeStripIndex(stripIndex);
+                        if (monoIndex >= 0 && monoIndex < serializedObject.FindProperty("monochromeStripSettings").arraySize)
                         {
-                            if (dataMode == LEDControl.DataMode.Monochrome1Color || dataMode == LEDControl.DataMode.Monochrome2Color)
-                            {
-                                int monoIndex = manager.GetMonochromeStripIndex(stripIndex);
-                                if (monoIndex >= 0 && serializedObject.FindProperty("monochromeStripSettings").arraySize > monoIndex)
-                                {
-                                    SerializedProperty monoProp = serializedObject.FindProperty("monochromeStripSettings").GetArrayElementAtIndex(monoIndex);
-                                    SerializedProperty colorProp = monoProp.FindPropertyRelative("globalColor");
-                                    EditorGUILayout.PropertyField(colorProp, new GUIContent("Глобальный цвет (монохром)"));
-                                }
-                            }
-                            else if (dataMode == LEDControl.DataMode.RGB || dataMode == LEDControl.DataMode.RGBW)
-                            {
-                                int rgbIndex = manager.GetRGBStripIndex(stripIndex);
-                                if (rgbIndex >= 0 && serializedObject.FindProperty("rgbStripSettings").arraySize > rgbIndex)
-                                {
-                                    SerializedProperty rgbProp = serializedObject.FindProperty("rgbStripSettings").GetArrayElementAtIndex(rgbIndex);
-                                    SerializedProperty colorProp = rgbProp.FindPropertyRelative("globalColor");
-                                    EditorGUILayout.PropertyField(colorProp, new GUIContent("Глобальный цвет (RGB)"));
-                                }
-                            }
-                        }
-                        else if (displayMode == LEDControl.DisplayMode.SunMovement)
-                        {
-                            if (sunModesProperty.arraySize > stripIndex) // Check index bounds
-                            {
-                                SerializedProperty sunModeProp = sunModesProperty.GetArrayElementAtIndex(stripIndex);
-                                EditorGUILayout.PropertyField(sunModeProp, new GUIContent("Режим солнца (Warm/Cold)"));
-                            }
-
-                            if (sunColorSettingsProperty.arraySize > stripIndex) // Check index bounds
-                            {
-                                SerializedProperty sunColorSettingsProp = sunColorSettingsProperty.GetArrayElementAtIndex(stripIndex);
-                                SerializedProperty warmColorProp = sunColorSettingsProp.FindPropertyRelative("warmColor");
-                                SerializedProperty coldColorProp = sunColorSettingsProp.FindPropertyRelative("coldColor");
-                                EditorGUILayout.PropertyField(warmColorProp, new GUIContent("Цвет тёплого солнца"));
-                                EditorGUILayout.PropertyField(coldColorProp, new GUIContent("Цвет холодного солнца"));
-                            }
-                            EditorGUILayout.PropertyField(sunPixelCountProp, new GUIContent("Размер солнца (пикселей)")); // Display the new property
-                        }
-                        else if (displayMode == LEDControl.DisplayMode.SegmentColors)
-                        {
-                            if (segmentColorsProperty.arraySize > stripIndex) // Check index bounds
-                            {
-                                SerializedProperty segmentProp = segmentColorsProperty.GetArrayElementAtIndex(stripIndex);
-                                EditorGUILayout.PropertyField(segmentProp, new GUIContent("Цвета сегментов"));
-                            }
-                        }
-                        else if (displayMode == LEDControl.DisplayMode.SpeedSynthMode)
-                        {
-                            if (dataMode == LEDControl.DataMode.Monochrome1Color || dataMode == LEDControl.DataMode.Monochrome2Color)
-                            {
-                                int monoIndex = manager.GetMonochromeStripIndex(stripIndex);
-                                if (monoIndex >= 0 && serializedObject.FindProperty("monochromeStripSettings").arraySize > monoIndex)
-                                {
-                                    SerializedProperty monoProp = serializedObject.FindProperty("monochromeStripSettings").GetArrayElementAtIndex(monoIndex);
-                                    SerializedProperty synthColorProp = monoProp.FindPropertyRelative("synthColor");
-                                    EditorGUILayout.PropertyField(synthColorProp, new GUIContent("Цвет кометы (монохром)"));
-                                }
-                            }
-                            else if (dataMode == LEDControl.DataMode.RGB || dataMode == LEDControl.DataMode.RGBW)
-                            {
-                                int rgbIndex = manager.GetRGBStripIndex(stripIndex);
-                                if (rgbIndex >= 0 && serializedObject.FindProperty("rgbStripSettings").arraySize > rgbIndex)
-                                {
-                                    SerializedProperty rgbProp = serializedObject.FindProperty("rgbStripSettings").GetArrayElementAtIndex(rgbIndex);
-                                    SerializedProperty synthColorProp = rgbProp.FindPropertyRelative("synthColor");
-                                    EditorGUILayout.PropertyField(synthColorProp, new GUIContent("Цвет кометы (RGB)"));
-                                }
-                            }
+                            SerializedProperty monoProp = serializedObject.FindProperty("monochromeStripSettings").GetArrayElementAtIndex(monoIndex);
+                            SerializedProperty colorProp = monoProp.FindPropertyRelative("globalColor");
+                            EditorGUILayout.PropertyField(colorProp, new GUIContent("Глобальный цвет (монохром)"));
                         }
                     }
-                    else
+                    else if (dataMode == LEDControl.DataMode.RGB || dataMode == LEDControl.DataMode.RGBW)
                     {
-                        EditorGUILayout.HelpBox("StripSettings data for this strip is missing or corrupt. Please re-initialize.", MessageType.Error);
+                        int rgbIndex = manager.GetRGBStripIndex(stripIndex);
+                        if (rgbIndex >= 0 && rgbIndex < serializedObject.FindProperty("rgbStripSettings").arraySize)
+                        {
+                            SerializedProperty rgbProp = serializedObject.FindProperty("rgbStripSettings").GetArrayElementAtIndex(rgbIndex);
+                            SerializedProperty colorProp = rgbProp.FindPropertyRelative("globalColor");
+                            EditorGUILayout.PropertyField(colorProp, new GUIContent("Глобальный цвет (RGB)"));
+                        }
                     }
                 }
-                else
+                else if (displayMode == LEDControl.DisplayMode.SunMovement)
                 {
-                    EditorGUILayout.HelpBox("Basic strip data (data mode, display mode) for this strip is missing or corrupt. Please re-initialize.", MessageType.Error);
+                    SerializedProperty sunModeProp = sunModesProperty.GetArrayElementAtIndex(stripIndex);
+                    EditorGUILayout.PropertyField(sunModeProp, new GUIContent("Режим солнца (Warm/Cold)"));
+
+                    SerializedProperty sunColorSettingsProp = sunColorSettingsProperty.GetArrayElementAtIndex(stripIndex);
+                    SerializedProperty warmColorProp = sunColorSettingsProp.FindPropertyRelative("warmColor");
+                    SerializedProperty coldColorProp = sunColorSettingsProp.FindPropertyRelative("coldColor");
+                    EditorGUILayout.PropertyField(warmColorProp, new GUIContent("Цвет тёплого солнца"));
+                    EditorGUILayout.PropertyField(coldColorProp, new GUIContent("Цвет холодного солнца"));
+
+                    SerializedProperty sunStripSettingsProp = sunStripSettingsProperty.GetArrayElementAtIndex(stripIndex);
+                    SerializedProperty pixelCountProp = sunStripSettingsProp.FindPropertyRelative("pixelCount");
+                    EditorGUILayout.PropertyField(pixelCountProp, new GUIContent("Длина солнца (пикселей)"));
+                }
+                else if (displayMode == LEDControl.DisplayMode.SegmentColors)
+                {
+                    SerializedProperty segmentProp = segmentColorsProperty.GetArrayElementAtIndex(stripIndex);
+                    EditorGUILayout.PropertyField(segmentProp, new GUIContent("Цвета сегментов"));
+                }
+                else if (displayMode == LEDControl.DisplayMode.SpeedSynthMode)
+                {
+                    if (dataMode == LEDControl.DataMode.Monochrome1Color || dataMode == LEDControl.DataMode.Monochrome2Color)
+                    {
+                        int monoIndex = manager.GetMonochromeStripIndex(stripIndex);
+                        if (monoIndex >= 0 && monoIndex < serializedObject.FindProperty("monochromeStripSettings").arraySize)
+                        {
+                            SerializedProperty monoProp = serializedObject.FindProperty("monochromeStripSettings").GetArrayElementAtIndex(monoIndex);
+                            SerializedProperty synthColorProp = monoProp.FindPropertyRelative("synthColor");
+                            EditorGUILayout.PropertyField(synthColorProp, new GUIContent("Цвет кометы (монохром)"));
+                        }
+                    }
+                    else if (dataMode == LEDControl.DataMode.RGB || dataMode == LEDControl.DataMode.RGBW)
+                    {
+                        int rgbIndex = manager.GetRGBStripIndex(stripIndex);
+                        if (rgbIndex >= 0 && rgbIndex < serializedObject.FindProperty("rgbStripSettings").arraySize)
+                        {
+                            SerializedProperty rgbProp = serializedObject.FindProperty("rgbStripSettings").GetArrayElementAtIndex(rgbIndex);
+                            SerializedProperty synthColorProp = rgbProp.FindPropertyRelative("synthColor");
+                            EditorGUILayout.PropertyField(synthColorProp, new GUIContent("Цвет кометы (RGB)"));
+                        }
+                    }
                 }
 
                 EditorGUI.indentLevel--;
