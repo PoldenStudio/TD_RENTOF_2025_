@@ -368,36 +368,48 @@ namespace LEDControl
                 StringBuilder frameHexBuilder = new StringBuilder(totalLEDs * hexPerPixel);
                 Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode);
 
-                for (int i = 0; i < totalLEDs; i++)
+                if (!isActiveTime)
                 {
-                    pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
-                    pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
-                    pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
-
-                    string pixelHex = "";
-
-                    float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
-                    float stripGamma = stripDataManager.GetStripGamma(stripIndex);
-                    bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
-
-                    switch (dataMode)
+                    // Send black color if not in active interval
+                    for (int i = 0; i < totalLEDs; i++)
                     {
-                        case DataMode.Monochrome1Color:
-                        case DataMode.Monochrome2Color:
-                            pixelHex = colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                            break;
-                        case DataMode.RGB:
-                            pixelHex = colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                            break;
-                        case DataMode.RGBW:
-                            pixelHex = colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
-                            break;
-                        default:
-                            pixelHex = "00";
-                            break;
+                        frameHexBuilder.Append(blackHexValue);
                     }
-                    frameHexBuilder.Append(pixelHex);
                 }
+                else
+                {
+                    for (int i = 0; i < totalLEDs; i++)
+                    {
+                        pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
+                        pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
+                        pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
+
+                        string pixelHex = "";
+
+                        float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
+                        float stripGamma = stripDataManager.GetStripGamma(stripIndex);
+                        bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
+
+                        switch (dataMode)
+                        {
+                            case DataMode.Monochrome1Color:
+                            case DataMode.Monochrome2Color:
+                                pixelHex = colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                                break;
+                            case DataMode.RGB:
+                                pixelHex = colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                                break;
+                            case DataMode.RGBW:
+                                pixelHex = colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
+                                break;
+                            default:
+                                pixelHex = "00";
+                                break;
+                        }
+                        frameHexBuilder.Append(pixelHex);
+                    }
+                }
+
 
                 string optimizedHex = OptimizeHexStringForBaking(frameHexBuilder.ToString(), blackHexValue, hexPerPixel);
                 stateData.hexFrames.Add(optimizedHex);
