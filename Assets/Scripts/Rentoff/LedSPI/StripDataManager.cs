@@ -48,7 +48,10 @@ namespace LEDControl
     public class StripDataManager : MonoBehaviour
     {
         public List<int> totalLEDsPerStrip = new() { 200, 200, 200, 200 };
-        public int ledsPerSegment = 1;
+
+        [Header("Segment Settings")]
+        [Tooltip("Number of LEDs per segment for each strip.")]
+        public List<int> ledsPerSegment = new() { 1, 1, 1, 1 };
 
         [Header("Data Mode")]
         public List<bool> stripEnabled = new() { true, true, true, true };
@@ -98,6 +101,7 @@ namespace LEDControl
         private List<SunMode> previousSunModes = new();
         private List<SunColorSettings> previousSunColorSettings = new();
         private List<SunStripSettings> previousSunStripSettings = new();
+        private List<int> previousLedsPerSegment = new();
 
         private void OnValidate()
         {
@@ -109,7 +113,7 @@ namespace LEDControl
             InitializeStripData();
         }
 
-        public int GetTotalSegments(int stripIndex) => totalLEDsPerStrip[stripIndex] / ledsPerSegment;
+        public int GetTotalSegments(int stripIndex) => totalLEDsPerStrip[stripIndex] / ledsPerSegment[stripIndex];
 
         public void InitializeStripData()
         {
@@ -153,6 +157,12 @@ namespace LEDControl
             {
                 while (sunStripSettings.Count < totalLEDsPerStrip.Count) sunStripSettings.Add(new SunStripSettings());
                 while (sunStripSettings.Count > totalLEDsPerStrip.Count) sunStripSettings.RemoveAt(sunStripSettings.Count - 1);
+            }
+
+            if (ledsPerSegment.Count != totalLEDsPerStrip.Count)
+            {
+                while (ledsPerSegment.Count < totalLEDsPerStrip.Count) ledsPerSegment.Add(1);
+                while (ledsPerSegment.Count > totalLEDsPerStrip.Count) ledsPerSegment.RemoveAt(ledsPerSegment.Count - 1);
             }
 
             if (stripSegmentColors.Count != totalLEDsPerStrip.Count)
@@ -319,6 +329,7 @@ namespace LEDControl
             previousSunModes = new List<SunMode>(currentSunModes);
             previousSunColorSettings = new List<SunColorSettings>(sunColorSettings);
             previousSunStripSettings = new List<SunStripSettings>(sunStripSettings);
+            previousLedsPerSegment = new List<int>(ledsPerSegment);
         }
 
         public bool CheckForChanges()
@@ -327,7 +338,8 @@ namespace LEDControl
             if (stripSegmentColors.Count != previousSegmentColors.Count || monochromeStripSettings.Count != previousMonochromeStripSettings.Count ||
                 rgbStripSettings.Count != previousRGBStripSettings.Count || currentDisplayModes.Count != previousDisplayModes.Count ||
                 currentDataModes.Count != previousDataModes.Count || stripEnabled.Count != previousStripEnabled.Count || stripSettings.Count != previousStripSettings.Count ||
-                sunColorSettings.Count != previousSunColorSettings.Count || sunStripSettings.Count != previousSunStripSettings.Count)
+                sunColorSettings.Count != previousSunColorSettings.Count || sunStripSettings.Count != previousSunStripSettings.Count ||
+                ledsPerSegment.Count != previousLedsPerSegment.Count)
                 return true;
 
             for (int stripIndex = 0; stripIndex < stripSegmentColors.Count; stripIndex++)
@@ -361,6 +373,11 @@ namespace LEDControl
             for (int i = 0; i < sunStripSettings.Count; i++)
             {
                 if (sunStripSettings[i].pixelCount != previousSunStripSettings[i].pixelCount) { colorsChanged = true; break; }
+            }
+
+            for (int i = 0; i < ledsPerSegment.Count; i++)
+            {
+                if (ledsPerSegment[i] != previousLedsPerSegment[i]) { colorsChanged = true; break; }
             }
 
             if (!currentDisplayModes.SequenceEqual(previousDisplayModes) || !currentDataModes.SequenceEqual(previousDataModes) ||
@@ -456,7 +473,7 @@ public class StripDataManagerEditor : Editor
         SerializedProperty ledsPerStripProperty = serializedObject.FindProperty("totalLEDsPerStrip");
         EditorGUILayout.PropertyField(ledsPerStripProperty, new GUIContent("Количество диодов на лентах"));
         SerializedProperty ledsPerSegmentProperty = serializedObject.FindProperty("ledsPerSegment");
-        EditorGUILayout.PropertyField(ledsPerSegmentProperty, new GUIContent("Диодов в сегменте"));
+        EditorGUILayout.PropertyField(ledsPerSegmentProperty, new GUIContent("Диодов в сегменте (на ленту)"));
         SerializedProperty touchColsProperty = serializedObject.FindProperty("touchPanelCols");
         EditorGUILayout.PropertyField(touchColsProperty, new GUIContent("Панелей на тач-панели"));
         SerializedProperty touchOffsetProperty = serializedObject.FindProperty("touchPanelOffset");
@@ -511,6 +528,10 @@ public class StripDataManagerEditor : Editor
                 EditorGUILayout.PropertyField(brightnessProp, new GUIContent("Яркость ленты"));
                 EditorGUILayout.PropertyField(enableGammaProp, new GUIContent("Включить гамма-коррекцию"));
                 if (enableGammaProp.boolValue) EditorGUILayout.PropertyField(gammaValueProp, new GUIContent("Значение гаммы"));
+
+                SerializedProperty segmentSettingProp = ledsPerSegmentProperty.GetArrayElementAtIndex(stripIndex);
+                EditorGUILayout.PropertyField(segmentSettingProp, new GUIContent("Диодов в сегменте"));
+
 
                 if (displayMode == LEDControl.DisplayMode.GlobalColor)
                 {

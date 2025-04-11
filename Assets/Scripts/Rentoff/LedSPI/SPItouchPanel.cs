@@ -171,7 +171,7 @@ public class SPItouchPanel : MonoBehaviour
                     int minSegment = activeSegments[stripIndex].Min();
                     float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(panelsCount * effectsManager.speedLedCountFactor));
                     float dynamicBrightness = Mathf.Clamp01(stripDataManager.GetStripBrightness(stripIndex) + swipeData.speed * effectsManager.speedBrightnessFactor);
-                    effectsManager.AddComet(stripIndex, minSegment * stripDataManager.ledsPerSegment, stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
+                    effectsManager.AddComet(stripIndex, minSegment * stripDataManager.ledsPerSegment[stripIndex], stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
                     effectsManager.moveDirection = lastSwipeDirection[stripIndex];
                 }
                 dataChanged = true;

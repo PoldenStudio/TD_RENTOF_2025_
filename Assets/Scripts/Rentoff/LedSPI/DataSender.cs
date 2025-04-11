@@ -216,7 +216,7 @@ namespace LEDControl
         public string GetHexDataForSegmentColors(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             int totalLEDs = stripManager.totalLEDsPerStrip[stripIndex];
-            int ledsPerSegment = stripManager.ledsPerSegment;
+            int ledsPerSegment = stripManager.ledsPerSegment[stripIndex];
             int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
             var segmentColors = stripManager.GetSegmentColors(stripIndex);
             int totalPixels = segmentColors.Count * ledsPerSegment;

@@ -1430,7 +1430,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 8c0000008c0000003c00000018010000
-  ledsPerSegment: 1
+  ledsPerSegment: 01000000010000000100000001000000
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 02000000020000000200000001000000
@@ -1439,19 +1439,15 @@ MonoBehaviour:
   - brightness: 1
     gammaValue: 2.2
     enableGammaCorrection: 0
-    sunPixelCount: 10
   - brightness: 1
     gammaValue: 2.2
     enableGammaCorrection: 0
-    sunPixelCount: 10
   - brightness: 1
     gammaValue: 2.2
     enableGammaCorrection: 0
-    sunPixelCount: 2
   - brightness: 1
     gammaValue: 2.2
     enableGammaCorrection: 0
-    sunPixelCount: 10
   sunColorSettings:
   - warmColor:
       serializedVersion: 2
@@ -1477,6 +1473,11 @@ MonoBehaviour:
     coldColor:
       serializedVersion: 2
       rgba: 4294940160
+  sunStripSettings:
+  - pixelCount: 10
+  - pixelCount: 10
+  - pixelCount: 2
+  - pixelCount: 10
   monochromeStripSettings:
   - globalColor:
       serializedVersion: 2
