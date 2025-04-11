@@ -12,18 +12,18 @@ public class MouseInputReader : InputReader
     [Header("Hold Detection Settings")]
     [SerializeField] private float holdThresholdTime = 0.5f;
     [SerializeField] private float maxHoldMovement = 5.0f;
-    [SerializeField] private bool enableHoldDetection = true; 
+    [SerializeField] private bool enableHoldDetection = true;
 
     [Header("Swipe Force Settings")]
-    [SerializeField][Range(0.1f, 10f)] private float speedMultiplier = 1.0f; 
+    [SerializeField][Range(0.1f, 10f)] private float speedMultiplier = 1.0f;
     [SerializeField][Range(0.1f, 10f)] private float distanceMultiplier = 1.0f;
     [SerializeField] private AnimationCurve responseVelocityCurve = AnimationCurve.Linear(0, 0, 1, 1);
-    [SerializeField] private float speedCap = 10000f; 
+    [SerializeField] private float speedCap = 10000f;
 
     [Header("Direction Settings")]
-    [SerializeField][Range(0f, 1f)] private float horizontalBias = 0.5f; 
-    [SerializeField] private bool invertXDirection = true; 
-    [SerializeField] private bool invertYDirection = false; 
+    [SerializeField][Range(0f, 1f)] private float horizontalBias = 0.5f;
+    [SerializeField] private bool invertXDirection = true;
+    [SerializeField] private bool invertYDirection = false;
 
     [Header("References")]
     [SerializeField] private SwipeDetector swipeDetector;
@@ -40,7 +40,6 @@ public class MouseInputReader : InputReader
     private bool isHolding = false;
     private bool holdProcessed = false;
     private float holdMovementDistance = 0f;
-    private float lastHoldCheckTime = 0f;
 
     protected override void ReadInput()
     {
@@ -59,7 +58,6 @@ public class MouseInputReader : InputReader
                 isHolding = false;
                 holdProcessed = false;
                 holdMovementDistance = 0f;
-                lastHoldCheckTime = Time.time;
             }
 
             if (enableDebug)
@@ -68,22 +66,24 @@ public class MouseInputReader : InputReader
         else if (Input.GetMouseButtonUp(0) && isMouseDragging)
         {
             Vector2 endPosition = Input.mousePosition;
-            float duration = Mathf.Max(0.001f, Time.time - dragStartTime); 
+            float duration = Mathf.Max(0.001f, Time.time - dragStartTime);
             float distance = Vector2.Distance(startDragPosition, endPosition) * distanceMultiplier;
 
+            // Если удерживаем - завершаем hold
             if (isHolding && enableHoldDetection)
             {
-                if (swipeDetector != null)
-                {
-                    SendHoldEvent(startDragPosition, endPosition, duration, false);
-                }
+                swipeDetector?.ProcessMouseHold(startDragPosition, endPosition, duration, false);
 
                 if (enableDebug)
                     Debug.Log($"[MouseInputReader] Mouse hold ended, duration: {duration:F2}s");
             }
-            else if (swipeDetector != null && distance > minSwipeDistance)
+            else
             {
-                SendSwipeEvent(startDragPosition, endPosition, duration, true);
+                // Финальный свайп - тоже отправляем
+                if (distance > minSwipeDistance)
+                {
+                    SendSwipeEvent(startDragPosition, endPosition, duration, true);
+                }
             }
 
             isMouseDragging = false;
@@ -95,6 +95,7 @@ public class MouseInputReader : InputReader
         {
             currentDragPosition = Input.mousePosition;
 
+            // Проверка на удержание (hold)
             if (isHoldChecking && enableHoldDetection && !holdProcessed)
             {
                 float currentHoldDistance = Vector2.Distance(startDragPosition, currentDragPosition);
@@ -106,15 +107,15 @@ public class MouseInputReader : InputReader
                     isHolding = false;
 
                     if (enableDebug)
-                        Debug.Log($"[MouseInputReader] Hold check failed - mouse moved too much: {holdMovementDistance:F1} px");
+                        Debug.Log($"[MouseInputReader] Hold check canceled - mouse moved too much: {holdMovementDistance:F1} px");
                 }
                 else if (Time.time - dragStartTime >= holdThresholdTime)
                 {
                     isHolding = true;
 
-                    if (!holdProcessed && swipeDetector != null)
+                    if (!holdProcessed)
                     {
-                        SendHoldEvent(startDragPosition, currentDragPosition, Time.time - dragStartTime, true);
+                        swipeDetector?.ProcessMouseHold(startDragPosition, currentDragPosition, Time.time - dragStartTime, true);
                         holdProcessed = true;
 
                         if (enableDebug)
@@ -123,10 +124,12 @@ public class MouseInputReader : InputReader
                 }
             }
 
+            // Промежуточные свайпы (continuous updates)
             if (!isHolding && sendContinuousUpdates && Time.time - lastUpdateTime > continuousUpdateInterval)
             {
-                float currentDistance = Vector2.Distance(lastSentPosition, currentDragPosition);
-                if (currentDistance > minSwipeDistance)
+                float movedSinceLast = Vector2.Distance(lastSentPosition, currentDragPosition);
+
+                if (movedSinceLast > minSwipeDistance)
                 {
                     float partialDuration = Mathf.Max(0.001f, Time.time - lastUpdateTime);
                     SendSwipeEvent(lastSentPosition, currentDragPosition, partialDuration, false);
@@ -137,38 +140,25 @@ public class MouseInputReader : InputReader
         }
     }
 
-    private void SendHoldEvent(Vector2 startPos, Vector2 endPos, float duration, bool isStart)
-    {
-        if (swipeDetector != null)
-        {
-            swipeDetector.ProcessMouseHold(startPos, endPos, duration, isStart);
-        }
-
-        if (enableDebug)
-        {
-            string state = isStart ? "started" : "ended";
-            Debug.Log($"[MouseInputReader] Mouse hold {state}: duration={duration:F2}s, movement={holdMovementDistance:F1}px");
-        }
-    }
-
     private void SendSwipeEvent(Vector2 startPos, Vector2 endPos, float duration, bool isFinal)
     {
         Vector2 rawDirection = endPos - startPos;
         float distance = rawDirection.magnitude * distanceMultiplier;
 
-        float xComponent = rawDirection.x;
-        float yComponent = rawDirection.y;
+        float xComp = rawDirection.x;
+        float yComp = rawDirection.y;
 
-        if (invertXDirection) xComponent = -xComponent;
-        if (invertYDirection) yComponent = -yComponent;
+        if (invertXDirection) xComp = -xComp;
+        if (invertYDirection) yComp = -yComp;
 
-        xComponent *= horizontalBias * 2;
-        yComponent *= (1 - horizontalBias) * 2;
+        // Смесь горизонтального и вертикального
+        xComp *= horizontalBias * 2;
+        yComp *= (1 - horizontalBias) * 2;
 
-        Vector2 direction = new Vector2(xComponent, yComponent).normalized;
+        Vector2 direction = new Vector2(xComp, yComp).normalized;
 
         float rawSpeed = distance / duration;
-        float normalizedSpeed = Mathf.Clamp01(rawSpeed / speedCap); 
+        float normalizedSpeed = Mathf.Clamp01(rawSpeed / speedCap);
         float curvedSpeed = responseVelocityCurve.Evaluate(normalizedSpeed) * speedCap;
         float finalSpeed = curvedSpeed * speedMultiplier;
 
@@ -179,14 +169,14 @@ public class MouseInputReader : InputReader
 
         if (enableDebug)
         {
-            Debug.Log($"[MouseInputReader] Mouse swipe: dir=({direction.x:F2}, {direction.y:F2}), " +
-                     $"raw speed={rawSpeed:F0}, curved={finalSpeed:F0}, dist={distance:F0}, final={isFinal}");
+            Debug.Log($"[MouseInputReader] Mouse swipe sent -> dir=({direction.x:F2}, {direction.y:F2}), " +
+                      $"rawSpeed={rawSpeed:F0}, curved={finalSpeed:F0}, dist={distance:F1}, final={isFinal}");
         }
     }
 
     public override bool IsConnected()
     {
-
+        // Мышь "подключена" всегда
         return true;
     }
 

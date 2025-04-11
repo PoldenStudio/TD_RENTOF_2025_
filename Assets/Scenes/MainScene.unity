@@ -254,8 +254,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultModeMovieName: Idle_mode.mov
-  idleModeMovieName: Active_mode.mov
-  CurtainMovieName: 
+  idleModeMovieName: Idle_mode.mov
+  CurtainMovieName: Idle_mode.mov
   CometMovieName: 
   rows: 1
   cols: 23

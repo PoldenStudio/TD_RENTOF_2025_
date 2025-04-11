@@ -242,10 +242,6 @@ public class SwipeDetector : MonoBehaviour
 
         SwipeDetected?.Invoke(data);
         _playbackController?.OnSwipeDetected(data);
-
-        if (!isInProgress)
-        {
-        }
     }
 
     private void TryDetectRelativeSwipe()
@@ -255,7 +251,6 @@ public class SwipeDetector : MonoBehaviour
         _activationHistory.Sort((a, b) => a.time.CompareTo(b.time));
 
         List<int> uniqueIndices = _activationHistory.Select(a => a.index).Distinct().ToList();
-
         if (uniqueIndices.Count < 2) return;
 
         for (int i = 0; i < uniqueIndices.Count - 1; i++)
@@ -285,6 +280,8 @@ public class SwipeDetector : MonoBehaviour
 
     public void ProcessMouseSwipe(Vector2 startPos, Vector2 endPos, float duration, float speed, Vector2 direction, bool isFinal)
     {
+        // Теперь обрабатываем все свайпы, и финальные, и промежуточные,
+        // сразу генерируя событие SwipeDetected.
         MouseSwipeData data = new()
         {
             startPosition = startPos,
@@ -303,19 +300,18 @@ public class SwipeDetector : MonoBehaviour
             stateManager.ResetIdleTimer();
         }
 
-        if (isFinal)
+        // Формируем универсальные данные свайпа
+        SwipeData standardSwipe = new()
         {
-            SwipeData standardSwipe = new()
-            {
-                direction = direction,
-                speed = speed / 1000f,
-                panelsCount = 2,
-                avgTimeBetween = duration / 2f,
-                isSmoothDrag = true
-            };
+            direction = direction,
+            speed = speed / 1000f,  // поправочный коэффициент
+            panelsCount = 2,       // условная "длина" свайпа
+            avgTimeBetween = duration / 2f,
+            isSmoothDrag = true
+        };
 
-            SwipeDetected?.Invoke(standardSwipe);
-        }
+        SwipeDetected?.Invoke(standardSwipe);
+        _playbackController?.OnSwipeDetected(standardSwipe);
     }
 
     public void ProcessMouseHold(Vector2 position, Vector2 endPosition, float duration, bool isStart)
@@ -382,8 +378,6 @@ public class SwipeDetector : MonoBehaviour
         float globalX = localX + segmentIndex * cols + portIndex * cols * segmentsPerPort;
         float globalY = -localY;
 
-        Vector2 pos = new Vector2(globalX, globalY);
-        // Debug.Log($"GetPanelPos: globalIndex={globalIndex}, portIdx={portIndex}, segIdx={segmentIndex}, localX={localX}, localY={localY}, pos={pos}");
-        return pos;
+        return new Vector2(globalX, globalY);
     }
 }
