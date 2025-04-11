@@ -16,7 +16,7 @@ public class CurtainController : MonoBehaviour
     [SerializeField] private float minXPosition = -1032f;
     [SerializeField] private float maxXPosition = 0f;
 
-    [Tooltip("True => instant snapping, False => uses a smooth Easing for motion.")]
+    [Tooltip("True => instant move, False => using smooth motion")]
     public bool instantMove = false;
 
     [Header("Logic Settings")]
@@ -25,7 +25,7 @@ public class CurtainController : MonoBehaviour
     [SerializeField] private float inactivityCloseDelay = 4f;
 
     [Header("Swipe Logic")]
-    [Tooltip("How many consecutive swipes in the opposite direction are treated as continuing the current direction")]
+    [Tooltip("How many opposite swipes to change direction")]
     [SerializeField] private int oppositeSwipeTolerance = 1;
 
     [Header("Demolition Media")]
@@ -57,7 +57,7 @@ public class CurtainController : MonoBehaviour
     {
         if (curtainObject == null || curtainRenderer == null)
         {
-            Debug.LogError("[CurtainController] References not set!");
+            Debug.LogError("[CurtainController] References not set");
             return;
         }
 
@@ -75,7 +75,7 @@ public class CurtainController : MonoBehaviour
     {
         if (_demolitionMedia == null)
         {
-            Debug.LogError("[CurtainController] Demolition Media is not assigned!");
+            Debug.LogError("[CurtainController] Demolition Media is not assigned");
             return;
         }
 
@@ -105,7 +105,7 @@ public class CurtainController : MonoBehaviour
 
             if (_inactivityTimer >= inactivityCloseDelay && !_isCurtainAnimating && !_isCurtainFull)
             {
-                Debug.Log("[CurtainController] Inactivity detected. Closing curtain.");
+                Debug.Log("[CurtainController] Inactivity detected. Closing curtain");
                 SlideCurtain(false);
                 ResetInactivityTimer();
             }
@@ -192,7 +192,7 @@ public class CurtainController : MonoBehaviour
             float distance = Mathf.Abs(_targetProgress - _currentProgress);
             if (slideSpeed <= 0)
             {
-                Debug.LogError("[CurtainController] SlideSpeed must be positive.");
+                Debug.LogError("[CurtainController] SlideSpeed must be positive");
                 slideSpeed = 1f;
             }
             duration = distance / slideSpeed;
@@ -281,7 +281,7 @@ public class CurtainController : MonoBehaviour
 
         if (_isCurtainFull && !wasFull)
         {
-            Debug.Log("[CurtainController] Curtain is now full!");
+            Debug.Log("[CurtainController] Curtain is now full");
             _onCurtainFullCallback?.Invoke();
         }
     }
@@ -370,7 +370,7 @@ public class CurtainController : MonoBehaviour
     {
         if (curtainRenderer == null)
         {
-            Debug.LogError("[CurtainController] Fade failed - curtainRenderer is null");
+            Debug.LogError("[CurtainController] CurtainRenderer is null");
             onComplete?.Invoke();
             _fadeCoroutine = null;
             yield break;

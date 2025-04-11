@@ -76,7 +76,7 @@ public class SwipeDetector : MonoBehaviour
             stateManager = FindObjectOfType<StateManager>();
             if (stateManager == null)
             {
-                Debug.LogError("[SwipeDetector] StateManager not assigned and not found in scene!");
+                Debug.LogError("[SwipeDetector] StateManager not assigned");
             }
         }
     }
@@ -108,7 +108,7 @@ public class SwipeDetector : MonoBehaviour
                         (currentTime - _activationHistory.Last().time) > maxTimeBetweenPresses)
                     {
                         ResetSwipeData();
-                        Debug.Log("[SwipeDetector] Resetting Swipe Data due to time gap");
+                        Debug.Log("[SwipeDetector] Resetting Swipe Data");
                     }
 
                     _activationHistory.Add(new PanelActivation { index = globalIndex, time = currentTime });
@@ -167,7 +167,7 @@ public class SwipeDetector : MonoBehaviour
                 }
                 _isSwipeInProgress = false;
                 ResetSwipeData();
-                Debug.Log("[SwipeDetector] Swipe finalized due to inactivity timeout.");
+                Debug.Log("[SwipeDetector] Swipe finalized");
             }
             else if ((currentTime - _activationHistory[0].time) > maxSwipeDuration)
             {
@@ -181,7 +181,7 @@ public class SwipeDetector : MonoBehaviour
                 }
                 _isSwipeInProgress = false;
                 ResetSwipeData();
-                Debug.Log("[SwipeDetector] Swipe finalized due to max duration timeout.");
+                Debug.Log("[SwipeDetector] Swipe finalized");
             }
         }
     }
@@ -280,8 +280,6 @@ public class SwipeDetector : MonoBehaviour
 
     public void ProcessMouseSwipe(Vector2 startPos, Vector2 endPos, float duration, float speed, Vector2 direction, bool isFinal)
     {
-        // Теперь обрабатываем все свайпы, и финальные, и промежуточные,
-        // сразу генерируя событие SwipeDetected.
         MouseSwipeData data = new()
         {
             startPosition = startPos,
@@ -300,12 +298,11 @@ public class SwipeDetector : MonoBehaviour
             stateManager.ResetIdleTimer();
         }
 
-        // Формируем универсальные данные свайпа
         SwipeData standardSwipe = new()
         {
             direction = direction,
-            speed = speed / 1000f,  // поправочный коэффициент
-            panelsCount = 2,       // условная "длина" свайпа
+            speed = speed / 1000f, 
+            panelsCount = 2,
             avgTimeBetween = duration / 2f,
             isSmoothDrag = true
         };
@@ -363,7 +360,7 @@ public class SwipeDetector : MonoBehaviour
 
         if (panelsPerSegment <= 0 || panelsPerPort <= 0)
         {
-            Debug.LogError($"panelsPerSegment={panelsPerSegment} or panelsPerPort={panelsPerPort} is zero or negative, cannot calculate panel position.");
+            Debug.LogError($"panelsPerSegment={panelsPerSegment} or panelsPerPort={panelsPerPort} is zero or negative");
             return Vector2.zero;
         }
 

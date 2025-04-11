@@ -74,11 +74,11 @@ public class VideoPlaybackController : MonoBehaviour
     private bool _isHolding = false;
 
     [Header("Swipe Timings")]
-    [Tooltip("Average time between touches greater than this will be considered a SLOW swipe.")]
+    [Tooltip("Average time between touches greater than this will be considered a SLOW swipe")]
     [SerializeField] private float slowSwipeTimeThreshold = 0.1f;
-    [Tooltip("Average time between touches less than or equal to this will be considered a FAST swipe.")]
+    [Tooltip("Average time between touches less than or equal to this will be considered a FAST swipe")]
     [SerializeField] private float fastSwipeTimeThreshold = 0.05f;
-    [Tooltip("If the target speed magnitude exceeds this value, it will NOT return to normal speed automatically.")]
+    [Tooltip("If the target speed magnitude exceeds this value, it will NOT return to normal speed automatically")]
     [SerializeField] private float maintainSpeedThreshold = 5f;
 
     [Header("Mouse Swipe Settings")]
@@ -773,7 +773,7 @@ public class VideoPlaybackController : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[VideoPlaybackController] MediaPlayer duration is zero or unknown, cannot seek to 0.");
+                Debug.LogWarning("[VideoPlaybackController] MediaPlayer duration is zero or unknown, cannot seek to 0");
             }
         }
         Debug.Log("[VideoPlaybackController] State Reset");

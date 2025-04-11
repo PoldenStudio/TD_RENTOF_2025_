@@ -176,7 +176,6 @@ public class MouseInputReader : InputReader
 
     public override bool IsConnected()
     {
-        // Мышь "подключена" всегда
         return true;
     }
 

@@ -61,16 +61,15 @@ namespace LEDControl
         {
             public float startTime;
             public float endTime;
-            public SunMode sunMode; // Warm или Cold
+            public SunMode sunMode;
         }
 
         [Serializable]
         public class SunMovementSettings
         {
-            [Tooltip("Total number of LEDs the sun occupies at its base brightness.")]
-            public int pixelCount = 10;
+            // Removed pixelCount from here
             public float baseCycleLength = 241f;
-            public List<TimeInterval> intervals = new(); // Интервалы с SunMode
+            public List<TimeInterval> intervals = new();
             [Tooltip("Global brightness multiplier for this sun effect.")]
             public float brightnessMultiplier = 1f;
             [Tooltip("Controls the blurriness of the sun edges. Higher values = more blurry edges.")]
@@ -79,7 +78,7 @@ namespace LEDControl
 
             public override string ToString()
             {
-                return $"PixelCount: {pixelCount}, CycleLength: {baseCycleLength}, Brightness: {brightnessMultiplier}, Gaussian: {gaussianSpreadFactor}";
+                return $"CycleLength: {baseCycleLength}, Brightness: {brightnessMultiplier}, Gaussian: {gaussianSpreadFactor}";
             }
         }
 
@@ -136,8 +135,6 @@ namespace LEDControl
                 return;
             }
 
-            Debug.Log($"Found {filePaths.Length} baked sun data files. Preloading...");
-
             foreach (string filePath in filePaths)
             {
                 try
@@ -167,18 +164,15 @@ namespace LEDControl
                         }
                         else
                         {
-                            Debug.LogWarning($"Inconsistent frame data for strip {stripIndex}, state key {stateData.stateKey} in {filePath}. " +
-                                             $"Expected {stateData.frameCount} frames, found {stateData.hexFrames?.Count ?? 0}.");
+                            Debug.LogWarning($"Inconsistent frame data for strip {stripIndex}, state key {stateData.stateKey} in {filePath}. Expected {stateData.frameCount} frames, found {stateData.hexFrames?.Count ?? 0}.");
                         }
                     }
-                    Debug.Log($"Successfully preloaded sun data for strip {stripIndex} from {filePath}");
                 }
                 catch (Exception e)
                 {
                     Debug.LogError($"Error loading baked sun data from JSON file {filePath}: {e.Message}");
                 }
             }
-            Debug.Log("Sun data preloading from JSON files complete");
         }
 
 #if UNITY_EDITOR
@@ -196,16 +190,15 @@ namespace LEDControl
                 return;
             }
 
-            if (dataSender != null && dataSender.SendInterval > 0)
-            {
-                preBakeFrameRate = Mathf.Max(1f, 1f / dataSender.SendInterval);
-            }
-            else
-            {
-                preBakeFrameRate = 35f;
-            }
+            preBakeFrameRate = (dataSender != null && dataSender.SendInterval > 0) ? Mathf.Max(1f, 1f / dataSender.SendInterval) : 35f;
 
             bool bakedSomething = false;
+            if (stripDataManager.totalLEDsPerStrip == null || stripDataManager.currentDisplayModes == null)
+            {
+                Debug.LogError("StripDataManager lists are not initialized.");
+                return;
+            }
+
             for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
                 if (stripDataManager.currentDisplayModes.Count > stripIndex &&
@@ -222,8 +215,8 @@ namespace LEDControl
 
             if (bakedSomething)
             {
-                Debug.Log("Finished baking sun data to JSON files.");
                 AssetDatabase.Refresh();
+                Debug.Log("Finished baking sun data to JSON files.");
             }
             else
             {
@@ -274,7 +267,6 @@ namespace LEDControl
 
             DataMode dataMode = stripDataManager.currentDataModes[stripIndex];
             int totalLEDs = stripDataManager.totalLEDsPerStrip[stripIndex];
-            Debug.Log($"Pre-baking SunMovement data for Strip {stripIndex} ({totalLEDs} LEDs) in {dataMode} mode...");
 
             int hexPerPixel = dataMode switch
             {
@@ -287,34 +279,31 @@ namespace LEDControl
 
             BakedSunStripData stripData = new BakedSunStripData { stripIndex = stripIndex };
 
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(stripIndex, StateManager.AppState.Idle, totalLEDs, hexPerPixel, dataMode, blackHexValue, idleSunSettings));
-            stripData.stateData.Add(PreBakeSunDataForStateAndMode(stripIndex, StateManager.AppState.Active, totalLEDs, hexPerPixel, dataMode, blackHexValue, activeSunSettings));
+            stripData.stateData.Add(PreBakeSunDataForState(stripIndex, StateManager.AppState.Idle, totalLEDs, hexPerPixel, dataMode, blackHexValue));
+            stripData.stateData.Add(PreBakeSunDataForState(stripIndex, StateManager.AppState.Active, totalLEDs, hexPerPixel, dataMode, blackHexValue));
 
             stripData.stateData.RemoveAll(sd => sd.hexFrames == null || sd.hexFrames.Count == 0);
 
-            Debug.Log($"[EffectsManager] Finished pre-baking data for Strip {stripIndex}. {stripData.stateData.Count} states baked.");
             return stripData;
         }
 
-        private BakedSunStateData PreBakeSunDataForStateAndMode(
+        private BakedSunStateData PreBakeSunDataForState(
             int stripIndex,
             StateManager.AppState appState,
             int totalLEDs,
             int hexPerPixel,
             DataMode dataMode,
-            string blackHexValue,
-            SunMovementSettings settingsRef)
+            string blackHexValue)
         {
             int stateKey = GenerateStateKey(appState);
             var stateData = new BakedSunStateData { stateKey = stateKey };
 
+            SunMovementSettings settingsRef = GetCurrentSunSettingsForRuntime(appState);
             if (settingsRef == null || settingsRef.baseCycleLength <= 0f)
             {
                 Debug.LogWarning($"Skipping bake for state {appState}: Invalid settings or cycle length.");
                 return stateData;
             }
-
-            Debug.Log($"Baking state {appState}, key {stateKey} for strip {stripIndex}...");
 
             float totalCycleLength = settingsRef.baseCycleLength;
             int frameCount = Mathf.Max(1, Mathf.CeilToInt(totalCycleLength * preBakeFrameRate));
@@ -325,7 +314,8 @@ namespace LEDControl
             stateData.hexFrames = new List<string>(frameCount);
 
             byte[] pixelBrightness = new byte[totalLEDs];
-            Color32 pixelColor = Color.black;
+
+            int sunPixelCount = stripDataManager.GetSunPixelCount(stripIndex);
 
             for (int frame = 0; frame < frameCount; frame++)
             {
@@ -333,8 +323,8 @@ namespace LEDControl
                 Array.Clear(pixelBrightness, 0, totalLEDs);
                 StringBuilder currentFrameHex = new StringBuilder(totalLEDs * hexPerPixel);
 
-                bool isActiveTime = false;
-                SunMode currentSunMode = SunMode.Warm; // По умолчанию Warm
+                SunMode currentSunMode = SunMode.Warm;
+                bool foundInterval = false;
 
                 foreach (var interval in settingsRef.intervals)
                 {
@@ -342,13 +332,13 @@ namespace LEDControl
 
                     if (currentTime >= interval.startTime && currentTime < interval.endTime)
                     {
-                        isActiveTime = true;
-                        currentSunMode = interval.sunMode; // Определяем текущий SunMode из интервала
+                        foundInterval = true;
+                        currentSunMode = interval.sunMode;
                         float intervalDuration = interval.endTime - interval.startTime;
                         float activeTime = currentTime - interval.startTime;
                         float progress = Mathf.Clamp01(activeTime / intervalDuration);
 
-                        float sunRadius = Mathf.Max(1f, settingsRef.pixelCount) * 1f;
+                        float sunRadius = Mathf.Max(1f, sunPixelCount) * 1f; // Use per-strip pixel count
                         float virtualLength = totalLEDs + 2 * sunRadius;
                         float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
                         float sigma = sunRadius / Mathf.Max(0.1f, settingsRef.gaussianSpreadFactor);
@@ -367,16 +357,19 @@ namespace LEDControl
                 }
 
                 StringBuilder frameHexBuilder = new StringBuilder(totalLEDs * hexPerPixel);
-                Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode); // Берем цвет солнца из StripDataManager
+                Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode);
 
                 for (int i = 0; i < totalLEDs; i++)
                 {
-                    pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
-                    pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
-                    pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
+                    Color32 pixelColor = Color.black;
+                    if (foundInterval) // Only apply sun color if inside an interval
+                    {
+                        pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
+                        pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
+                        pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
+                    }
 
                     string pixelHex = "";
-
                     float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
                     float stripGamma = stripDataManager.GetStripGamma(stripIndex);
                     bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
@@ -394,7 +387,7 @@ namespace LEDControl
                             pixelHex = colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled);
                             break;
                         default:
-                            pixelHex = "00"; // Default to black monochrome
+                            pixelHex = "00";
                             break;
                     }
                     frameHexBuilder.Append(pixelHex);
@@ -404,7 +397,6 @@ namespace LEDControl
                 stateData.hexFrames.Add(optimizedHex);
             }
 
-            Debug.Log($"Baked state {appState} for strip {stripIndex}: {frameCount} frames, duration {frameDuration:F3}s");
             return stateData;
         }
 
@@ -480,8 +472,6 @@ namespace LEDControl
                     ResetSunMovementPhase();
                     InvalidateCache(CacheInvalidationReason.AppStateChange);
                 }
-
-                ClearSunCache();
             }
         }
 
@@ -544,18 +534,6 @@ namespace LEDControl
 
         private void InvalidateCache(CacheInvalidationReason reason)
         {
-            switch (reason)
-            {
-                case CacheInvalidationReason.AppStateChange:
-                    Debug.Log("Cache invalidated due to AppState change.");
-                    break;
-                case CacheInvalidationReason.SpeedChange:
-                    Debug.Log("Cache invalidated due to Speed change.");
-                    break;
-                case CacheInvalidationReason.SunSettingsChange:
-                    Debug.Log("Cache invalidated due to SunSettings change.");
-                    break;
-            }
             ClearSunCache();
         }
 
@@ -575,8 +553,6 @@ namespace LEDControl
                 return cachedHex;
             }
 
-            if (stripIndex < 0 || stripIndex >= stripManager.currentSunModes.Count) return "";
-            SunMode sunMode = stripManager.GetSunMode(stripIndex);
             int stateKey = GenerateStateKey(_currentAppState);
 
             if (preloadedStateData.TryGetValue(stripIndex, out var stateInfoDict) &&
@@ -587,7 +563,6 @@ namespace LEDControl
 
                 if (frameCount <= 0 || frameDuration <= 0f || stateData.hexFrames == null || stateData.hexFrames.Count != frameCount)
                 {
-                    Debug.LogError($"Inconsistent baked data for strip {stripIndex}, state {stateKey}");
                     return "";
                 }
 
@@ -607,14 +582,13 @@ namespace LEDControl
             }
             else
             {
-                Debug.LogWarning($"No pre-baked data found for strip {stripIndex}, state {stateKey}");
                 return "";
             }
         }
 
         private int GenerateStateKey(StateManager.AppState state)
         {
-            return (int)state; // Теперь ключ зависит только от AppState (Idle/Active)
+            return (int)state;
         }
 
         private int GetCacheKey(int stripIndex, StateManager.AppState appState)
