@@ -494,17 +494,19 @@ MonoBehaviour:
   defaultModeMovieName: Active_mode.mov
   idleModeMovieName: Idle_mode.mov
   CurtainMovieName: Stars.mov
-  CometMovieName: Comet.mov
-  rows: 1
-  cols: 23
-  segments: 5
+  CometMovieName: Comet_mode.mov
+  rows: 5
+  cols: 5
+  segments: 12
   sampleRate: 0.05
   swipeTimeThreshold: 0.2
   speedMultiplier: 2
   swipeContinuationTolerance: 0.4
   baseFrequency: 440
   frequencyIncrement: 50
-  fadeDuration: 1
+  fadeDuration: 0.5
+  vSync: 0
+  frameRate: 120
 --- !u!114 &42588769
 MonoBehaviour:
   m_ObjectHideFlags: 0
