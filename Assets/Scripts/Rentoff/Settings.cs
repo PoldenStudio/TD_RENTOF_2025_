@@ -28,9 +28,14 @@ public class Settings : MonoBehaviour
     public float frequencyIncrement = 50.0f;
 
     [Header("Visualisation")]
-    public float fadeDuration = 0.5f; 
+    public float fadeDuration = 0.5f;
 
-private void Awake()
+    [Header("App Settings")]
+    public bool vSync = false;
+    public int frameRate = 120;
+
+
+    private void Awake()
     {
         if (Instance == null)
         {
@@ -41,5 +46,12 @@ private void Awake()
         {
             Destroy(gameObject);
         }
+
+        if (vSync == false)
+        {
+            QualitySettings.vSyncCount = 0;
+        }
+
+        Application.targetFrameRate = frameRate;
     }
 }
