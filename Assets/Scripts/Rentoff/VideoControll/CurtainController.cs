@@ -28,9 +28,9 @@ public class CurtainController : MonoBehaviour
     [Tooltip("How many opposite swipes to change direction")]
     [SerializeField] private int oppositeSwipeTolerance = 1;
 
-    [Header("Demolition Media")]
-    [SerializeField] private Media _demolitionMedia;
-    private IMediaPlayer _mediaPlayer;
+    [Header("Media Players")]
+    [SerializeField] private Media curtainMedia;
+    [SerializeField] private InitializationFramework.InitializePlayers initializePlayers; // Reference to InitializePlayers
     [SerializeField] private StateManager stateManager;
 
     private readonly float _finalApproachDelay = 0.3f;
@@ -39,8 +39,10 @@ public class CurtainController : MonoBehaviour
     private float _targetProgress = 0f;
     private Coroutine _progressCoroutine;
     private Coroutine _fadeCoroutine;
+    private Coroutine _cometPlaybackCoroutine;
     private bool _isCurtainAnimating = false;
     private bool _isCurtainFull = false;
+    private bool _isCometPlaying = false;
 
     private float _lastControlTime = 0f;
     private float _inactivityTimer = 0f;
@@ -73,15 +75,17 @@ public class CurtainController : MonoBehaviour
 
     private void Start()
     {
-        if (_demolitionMedia == null)
+        if (curtainMedia == null)
         {
-            Debug.LogError("[CurtainController] Demolition Media is not assigned");
-            return;
+            Debug.LogError("[CurtainController] Curtain Media is not assigned");
         }
 
-        _mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
+        curtainMedia.Play();
 
-        _mediaPlayer.Pause();
+        if (initializePlayers == null)
+        {
+            Debug.LogError("[CurtainController] InitializePlayers reference not set");
+        }
     }
 
     private void Update()
@@ -282,8 +286,38 @@ public class CurtainController : MonoBehaviour
         if (_isCurtainFull && !wasFull)
         {
             Debug.Log("[CurtainController] Curtain is now full");
+
+            // Play comet video when curtain is full
+            if (!_isCometPlaying && initializePlayers != null)
+            {
+                _isCometPlaying = true;
+                if (_cometPlaybackCoroutine != null)
+                {
+                    StopCoroutine(_cometPlaybackCoroutine);
+                }
+                _cometPlaybackCoroutine = StartCoroutine(PlayCometSequence());
+            }
+
             _onCurtainFullCallback?.Invoke();
         }
+    }
+
+    private IEnumerator PlayCometSequence()
+    {
+        Debug.Log("[CurtainController] Starting comet sequence");
+
+        if (initializePlayers != null)
+        {
+            yield return StartCoroutine(initializePlayers.PlayCometVideo());
+        }
+        else
+        {
+            Debug.LogError("[CurtainController] InitializePlayers reference is null, cannot play comet video");
+        }
+
+        _isCometPlaying = false;
+        _cometPlaybackCoroutine = null;
+        Debug.Log("[CurtainController] Comet sequence completed");
     }
 
     private void UpdateInactivityTimer()
@@ -439,16 +473,24 @@ public class CurtainController : MonoBehaviour
             StopCoroutine(_progressCoroutine);
             _progressCoroutine = null;
         }
+
         if (_fadeCoroutine != null)
         {
             StopCoroutine(_fadeCoroutine);
             _fadeCoroutine = null;
         }
 
+        if (_cometPlaybackCoroutine != null)
+        {
+            StopCoroutine(_cometPlaybackCoroutine);
+            _cometPlaybackCoroutine = null;
+        }
+
         _currentProgress = 0f;
         _targetProgress = 0f;
         _isCurtainFull = false;
         _isCurtainAnimating = false;
+        _isCometPlaying = false;
         ResetInactivityTimer();
         _lastCommittedSwipeSign = 0;
         _oppositeSwipeStreak = 0;

@@ -8,13 +8,20 @@ namespace InitializationFramework
 {
     public class InitializePlayers : MonoBehaviour, IInitializable
     {
-
         [SerializeField]
         List<Media> players;
 
+        [SerializeField]
+        Media cometPlayer; // Separate player for comet video
+
+        [SerializeField]
+        Media curtainPlayer; // Separate player for curtain video
+
         private string _idleModeMovieName;
         private string _defaultModeMovieName;
-        //старое видео при начале корутины дожно останавливаться, а новое должно начинаться с нуля
+        private string _CurtainMovieName;
+        private string _CometMovieName;
+
         private bool _isIdleMode = true;
         public Settings settings;
 
@@ -24,11 +31,14 @@ namespace InitializationFramework
 
             _idleModeMovieName = settings.idleModeMovieName;
             _defaultModeMovieName = settings.defaultModeMovieName;
+            _CurtainMovieName = settings.CurtainMovieName;
+            _CometMovieName = settings.CometMovieName;
 
             string initialMoviePath = _idleModeMovieName;
 
             Debug.Log($"[InitializePlayers] Initializing with idle movie: {initialMoviePath}");
 
+            // Initialize main players
             foreach (var player in players)
             {
                 bool dataIsReady = false;
@@ -61,6 +71,46 @@ namespace InitializationFramework
                 yield return null;
             }
 
+            // Initialize curtain player
+            if (curtainPlayer != null)
+            {
+                bool curtainDataReady = false;
+
+                curtainPlayer.openOnStart = true;
+                curtainPlayer.playOnOpen = true;
+                curtainPlayer.Loops = -1;
+
+                void CurtainHandler(Media mediaPlayer, MediaEvent.Type eventType, MediaError errorCode)
+                {
+                    if (eventType == MediaEvent.Type.Opened)
+                    {
+                        curtainDataReady = true;
+                    }
+                }
+
+                curtainPlayer.Events.AddListener(CurtainHandler);
+                Debug.Log($"[InitializePlayers] Opening curtain movie: {_CurtainMovieName}");
+                curtainPlayer.Open(_CurtainMovieName);
+
+                while (!curtainDataReady)
+                {
+                    yield return null;
+                }
+
+                curtainPlayer.Events.RemoveListener(CurtainHandler);
+                //curtainPlayer.Pause(); // Don't play it yet
+                Debug.Log($"[InitializePlayers] Curtain video ready but paused");
+            }
+
+            // Initialize comet player but don't open/play it yet
+            if (cometPlayer != null)
+            {
+                cometPlayer.openOnStart = false;
+                cometPlayer.playOnOpen = false;
+                cometPlayer.Loops = 0; // Play only once
+                Debug.Log($"[InitializePlayers] Comet player initialized but not opened yet");
+            }
+
             _isIdleMode = true;
             Debug.Log("[InitializePlayers] Initialization complete");
             OnFinished?.Invoke(this);
@@ -91,7 +141,6 @@ namespace InitializationFramework
                 player.Events.AddListener(Handler);
 
                 Debug.Log($"[InitializePlayers] Closing current video for player: {player.name}");
-                //player.PlaybackSpeed = 0f;
                 player.Close();
 
                 Debug.Log($"[InitializePlayers] Opening idle video for player: {player.name}");
@@ -103,10 +152,6 @@ namespace InitializationFramework
                 }
 
                 player.Events.RemoveListener(Handler);
-                //player.PlaybackSpeed = 1f;
-                //player.StartTime = 0f;
-                //player.SeekToTime(0f);
-                //player.SeekToFrame(0);
                 player.Play();
                 Debug.Log($"[InitializePlayers] Started idle video playback for player: {player.name}");
             }
@@ -143,7 +188,6 @@ namespace InitializationFramework
                 player.Events.AddListener(Handler);
 
                 Debug.Log($"[InitializePlayers] Closing current video for player: {player.name}");
-                //player.PlaybackSpeed = 0f;
                 player.Close();
 
                 Debug.Log($"[InitializePlayers] Opening default video for player: {player.name}");
@@ -155,15 +199,71 @@ namespace InitializationFramework
                 }
 
                 player.Events.RemoveListener(Handler);
-                //player.PlaybackSpeed = 1f;
-                //player.StartTime = 0f;
-                //player.SeekToTime(0f);
-                //player.SeekToFrame(0);
                 player.Play();
                 Debug.Log($"[InitializePlayers] Started default video playback for player: {player.name}");
             }
 
             Debug.Log("[InitializePlayers] Switch to default mode complete");
+            yield return null;
+        }
+
+        public IEnumerator PlayCometVideo()
+        {
+            if (cometPlayer == null)
+            {
+                Debug.LogError("[InitializePlayers] Comet player is not assigned");
+                yield break;
+            }
+
+            Debug.Log("[InitializePlayers] Starting comet video sequence");
+
+            bool dataIsReady = false;
+            bool playbackFinished = false;
+
+            void CometOpenHandler(Media mediaPlayer, MediaEvent.Type eventType, MediaError errorCode)
+            {
+                if (eventType == MediaEvent.Type.Opened)
+                {
+                    dataIsReady = true;
+                }
+                else if (eventType == MediaEvent.Type.PlaybackNewLoop)
+                {
+                    playbackFinished = true;
+                }
+            }
+
+            cometPlayer.Events.AddListener(CometOpenHandler);
+
+            // Close if already open
+            if (cometPlayer.IsOpened)
+            {
+                cometPlayer.Close();
+            }
+
+            // Open comet video
+            Debug.Log($"[InitializePlayers] Opening comet video: {_CometMovieName}");
+            cometPlayer.Open(_CometMovieName);
+
+            while (!dataIsReady)
+            {
+                yield return null;
+            }
+
+            // Play comet video once
+            cometPlayer.Loops = 0; // Ensure it plays only once
+            cometPlayer.Play();
+            Debug.Log("[InitializePlayers] Started comet video playback");
+
+            // Wait for playback to finish
+            while (!playbackFinished)
+            {
+                yield return null;
+            }
+
+            cometPlayer.Events.RemoveListener(CometOpenHandler);
+            cometPlayer.Close();
+            Debug.Log("[InitializePlayers] Comet video playback completed and closed");
+
             yield return null;
         }
 
@@ -175,6 +275,18 @@ namespace InitializationFramework
             {
                 player.Close();
                 Debug.Log($"[InitializePlayers] Closed player: {player.name}");
+            }
+
+            if (curtainPlayer != null)
+            {
+                curtainPlayer.Close();
+                Debug.Log("[InitializePlayers] Closed curtain player");
+            }
+
+            if (cometPlayer != null)
+            {
+                cometPlayer.Close();
+                Debug.Log("[InitializePlayers] Closed comet player");
             }
 
             yield return null;
