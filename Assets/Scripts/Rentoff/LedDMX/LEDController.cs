@@ -39,7 +39,7 @@ namespace LEDControl
 
         [Header("Display Mode")]
         public DisplayMode currentMode = DisplayMode.JsonDataSync;
-        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode, DirectDMX }
+        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode }
 
         [SerializeField] private List<LEDStrip> ledStrips = new();
 
@@ -84,7 +84,15 @@ namespace LEDControl
         private float pausedKineticValue = 0f;
         private float pausedSecondKineticValue = 0f;
 
+        // Добавлено: Байтовый массив для прямого DMX управления
         private byte[] directDMXData;
+
+        public byte[] DirectDMXData
+        {
+            get { return directDMXData; }
+            set { directDMXData = value; }
+        }
+
 
         private void Awake()
         {
@@ -278,28 +286,35 @@ namespace LEDControl
 
         void UpdateFrameBuffer()
         {
-            switch (currentMode)
+            //Определяем, нужно ли использовать прямой DMX.
+            bool useDirectDMX = !idleMode && (directDMXData != null);
+
+            if (useDirectDMX)
             {
-                case DisplayMode.GlobalColor:
-                    ClearLEDChannels();
-                    BuildGlobalColorBuffer();
-                    break;
-                case DisplayMode.SegmentColor:
-                    ClearLEDChannels();
-                    BuildSegmentColorBuffer();
-                    break;
-                case DisplayMode.JsonDataSync:
-                    ClearLEDChannels();
-                    BuildJsonDataSyncBuffer();
-                    break;
-                case DisplayMode.TestMode:
-                    ClearLEDChannels();
-                    BuildTestModeBuffer();
-                    break;
-                case DisplayMode.DirectDMX:
-                    ClearLEDChannels();
-                    BuildDirectDMXBuffer();
-                    break;
+                ClearLEDChannels();
+                BuildDirectDMXBuffer();
+            }
+            else
+            {
+                switch (currentMode)
+                {
+                    case DisplayMode.GlobalColor:
+                        ClearLEDChannels();
+                        BuildGlobalColorBuffer();
+                        break;
+                    case DisplayMode.SegmentColor:
+                        ClearLEDChannels();
+                        BuildSegmentColorBuffer();
+                        break;
+                    case DisplayMode.JsonDataSync:
+                        ClearLEDChannels();
+                        BuildJsonDataSyncBuffer();
+                        break;
+                    case DisplayMode.TestMode:
+                        ClearLEDChannels();
+                        BuildTestModeBuffer();
+                        break;
+                }
             }
 
             UpdateKineticControl();
@@ -360,7 +375,7 @@ namespace LEDControl
 
             // Плавное приближение (сглаживание) текущих значений
             kineticCurrentValue = SmoothApproach(kineticCurrentValue, newKineticValue, 2f);
-            secondKineticCurrentValue = SmoothApproach(secondKineticCurrentValue, newSecondKineticValue, 2f);
+            secondKineticCurrentValue = SmoothApproach(pausedSecondKineticValue, newSecondKineticValue, 2f);
 
             SetKineticDMXChannels(kineticCurrentValue, secondKineticCurrentValue);
         }
@@ -576,13 +591,15 @@ namespace LEDControl
             }
         }
 
+        // Добавлено: Метод для построения буфера на основе прямого DMX массива
         void BuildDirectDMXBuffer()
         {
             if (directDMXData != null)
             {
+                // Копируем данные из directDMXData в FrameBuffer, учитывая ограничения DMX (1-512 каналы)
                 for (int i = 0; i < Mathf.Min(directDMXData.Length, 512); i++)
                 {
-                    FrameBuffer[i + 1] = directDMXData[i];
+                    FrameBuffer[i + 1] = directDMXData[i];  // +1 потому что DMX начинается с 1, а массив с 0
                 }
             }
         }
@@ -665,22 +682,6 @@ namespace LEDControl
             {
                 strip.LoadJsonData(true);
             }
-        }
-
-        // Добавлено: Метод для установки данных для прямого DMX режима
-        public void SetDirectDMXData(byte[] data)
-        {
-            directDMXData = data;
-        }
-
-        public void SwitchToDirectDMX()
-        {
-            currentMode = DisplayMode.DirectDMX;
-        }
-
-        public void SwitchToJsonSync()
-        {
-            currentMode = DisplayMode.JsonDataSync;
         }
     }
 }

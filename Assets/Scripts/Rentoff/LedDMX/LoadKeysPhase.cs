@@ -5,7 +5,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
 namespace InitializationFramework
 {
     public class LoadKeysPhase : MonoBehaviour, IInitializable
@@ -43,7 +42,8 @@ namespace InitializationFramework
         private LEDControl.LEDController ledController;
 
         // Добавлено: Флаг для переключения режимов
-        private bool useDirectDMX = false;
+        [Tooltip("Включить прямой DMX режим при активном режиме?")]
+        public bool useDirectDMX = false;
 
         // Добавлено: Байтовый массив для хранения данных
         private byte[] dmxData;
@@ -109,11 +109,10 @@ namespace InitializationFramework
                         }
                     }
 
-                    // После загрузки всех данных переключаемся в DirectDMX режим
+                    // После загрузки всех данных сохраняем массив в LEDController
                     if (ledController != null)
                     {
-                        ledController.SetDirectDMXData(dmxData);
-                        ledController.SwitchToDirectDMX();
+                        ledController.DirectDMXData = dmxData;
                     }
                     else
                     {
@@ -171,18 +170,6 @@ namespace InitializationFramework
         public void ToggleDirectDMXMode()
         {
             useDirectDMX = !useDirectDMX;
-            if (ledController != null)
-            {
-                if (useDirectDMX)
-                {
-                    ledController.SetDirectDMXData(dmxData);
-                    ledController.SwitchToDirectDMX();
-                }
-                else
-                {
-                    ledController.SwitchToJsonSync();
-                }
-            }
         }
     }
 }
