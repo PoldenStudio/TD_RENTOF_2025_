@@ -39,7 +39,7 @@ namespace LEDControl
 
         [Header("Display Mode")]
         public DisplayMode currentMode = DisplayMode.JsonDataSync;
-        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode }
+        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode, IdleActive }
 
         [SerializeField] private List<LEDStrip> ledStrips = new();
 
@@ -286,13 +286,19 @@ namespace LEDControl
 
         void UpdateFrameBuffer()
         {
-            //Определяем, нужно ли использовать прямой DMX.
-            bool useDirectDMX = !idleMode && (directDMXData != null);
-
-            if (useDirectDMX)
+            // Если выбран режим IdleActive
+            if (currentMode == DisplayMode.IdleActive)
             {
-                ClearLEDChannels();
-                BuildDirectDMXBuffer();
+                if (idleMode)
+                {
+                    ClearLEDChannels();
+                    BuildJsonDataSyncBuffer(); // Используем JSON для idle режима
+                }
+                else
+                {
+                    ClearLEDChannels();
+                    BuildDirectDMXBuffer(); // Используем прямой DMX для active режима
+                }
             }
             else
             {
@@ -375,7 +381,7 @@ namespace LEDControl
 
             // Плавное приближение (сглаживание) текущих значений
             kineticCurrentValue = SmoothApproach(kineticCurrentValue, newKineticValue, 2f);
-            secondKineticCurrentValue = SmoothApproach(pausedSecondKineticValue, newSecondKineticValue, 2f);
+            secondKineticCurrentValue = SmoothApproach(secondKineticCurrentValue, newSecondKineticValue, 2f);
 
             SetKineticDMXChannels(kineticCurrentValue, secondKineticCurrentValue);
         }

@@ -160,9 +160,9 @@ public class DMXCommunicator : IDisposable
 
                 //Debug.Log("sending: " + buffer[1]);
 
-                 // Send data
-                serialPort.Write(buffer, 0, buffer.Length);              
-                
+                // Send data
+                serialPort.Write(buffer, 0, buffer.Length);
+
                 //Thread.Sleep(DMX_FRAME_RATE);
 
 

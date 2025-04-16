@@ -41,9 +41,6 @@ namespace InitializationFramework
         [SerializeField]
         private LEDControl.LEDController ledController;
 
-        // Добавлено: Флаг для переключения режимов
-        [Tooltip("Включить прямой DMX режим при активном режиме?")]
-        public bool useDirectDMX = false;
 
         // Добавлено: Байтовый массив для хранения данных
         private byte[] dmxData;
@@ -118,6 +115,7 @@ namespace InitializationFramework
                     {
                         Debug.LogError("LEDController не назначен в LoadKeysPhase!");
                     }
+
                 }
             }
             catch (System.Exception err)
@@ -164,12 +162,6 @@ namespace InitializationFramework
             res.a = (byte)(minWhiteValue * 255f);
 
             return res;
-        }
-
-        // Добавлено: Метод для переключения между режимами
-        public void ToggleDirectDMXMode()
-        {
-            useDirectDMX = !useDirectDMX;
         }
     }
 }
