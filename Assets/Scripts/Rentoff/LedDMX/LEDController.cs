@@ -22,7 +22,7 @@ namespace LEDControl
         public float baseFramesPerSecond = 120f;
         public int frameSkip = 1;
         private int currentFrameSkipCounter = 0;
-        private float currentSpeed = 1f;
+        public float currentSpeed = 1f;
 
         [Header("Debug Options")]
         [SerializeField] private Text debugText;
@@ -39,7 +39,7 @@ namespace LEDControl
 
         [Header("Display Mode")]
         public DisplayMode currentMode = DisplayMode.JsonDataSync;
-        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode }
+        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode, DirectDMX }
 
         [SerializeField] private List<LEDStrip> ledStrips = new();
 
@@ -83,6 +83,8 @@ namespace LEDControl
         private bool kineticPaused = false;
         private float pausedKineticValue = 0f;
         private float pausedSecondKineticValue = 0f;
+
+        private byte[] directDMXData;
 
         private void Awake()
         {
@@ -293,6 +295,10 @@ namespace LEDControl
                 case DisplayMode.TestMode:
                     ClearLEDChannels();
                     BuildTestModeBuffer();
+                    break;
+                case DisplayMode.DirectDMX:
+                    ClearLEDChannels();
+                    BuildDirectDMXBuffer();
                     break;
             }
 
@@ -570,6 +576,17 @@ namespace LEDControl
             }
         }
 
+        void BuildDirectDMXBuffer()
+        {
+            if (directDMXData != null)
+            {
+                for (int i = 0; i < Mathf.Min(directDMXData.Length, 512); i++)
+                {
+                    FrameBuffer[i + 1] = directDMXData[i];
+                }
+            }
+        }
+
         void OnDestroy()
         {
             if (dmxCommunicator != null)
@@ -648,6 +665,22 @@ namespace LEDControl
             {
                 strip.LoadJsonData(true);
             }
+        }
+
+        // Добавлено: Метод для установки данных для прямого DMX режима
+        public void SetDirectDMXData(byte[] data)
+        {
+            directDMXData = data;
+        }
+
+        public void SwitchToDirectDMX()
+        {
+            currentMode = DisplayMode.DirectDMX;
+        }
+
+        public void SwitchToJsonSync()
+        {
+            currentMode = DisplayMode.JsonDataSync;
         }
     }
 }

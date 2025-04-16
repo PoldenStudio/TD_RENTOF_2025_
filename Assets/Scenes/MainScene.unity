@@ -4275,6 +4275,8 @@ GameObject:
   - component: {fileID: 1597980941}
   - component: {fileID: 1597980945}
   - component: {fileID: 1597980944}
+  - component: {fileID: 1597980947}
+  - component: {fileID: 1597980946}
   m_Layer: 0
   m_Name: InitAmilightDMX
   m_TagString: Untagged
@@ -4327,6 +4329,7 @@ MonoBehaviour:
   autoCalculateOffsets: 0
   baseFramesPerSecond: 60
   frameSkip: 1
+  currentSpeed: 1
   debugText: {fileID: 0}
   enableFrameDebug: 0
   globalBrightness: 2
@@ -4355,7 +4358,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   videoLength: 180
-  currentMode: 2
+  currentMode: 4
   ledStrips:
   - name: LED Strip
     totalLEDs: 35
@@ -4743,6 +4746,46 @@ MonoBehaviour:
   secondKineticHeightDmxChannel2: 512
   idleMode: 1
   wasIdled: 0
+--- !u!114 &1597980946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1597980940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8accb09593516f48bde9b105efa9d95, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  readyToSend: 0
+  upperColor: {r: 0, g: 0, b: 0, a: 0}
+  lowerColor: {r: 0, g: 0, b: 0, a: 0}
+  frames: []
+  pn: COM15
+--- !u!114 &1597980947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1597980940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f91cb874cad37a1438ca32f65c69cbe8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  st:
+    leftAmbilightIndex: 1
+    rightAmbilightIndex: 140
+    upperAmbilightIndex: 400
+    lowerAmbilightIndex: 410
+    kinetic_L: 509
+    kinetic_R: 511
+  fn: keys.data
+  db: {fileID: 1597980946}
+  bypassOnInit: 1
+  ledController: {fileID: 1597980945}
 --- !u!1 &1631245014
 GameObject:
   m_ObjectHideFlags: 0
