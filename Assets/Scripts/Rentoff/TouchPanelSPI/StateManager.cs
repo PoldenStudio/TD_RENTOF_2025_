@@ -128,9 +128,9 @@ public class StateManager : MonoBehaviour
 
         curtainController.SetOnCurtainFullCallback(null);
 
-        yield return ledController.FadeOut(fadeOutDuration);
+        //yield return ledController.FadeOut(fadeOutDuration);
         ledController.SwitchToActiveJSON();
-        yield return ledController.FadeIn(fadeInDuration, ledController.DefaultGlobalBrightness);
+        //yield return ledController.FadeIn(fadeInDuration, ledController.DefaultGlobalBrightness);
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });

@@ -54,6 +54,7 @@ namespace LEDControl
         [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
 
         public bool idleMode = true;
+        private bool isIdling = true;
         public bool wasIdled = false;
 
         private int relocatedSecondKineticHeightChannel1;
@@ -93,6 +94,31 @@ namespace LEDControl
             set { directDMXData = value; }
         }
 
+        [Header("Transition Settings")]
+        //в активный
+        public float transitionDurationIdleToActive = 1.0f;
+
+        public AnimationCurve globalBrightnessCurveIdleToActive;
+
+        public AnimationCurve redCurveIdleToActive;
+        public AnimationCurve greenCurveIdleToActive;
+        public AnimationCurve blueCurveIdleToActive;
+
+        //в idle
+        public float transitionDurationActiveToIdle = 1.0f;
+
+        public AnimationCurve globalBrightnessCurveActiveToIdle;
+
+        public AnimationCurve redCurveActiveToIdle;
+        public AnimationCurve greenCurveActiveToIdle;
+        public AnimationCurve blueCurveActiveToIdle;
+
+        private float transitionStartTime;
+        private bool inTransition = false;
+
+        private bool transitioningToIdle;
+
+        private byte[] tempFrameBuffer;
 
         private void Awake()
         {
@@ -118,6 +144,8 @@ namespace LEDControl
             {
                 stateManager.OnStateChanged += HandleStateChanged;
             }
+
+            tempFrameBuffer = new byte[513];
         }
 
         void CalculateTotalLedChannels()
@@ -223,6 +251,18 @@ namespace LEDControl
             if (currentFrameSkipCounter < frameSkip)
                 return;
 
+
+            bool isTransitioning = false;
+            if (isIdling != idleMode)
+            {
+                isIdling = idleMode;
+                StartTransition();
+            }
+            else
+            {
+                isTransitioning = inTransition;
+            }
+
             foreach (var strip in ledStrips)
             {
                 if (idleMode)
@@ -249,7 +289,7 @@ namespace LEDControl
                 }
             }
 
-            UpdateFrameBuffer();
+            UpdateFrameBuffer(isTransitioning);
 
             if (dmxCommunicator != null && dmxCommunicator.IsActive)
             {
@@ -284,12 +324,23 @@ namespace LEDControl
                 buffer[channel] = value;
         }
 
-        void UpdateFrameBuffer()
+        void UpdateFrameBuffer(bool isTransitioning)
         {
             // Если выбран режим IdleActive
             if (currentMode == DisplayMode.IdleActive)
             {
-                if (idleMode)
+                if (inTransition)
+                {
+                    float time = (Time.time - transitionStartTime) / GetCurrentTransitionDuration();
+                    if (time >= 1.0f)
+                    {
+                        inTransition = false; // Transition complete
+                        time = 1.0f;
+                    }
+
+                    BuildTransitionFrame(time);
+                }
+                else if (idleMode)
                 {
                     ClearLEDChannels();
                     BuildJsonDataSyncBuffer(); // Используем JSON для idle режима
@@ -324,6 +375,69 @@ namespace LEDControl
             }
 
             UpdateKineticControl();
+        }
+
+        float GetCurrentTransitionDuration()
+        {
+            return transitioningToIdle ? transitionDurationActiveToIdle : transitionDurationIdleToActive;
+        }
+
+        void BuildTransitionFrame(float time)
+        {
+            // Get the appropriate curves based on the direction of the transition
+            AnimationCurve globalBrightnessCurve = transitioningToIdle ? globalBrightnessCurveActiveToIdle : globalBrightnessCurveIdleToActive;
+            AnimationCurve redCurve = transitioningToIdle ? redCurveActiveToIdle : redCurveIdleToActive;
+            AnimationCurve greenCurve = transitioningToIdle ? greenCurveActiveToIdle : greenCurveIdleToActive;
+            AnimationCurve blueCurve = transitioningToIdle ? blueCurveActiveToIdle : blueCurveIdleToActive;
+
+            // Calculate the global brightness value
+            float globalBrightnessValue = globalBrightnessCurve.Evaluate(time);
+
+            // Create a temporary buffer for the target frame.
+            byte[] targetFrame = new byte[513];
+            if (transitioningToIdle)
+            {
+                Array.Copy(FrameBuffer, tempFrameBuffer, 513);
+                ClearLEDChannels();
+                BuildJsonDataSyncBuffer();
+                Array.Copy(FrameBuffer, targetFrame, 513);
+                Array.Copy(tempFrameBuffer, FrameBuffer, 513);
+            }
+            else
+            {
+                Array.Copy(FrameBuffer, tempFrameBuffer, 513);
+                ClearLEDChannels();
+                BuildDirectDMXBuffer();
+                Array.Copy(FrameBuffer, targetFrame, 513);
+                Array.Copy(tempFrameBuffer, FrameBuffer, 513);
+            }
+
+            //Blend the frames based on the curve.
+            for (int i = 1; i < 513; i++)
+            {
+                // Get the start and end colors
+                byte startColor = FrameBuffer[i];
+                byte endColor = targetFrame[i];
+
+                // Calculate each curve value for each channel
+                float redValue = redCurve.Evaluate(time);
+                float greenValue = greenCurve.Evaluate(time);
+                float blueValue = blueCurve.Evaluate(time);
+
+                //Interpolate color.
+                float redOutput = Mathf.Lerp(startColor, endColor, redValue);
+                float greenOutput = Mathf.Lerp(startColor, endColor, greenValue);
+                float blueOutput = Mathf.Lerp(startColor, endColor, blueValue);
+
+                FrameBuffer[i] = (byte)Mathf.Clamp(Mathf.Floor((redOutput + greenOutput + blueOutput) / 3 * globalBrightnessValue), 0, 255);
+            }
+        }
+
+        void StartTransition()
+        {
+            inTransition = true;
+            transitionStartTime = Time.time;
+            transitioningToIdle = idleMode; // Determine direction of transition
         }
 
         private void ClearLEDChannels()
@@ -634,31 +748,6 @@ namespace LEDControl
             dmxCommunicator.SendFrame(FrameBuffer);
         }
 
-        public IEnumerator FadeOut(float duration)
-        {
-            float startBrightness = globalBrightness;
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                globalBrightness = Mathf.Lerp(startBrightness, 0f, elapsed / duration);
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
-            globalBrightness = 0f;
-        }
-
-        public IEnumerator FadeIn(float duration, float targetBrightness)
-        {
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                globalBrightness = Mathf.Lerp(0f, targetBrightness, elapsed / duration);
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
-            globalBrightness = targetBrightness;
-        }
-
         public void SwitchToActiveJSON()
         {
             idleMode = false;
@@ -681,6 +770,31 @@ namespace LEDControl
             wasIdled = true;
             confirmTime = false;
         }
+
+        /*        public IEnumerator FadeOut(float duration)
+        {
+            float startBrightness = globalBrightness;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                globalBrightness = Mathf.Lerp(startBrightness, 0f, elapsed / duration);
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+            globalBrightness = 0f;
+        }
+
+        public IEnumerator FadeIn(float duration, float targetBrightness)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                globalBrightness = Mathf.Lerp(0f, targetBrightness, elapsed / duration);
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+            globalBrightness = targetBrightness;
+        }*/
 
         public void ReloadJsonData()
         {
