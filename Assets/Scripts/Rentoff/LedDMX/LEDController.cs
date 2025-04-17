@@ -627,55 +627,104 @@ namespace LEDControl
             if (idleMode)
             {
                 BuildJsonDataSyncBuffer();
-
-                if (byteArrayFrames != null && byteArrayFrames.Length > 0)
-                {
-                    int frameIndex = Mathf.FloorToInt(Time.time * 60) % byteArrayFrames.Length;
-                    byte[] frameData = byteArrayFrames[frameIndex];
-
-                    for (int i = 0; i < frameData.Length && i < 512; i++)
-                    {
-                        int channel = i + 1;
-                        if (!IsKineticChannel(channel))
-                        {
-                            byte adjustedValue = (byte)(frameData[i] * currentGlobalBrightnessFactor);
-                            FrameBuffer[channel] = (byte)Mathf.Min(FrameBuffer[channel] + adjustedValue, 255);
-                        }
-                    }
-                }
             }
             else
             {
                 if (byteArrayFrames != null && byteArrayFrames.Length > 0)
                 {
-                    int frameIndex = Mathf.FloorToInt(Time.time * 60) % byteArrayFrames.Length;
-                    byte[] frameData = byteArrayFrames[frameIndex];
 
-                    for (int i = 0; i < frameData.Length && i < 512; i++)
+                    int videoFrameIndex = Mathf.FloorToInt(Time.time * 120f);
+                    int byteArrayFrameIndex = (videoFrameIndex / 2) % byteArrayFrames.Length;
+
+                    byte[] frameData = byteArrayFrames[byteArrayFrameIndex];
+
+                    ClearLEDChannels();
+                    for (int i = 0; i < 140; i++)
                     {
                         int channel = i + 1;
                         if (!IsKineticChannel(channel))
                         {
-                            byte adjustedValue = (byte)(frameData[i] * currentGlobalBrightnessFactor);
-                            FrameBuffer[channel] = adjustedValue;
+                            FrameBuffer[channel] = frameData[i];
                         }
                     }
-                }
-            }
 
-            if (enableFrameDebug)
-            {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 1; i < FrameBuffer.Length; i++)
-                {
-                    sb.Append(FrameBuffer[i]).Append(" ");
+                    for (int i = 0; i < 140; i++)
+                    {
+                        int channel = i + 141;
+                        if (!IsKineticChannel(channel))
+                        {
+                            FrameBuffer[channel] = frameData[140 + i];
+                        }
+                    }
+
+                    for (int ch = 281; ch < 400; ch++)
+                    {
+                        if (!IsKineticChannel(ch))
+                            FrameBuffer[ch] = 0;
+                    }
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        int channel = 400 + i;
+                        if (!IsKineticChannel(channel))
+                        {
+                            FrameBuffer[channel] = frameData[280 + i];
+                        }
+                    }
+
+                    for (int ch = 405; ch < 410; ch++)
+                    {
+                        if (!IsKineticChannel(ch))
+                            FrameBuffer[ch] = 0;
+                    }
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        int channel = 410 + i;
+                        if (!IsKineticChannel(channel))
+                        {
+                            FrameBuffer[channel] = frameData[285 + i];
+                        }
+                    }
+
+                    for (int ch = 415; ch < 509; ch++)
+                    {
+                        if (!IsKineticChannel(ch))
+                            FrameBuffer[ch] = 0;
+                    }
+
+                    if (!IsKineticChannel(509))
+                        FrameBuffer[509] = frameData[290];
+
+                    if (!IsKineticChannel(510))
+                        FrameBuffer[510] = 0;
+
+                    if (!IsKineticChannel(511))
+                        FrameBuffer[511] = frameData[291];
+
+                    if (!IsKineticChannel(512))
+                        FrameBuffer[512] = 0;
+
+                    if (enableFrameDebug)
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        sb.Append($"JsonMixByte Frame Index: {byteArrayFrameIndex} | Data: ");
+                        int bytesToLog = Math.Min(512, FrameBuffer.Length - 1);
+                        for (int i = 1; i <= bytesToLog; i++)
+                        {
+                            sb.Append(FrameBuffer[i]).Append(" ");
+                        }
+                        Debug.Log(sb.ToString());
+                        if (debugText != null)
+                            debugText.text = sb.ToString();
+                    }
                 }
-                Debug.Log($"Sent DMX Frame from byte array: {sb.ToString()}");
-                if (debugText != null)
-                    debugText.text = sb.ToString();
+                else
+                {
+                    ClearLEDChannels();
+                }
             }
         }
-
         void LoadByteArrayFrames()
         {
             var absPath = Application.streamingAssetsPath + System.IO.Path.AltDirectorySeparatorChar + byteArrayFilePath;
