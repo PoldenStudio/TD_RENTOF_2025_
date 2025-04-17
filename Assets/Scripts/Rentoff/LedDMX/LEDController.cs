@@ -22,7 +22,7 @@ namespace LEDControl
         public float baseFramesPerSecond = 120f;
         public int frameSkip = 1;
         private int currentFrameSkipCounter = 0;
-        public float currentSpeed = 1f;
+        private float currentSpeed = 1f;
 
         [Header("Debug Options")]
         [SerializeField] private Text debugText;
@@ -39,7 +39,7 @@ namespace LEDControl
 
         [Header("Display Mode")]
         public DisplayMode currentMode = DisplayMode.JsonDataSync;
-        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode, IdleActive }
+        public enum DisplayMode { GlobalColor, SegmentColor, JsonDataSync, TestMode, JsonMixByte }
 
         [SerializeField] private List<LEDStrip> ledStrips = new();
 
@@ -54,7 +54,6 @@ namespace LEDControl
         [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
 
         public bool idleMode = true;
-        private bool isIdling = true;
         public bool wasIdled = false;
 
         private int relocatedSecondKineticHeightChannel1;
@@ -85,40 +84,15 @@ namespace LEDControl
         private float pausedKineticValue = 0f;
         private float pausedSecondKineticValue = 0f;
 
-        // Добавлено: Байтовый массив для прямого DMX управления
-        private byte[] directDMXData;
-
-        public byte[] DirectDMXData
-        {
-            get { return directDMXData; }
-            set { directDMXData = value; }
-        }
-
-        [Header("Transition Settings")]
-        //в активный
-        public float transitionDurationIdleToActive = 1.0f;
-
-        public AnimationCurve globalBrightnessCurveIdleToActive;
-
-        public AnimationCurve redCurveIdleToActive;
-        public AnimationCurve greenCurveIdleToActive;
-        public AnimationCurve blueCurveIdleToActive;
-
-        //в idle
-        public float transitionDurationActiveToIdle = 1.0f;
-
-        public AnimationCurve globalBrightnessCurveActiveToIdle;
-
-        public AnimationCurve redCurveActiveToIdle;
-        public AnimationCurve greenCurveActiveToIdle;
-        public AnimationCurve blueCurveActiveToIdle;
-
-        private float transitionStartTime;
-        private bool inTransition = false;
-
-        private bool transitioningToIdle;
-
-        private byte[] tempFrameBuffer;
+        // Новые переменные для JsonMixByte режима
+        [SerializeField] private string byteArrayFilePath = "keys.data";
+        [SerializeField] private int leftAmbilightIndex = 1;
+        [SerializeField] private int rightAmbilightIndex = 140;
+        [SerializeField] private int upperAmbilightIndex = 400;
+        [SerializeField] private int lowerAmbilightIndex = 410;
+        [SerializeField] private int kineticLIndex = 509;
+        [SerializeField] private int kineticRIndex = 511;
+        private byte[][] byteArrayFrames;
 
         private void Awake()
         {
@@ -145,7 +119,7 @@ namespace LEDControl
                 stateManager.OnStateChanged += HandleStateChanged;
             }
 
-            tempFrameBuffer = new byte[513];
+            LoadByteArrayFrames();
         }
 
         void CalculateTotalLedChannels()
@@ -251,18 +225,6 @@ namespace LEDControl
             if (currentFrameSkipCounter < frameSkip)
                 return;
 
-
-            bool isTransitioning = false;
-            if (isIdling != idleMode)
-            {
-                isIdling = idleMode;
-                StartTransition();
-            }
-            else
-            {
-                isTransitioning = inTransition;
-            }
-
             foreach (var strip in ledStrips)
             {
                 if (idleMode)
@@ -289,7 +251,7 @@ namespace LEDControl
                 }
             }
 
-            UpdateFrameBuffer(isTransitioning);
+            UpdateFrameBuffer();
 
             if (dmxCommunicator != null && dmxCommunicator.IsActive)
             {
@@ -324,120 +286,37 @@ namespace LEDControl
                 buffer[channel] = value;
         }
 
-        void UpdateFrameBuffer(bool isTransitioning)
+        void UpdateFrameBuffer()
         {
-            // Если выбран режим IdleActive
-            if (currentMode == DisplayMode.IdleActive)
+            switch (currentMode)
             {
-                if (inTransition)
-                {
-                    float time = (Time.time - transitionStartTime) / GetCurrentTransitionDuration();
-                    if (time >= 1.0f)
-                    {
-                        inTransition = false; // Transition complete
-                        time = 1.0f;
-                    }
-
-                    BuildTransitionFrame(time);
-                }
-                else if (idleMode)
-                {
+                case DisplayMode.GlobalColor:
                     ClearLEDChannels();
-                    BuildJsonDataSyncBuffer(); // Используем JSON для idle режима
-                }
-                else
-                {
+                    BuildGlobalColorBuffer();
+                    break;
+                case DisplayMode.SegmentColor:
                     ClearLEDChannels();
-                    BuildDirectDMXBuffer(); // Используем прямой DMX для active режима
-                }
-            }
-            else
-            {
-                switch (currentMode)
-                {
-                    case DisplayMode.GlobalColor:
-                        ClearLEDChannels();
-                        BuildGlobalColorBuffer();
-                        break;
-                    case DisplayMode.SegmentColor:
-                        ClearLEDChannels();
-                        BuildSegmentColorBuffer();
-                        break;
-                    case DisplayMode.JsonDataSync:
-                        ClearLEDChannels();
-                        BuildJsonDataSyncBuffer();
-                        break;
-                    case DisplayMode.TestMode:
-                        ClearLEDChannels();
-                        BuildTestModeBuffer();
-                        break;
-                }
+                    BuildSegmentColorBuffer();
+                    break;
+                case DisplayMode.JsonDataSync:
+                    ClearLEDChannels();
+                    BuildJsonDataSyncBuffer();
+                    break;
+                case DisplayMode.TestMode:
+                    ClearLEDChannels();
+                    BuildTestModeBuffer();
+                    break;
+                case DisplayMode.JsonMixByte:
+                    ClearLEDChannels();
+                    BuildJsonMixByteBuffer();
+                    break;
             }
 
+            if (currentMode != DisplayMode.JsonMixByte)
+            {
             UpdateKineticControl();
-        }
 
-        float GetCurrentTransitionDuration()
-        {
-            return transitioningToIdle ? transitionDurationActiveToIdle : transitionDurationIdleToActive;
-        }
-
-        void BuildTransitionFrame(float time)
-        {
-            // Get the appropriate curves based on the direction of the transition
-            AnimationCurve globalBrightnessCurve = transitioningToIdle ? globalBrightnessCurveActiveToIdle : globalBrightnessCurveIdleToActive;
-            AnimationCurve redCurve = transitioningToIdle ? redCurveActiveToIdle : redCurveIdleToActive;
-            AnimationCurve greenCurve = transitioningToIdle ? greenCurveActiveToIdle : greenCurveIdleToActive;
-            AnimationCurve blueCurve = transitioningToIdle ? blueCurveActiveToIdle : blueCurveIdleToActive;
-
-            // Calculate the global brightness value
-            float globalBrightnessValue = globalBrightnessCurve.Evaluate(time);
-
-            // Create a temporary buffer for the target frame.
-            byte[] targetFrame = new byte[513];
-            if (transitioningToIdle)
-            {
-                Array.Copy(FrameBuffer, tempFrameBuffer, 513);
-                ClearLEDChannels();
-                BuildJsonDataSyncBuffer();
-                Array.Copy(FrameBuffer, targetFrame, 513);
-                Array.Copy(tempFrameBuffer, FrameBuffer, 513);
             }
-            else
-            {
-                Array.Copy(FrameBuffer, tempFrameBuffer, 513);
-                ClearLEDChannels();
-                BuildDirectDMXBuffer();
-                Array.Copy(FrameBuffer, targetFrame, 513);
-                Array.Copy(tempFrameBuffer, FrameBuffer, 513);
-            }
-
-            //Blend the frames based on the curve.
-            for (int i = 1; i < 513; i++)
-            {
-                // Get the start and end colors
-                byte startColor = FrameBuffer[i];
-                byte endColor = targetFrame[i];
-
-                // Calculate each curve value for each channel
-                float redValue = redCurve.Evaluate(time);
-                float greenValue = greenCurve.Evaluate(time);
-                float blueValue = blueCurve.Evaluate(time);
-
-                //Interpolate color.
-                float redOutput = Mathf.Lerp(startColor, endColor, redValue);
-                float greenOutput = Mathf.Lerp(startColor, endColor, greenValue);
-                float blueOutput = Mathf.Lerp(startColor, endColor, blueValue);
-
-                FrameBuffer[i] = (byte)Mathf.Clamp(Mathf.Floor((redOutput + greenOutput + blueOutput) / 3 * globalBrightnessValue), 0, 255);
-            }
-        }
-
-        void StartTransition()
-        {
-            inTransition = true;
-            transitionStartTime = Time.time;
-            transitioningToIdle = idleMode; // Determine direction of transition
         }
 
         private void ClearLEDChannels()
@@ -711,16 +590,60 @@ namespace LEDControl
             }
         }
 
-        // Добавлено: Метод для построения буфера на основе прямого DMX массива
-        void BuildDirectDMXBuffer()
+        void BuildJsonMixByteBuffer()
         {
-            if (directDMXData != null)
+            if (idleMode)
             {
-                // Копируем данные из directDMXData в FrameBuffer, учитывая ограничения DMX (1-512 каналы)
-                for (int i = 0; i < Mathf.Min(directDMXData.Length, 512); i++)
+                BuildJsonDataSyncBuffer();
+            }
+            else
+            {
+                int frameIndex = Mathf.FloorToInt(Time.time * 60); 
+                frameIndex = Mathf.Clamp(frameIndex, 0, byteArrayFrames.Length - 1);
+
+                byte[] frameData = byteArrayFrames[frameIndex];
+
+                Array.Copy(frameData, 0, FrameBuffer, 1, frameData.Length);
+
+                if (enableFrameDebug)
                 {
-                    FrameBuffer[i + 1] = directDMXData[i];  // +1 потому что DMX начинается с 1, а массив с 0
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 1; i < FrameBuffer.Length; i++)
+                    {
+                        sb.Append(FrameBuffer[i]).Append(" ");
+                    }
+                    Debug.Log($"Sent DMX Frame from byte array: {sb.ToString()}");
+                    if (debugText != null)
+                        debugText.text = sb.ToString();
                 }
+            }
+        }
+
+        void LoadByteArrayFrames()
+        {
+            var absPath = Application.streamingAssetsPath + System.IO.Path.AltDirectorySeparatorChar + byteArrayFilePath;
+
+            try
+            {
+                if (System.IO.File.Exists(absPath))
+                {
+                    var fl = System.IO.File.OpenRead(absPath);
+
+                    using (var str = new System.IO.BinaryReader(fl))
+                    {
+                        int frameCount = (int)(str.BaseStream.Length / 512);
+                        byteArrayFrames = new byte[frameCount][];
+
+                        for (int i = 0; i < frameCount; i++)
+                        {
+                            byteArrayFrames[i] = str.ReadBytes(512);
+                        }
+                    }
+                }
+            }
+            catch (System.Exception err)
+            {
+                Debug.LogError($"Error loading byte array frames: {err.Message}");
             }
         }
 
@@ -748,30 +671,7 @@ namespace LEDControl
             dmxCommunicator.SendFrame(FrameBuffer);
         }
 
-        public void SwitchToActiveJSON()
-        {
-            idleMode = false;
-            foreach (var strip in ledStrips)
-            {
-                strip.ResetFrames();
-            }
-
-            kineticStartTime = Time.time;
-            confirmTime = false;
-        }
-
-        public void SwitchToIdleJSON()
-        {
-            idleMode = true;
-            foreach (var strip in ledStrips)
-            {
-                strip.ResetFrames();
-            }
-            wasIdled = true;
-            confirmTime = false;
-        }
-
-        /*        public IEnumerator FadeOut(float duration)
+        public IEnumerator FadeOut(float duration)
         {
             float startBrightness = globalBrightness;
             float elapsed = 0f;
@@ -794,7 +694,30 @@ namespace LEDControl
                 elapsed += Time.deltaTime;
             }
             globalBrightness = targetBrightness;
-        }*/
+        }
+
+        public void SwitchToActiveJSON()
+        {
+            idleMode = false;
+            foreach (var strip in ledStrips)
+            {
+                strip.ResetFrames();
+            }
+
+            kineticStartTime = Time.time;
+            confirmTime = false;
+        }
+
+        public void SwitchToIdleJSON()
+        {
+            idleMode = true;
+            foreach (var strip in ledStrips)
+            {
+                strip.ResetFrames();
+            }
+            wasIdled = true;
+            confirmTime = false;
+        }
 
         public void ReloadJsonData()
         {
