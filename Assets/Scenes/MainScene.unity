@@ -495,18 +495,15 @@ MonoBehaviour:
   idleModeMovieName: Idle_mode.mov
   CurtainMovieName: Stars.mov
   CometMovieName: Comet_mode.mov
-  rows: 5
-  cols: 5
-  segments: 12
-  sampleRate: 0.05
-  swipeTimeThreshold: 0.2
-  speedMultiplier: 2
-  swipeContinuationTolerance: 0.4
-  baseFrequency: 440
-  frequencyIncrement: 50
-  fadeDuration: 0.5
-  vSync: 0
   frameRate: 120
+  serialPortNames:
+  - COM27
+  serialBaudRate: 115200
+  dataSenderPortName: COM23
+  dataSenderBaudRate: 921600
+  loopMidiDeviceId: M1-P27-O0
+  dmxComPortName: COM15
+  dmxBaudRate: 250000
 --- !u!114 &42588769
 MonoBehaviour:
   m_ObjectHideFlags: 0

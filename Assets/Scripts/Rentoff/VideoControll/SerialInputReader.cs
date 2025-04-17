@@ -52,6 +52,9 @@ public class SerialInputReader : InputReader
 
     private void Awake()
     {
+        portNames = Settings.Instance.serialPortNames;
+        baudRate = Settings.Instance.serialBaudRate;
+
         _lastDataReceivedTime = Time.time;
         _lastNonZeroTouchTime = Time.time;
     }

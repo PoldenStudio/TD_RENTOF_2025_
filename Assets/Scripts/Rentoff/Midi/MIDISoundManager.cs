@@ -61,6 +61,7 @@ public class MIDISoundManager : MonoBehaviour
 
     private void Awake()
     {
+        loopMidiDeviceId = Settings.Instance.loopMidiDeviceId;
         // Receive MIDI data with this gameObject.
         // The gameObject should implement IMidiXXXXXEventHandler.
         MidiManager.Instance.RegisterEventHandleObject(gameObject);

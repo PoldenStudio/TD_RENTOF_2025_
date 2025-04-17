@@ -34,6 +34,9 @@ namespace LEDControl
 
         void Awake()
         {
+            portName = Settings.Instance.dataSenderPortName;
+            baudRate = Settings.Instance.dataSenderBaudRate;
+
             Initialize();
         }
 

@@ -1,40 +1,57 @@
 ﻿using UnityEngine;
-using System.IO;
 using System;
+using System.IO;
 
 public class Settings : MonoBehaviour
 {
     public static Settings Instance { get; private set; }
 
-    [Header("Video Settings")]
+    #region Save settings
+    [Header("Save settings")]
+
     public string defaultModeMovieName = "";
     public string idleModeMovieName = "";
     public string CurtainMovieName = "";
     public string CometMovieName = "";
 
-    [Header("Grid Settings")]
-    public int rows = 5;
-    public int cols = 5;
-    public int segments = 12;
-
-    [Header("Input Settings")]
-    public float sampleRate = 0.05f;
-
-    [Header("Swipe Settings")]
-    public float swipeTimeThreshold = 0.2f;
-    public float speedMultiplier = 2f;
-    public float swipeContinuationTolerance = 0.4f;
-
-    [Header("Audio Settings")]
-    public float baseFrequency = 440.0f;
-    public float frequencyIncrement = 50.0f;
-
-    [Header("Visualisation")]
-    public float fadeDuration = 0.5f;
-
-    [Header("App Settings")]
-    public bool vSync = false;
     public int frameRate = 120;
+
+    // SerialInputReader
+    [Space(10)]
+    public string[] serialPortNames = { "COM5", "COM6" };
+    public int serialBaudRate = 115200;
+
+    // DataSender
+    [Space(10)]
+    public string dataSenderPortName = "COM6";
+    public int dataSenderBaudRate = 115200;
+
+    // MIDI
+    [Space(10)]
+    public string loopMidiDeviceId = "";
+
+    // DMX (LEDController)
+    [Space(10)]
+    public string dmxComPortName = "COM3";
+    public int dmxBaudRate = 250000;
+    #endregion
+
+    #region Runtime‑only settings (не сохраняются в JSON)
+    [NonSerialized] public int rows = 5;
+    [NonSerialized] public int cols = 5;
+    [NonSerialized] public int segments = 12;
+
+    [NonSerialized] public float sampleRate = 0.05f;
+    [NonSerialized] public float swipeTimeThreshold = 0.2f;
+    [NonSerialized] public float speedMultiplier = 2f;
+    [NonSerialized] public float swipeContinuationTolerance = 0.4f;
+
+    [NonSerialized] public float baseFrequency = 440.0f;
+    [NonSerialized] public float frequencyIncrement = 50.0f;
+
+    [NonSerialized] public float fadeDuration = 0.5f;
+    [NonSerialized] public bool vSync = false;
+    #endregion
 
     private string settingsPath;
 
@@ -51,6 +68,7 @@ public class Settings : MonoBehaviour
         else
         {
             Destroy(gameObject);
+            return;
         }
 
         ApplySettings();
@@ -58,14 +76,15 @@ public class Settings : MonoBehaviour
 
     private void InitializeSettingsPath()
     {
-        settingsPath = Path.Combine(Application.persistentDataPath, "settings.json");
-
 #if UNITY_EDITOR
-        if (!Directory.Exists(Application.streamingAssetsPath))
-        {
-            Directory.CreateDirectory(Application.streamingAssetsPath);
-        }
+        settingsPath = Path.Combine(Application.streamingAssetsPath, "settings.json");
+#else
+        settingsPath = Path.Combine(Application.persistentDataPath, "settings.json");
 #endif
+
+        var dir = Path.GetDirectoryName(settingsPath);
+        if (!Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
     }
 
     private void ApplySettings()
@@ -81,25 +100,15 @@ public class Settings : MonoBehaviour
         {
             InitializeSettingsPath();
 
-            if (string.IsNullOrEmpty(settingsPath))
-            {
-                Debug.LogError("Settings path is invalid!");
-                return;
-            }
+            // Serialize only public fields (JsonUtility ignores [NonSerialized])
+            string json = JsonUtility.ToJson(this, prettyPrint: true);
+            File.WriteAllText(settingsPath, json);
 
-            string directory = Path.GetDirectoryName(settingsPath);
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            string jsonData = JsonUtility.ToJson(this, true);
-            File.WriteAllText(settingsPath, jsonData);
-            Debug.Log($"Settings saved to: {settingsPath}");
+            Debug.Log($"[Settings] Saved to {settingsPath}");
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Debug.LogError($"Failed to save settings: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[Settings] Save failed: {ex}");
         }
     }
 
@@ -112,20 +121,23 @@ public class Settings : MonoBehaviour
 
             if (File.Exists(settingsPath))
             {
-                string jsonData = File.ReadAllText(settingsPath);
-                JsonUtility.FromJsonOverwrite(jsonData, this);
-                Debug.Log($"Settings loaded from: {settingsPath}");
-                ApplySettings();
+                string json = File.ReadAllText(settingsPath);
+                JsonUtility.FromJsonOverwrite(json, this);
+                Debug.Log($"[Settings] Loaded from {settingsPath}");
             }
             else
             {
-                Debug.Log("No saved settings found. Using default values.");
+                Debug.LogWarning("[Settings] No settings file found. Creating default one.");
                 SaveSettings();
             }
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Debug.LogError($"Failed to load settings: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[Settings] Load failed: {ex}");
+        }
+        finally
+        {
+            ApplySettings();
         }
     }
 
@@ -133,7 +145,7 @@ public class Settings : MonoBehaviour
     [UnityEditor.MenuItem("Tools/Open Settings Folder")]
     private static void OpenSettingsFolder()
     {
-        string path = Path.Combine(Application.persistentDataPath);
+        string path = Application.streamingAssetsPath;
         System.Diagnostics.Process.Start(path);
     }
 #endif

@@ -117,6 +117,9 @@ namespace LEDControl
 
         private void Awake()
         {
+            comPortName = Settings.Instance.dmxComPortName;
+            baudRate = Settings.Instance.dmxBaudRate;
+
             defaultGlobalBrightness = globalBrightness;
             InitializeDMX();
 
@@ -575,8 +578,8 @@ namespace LEDControl
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
                         byte currentValue = FrameBuffer[globalChannel];
-
-
+                        // Применяем переходные множители к каждому RGB каналу
+                        // Для JsonDataSync предполагается, что данные уже содержат цвета, поэтому применяем brightness * множитель
                         byte newValue = (byte)(stripValues[i] * brightness);
                         FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
                     }
