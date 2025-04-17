@@ -3675,8 +3675,6 @@ MonoBehaviour:
   swipeDetector: {fileID: 2002335498}
   curtainFullWait: 0
   swipeReactivateDelay: 0.5
-  fadeOutDuration: 1
-  fadeInDuration: 1
   soundFadeDuration: 1
   cometDelayInTransition: 1
   sunFadeOutOnTransitionDuration: 0.5
@@ -4741,6 +4739,200 @@ MonoBehaviour:
     m_RotationOrder: 4
   secondKineticHeightDmxChannel1: 511
   secondKineticHeightDmxChannel2: 512
+  transitionIdleToActive_R:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionIdleToActive_G:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionIdleToActive_B:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionIdleToActiveGlobalBrightness:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionIdleToActiveDuration: 2
+  transitionActiveToIdle_R:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionActiveToIdle_G:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionActiveToIdle_B:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionActiveToIdleGlobalBrightness:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -1.9715866
+      outSlope: -1.9715866
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.36724564
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  transitionActiveToIdleDuration: 2
   idleMode: 1
   wasIdled: 0
   byteArrayFilePath: keys.dat

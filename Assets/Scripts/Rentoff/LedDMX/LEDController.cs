@@ -53,6 +53,19 @@ namespace LEDControl
         [Range(1, 512)] public int secondKineticHeightDmxChannel1 = 3;
         [Range(1, 512)] public int secondKineticHeightDmxChannel2 = 4;
 
+        [Header("Transition Curves and Durations")]
+        [SerializeField] private AnimationCurve transitionIdleToActive_R;
+        [SerializeField] private AnimationCurve transitionIdleToActive_G;
+        [SerializeField] private AnimationCurve transitionIdleToActive_B;
+        [SerializeField] private AnimationCurve transitionIdleToActiveGlobalBrightness;
+        [SerializeField] private float transitionIdleToActiveDuration = 2f;
+
+        [SerializeField] private AnimationCurve transitionActiveToIdle_R;
+        [SerializeField] private AnimationCurve transitionActiveToIdle_G;
+        [SerializeField] private AnimationCurve transitionActiveToIdle_B;
+        [SerializeField] private AnimationCurve transitionActiveToIdleGlobalBrightness;
+        [SerializeField] private float transitionActiveToIdleDuration = 2f;
+
         public bool idleMode = true;
         public bool wasIdled = false;
 
@@ -93,6 +106,14 @@ namespace LEDControl
         [SerializeField] private int kineticLIndex = 509;
         [SerializeField] private int kineticRIndex = 511;
         private byte[][] byteArrayFrames;
+
+        // Для перехода: текущие множители яркости RGB и глобальной яркости
+        private float currentRFactor = 1f;
+        private float currentGFactor = 1f;
+        private float currentBFactor = 1f;
+        private float currentGlobalBrightnessFactor = 1f;
+
+        private Coroutine currentTransitionCoroutine = null;
 
         private void Awake()
         {
@@ -204,7 +225,6 @@ namespace LEDControl
                 else
                 {
                     kineticPaused = false;
-                    // При выходе из паузы сбрасываем время, чтобы избежать прыжка
                     kineticStartTime = Time.time;
                 }
             }
@@ -314,8 +334,7 @@ namespace LEDControl
 
             if (currentMode != DisplayMode.JsonMixByte)
             {
-            UpdateKineticControl();
-
+                UpdateKineticControl();
             }
         }
 
@@ -348,11 +367,9 @@ namespace LEDControl
             if (!confirmTime)
             {
                 videoLength = mediaPlayer.DurationSeconds;
-                // Если длительность недопустима – задаём значение по умолчанию
                 if (videoLength <= 0f)
                     videoLength = 1f;
                 kineticStartTime = Time.time;
-                // Сбрасываем кинетические значения при старте
                 kineticCurrentValue = 0f;
                 secondKineticCurrentValue = 0f;
                 confirmTime = true;
@@ -364,15 +381,12 @@ namespace LEDControl
                 return;
             }
 
-            // Вычисляем время с учётом currentSpeed и нормализуем по длительности видео для цикличности
             float elapsedTime = (Time.time - kineticStartTime) * currentSpeed;
             float normalizedTime = (elapsedTime % videoLength) / videoLength;
 
-            // Получаем новые значения из кривых от 0 до 1
             float newKineticValue = kineticControlCurve.Evaluate(normalizedTime);
             float newSecondKineticValue = secondKineticControlCurve.Evaluate(normalizedTime);
 
-            // Плавное приближение (сглаживание) текущих значений
             kineticCurrentValue = SmoothApproach(kineticCurrentValue, newKineticValue, 2f);
             secondKineticCurrentValue = SmoothApproach(secondKineticCurrentValue, newSecondKineticValue, 2f);
 
@@ -426,8 +440,16 @@ namespace LEDControl
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
-                Color color = strip.globalColor;
-                float brightness = strip.brightness;
+                Color baseColor = strip.globalColor;
+
+                // Применяем текущие множители перехода к цвету
+                Color color = new Color(
+                    baseColor.r * currentRFactor,
+                    baseColor.g * currentGFactor,
+                    baseColor.b * currentBFactor);
+
+                float brightness = strip.brightness * currentGlobalBrightnessFactor;
+
                 byte r = (byte)(color.r * brightness * 255);
                 byte g = (byte)(color.g * brightness * 255);
                 byte b = (byte)(color.b * brightness * 255);
@@ -475,14 +497,19 @@ namespace LEDControl
                 int channelsPerLed = GetChannelsPerLed(strip);
                 int segments = strip.TotalSegments;
                 int offset = strip.dmxChannelOffset;
-                float brightness = strip.brightness;
+                float brightness = strip.brightness * currentGlobalBrightnessFactor;
 
                 for (int seg = 0; seg < segments; seg++)
                 {
                     byte r = 0, g = 0, b = 0, w = 0, cw = 0;
                     if (seg < strip.segmentColors.Length && strip.segmentActiveStates[seg])
                     {
-                        Color col = strip.segmentColors[seg];
+                        Color baseCol = strip.segmentColors[seg];
+                        Color col = new Color(
+                            baseCol.r * currentRFactor,
+                            baseCol.g * currentGFactor,
+                            baseCol.b * currentBFactor);
+
                         r = (byte)(col.r * brightness * 255);
                         g = (byte)(col.g * brightness * 255);
                         b = (byte)(col.b * brightness * 255);
@@ -539,7 +566,7 @@ namespace LEDControl
                 frameIndex = Mathf.Clamp(frameIndex, 0, frames.Length - 1);
 
                 byte[] stripValues = frames[frameIndex].channelValues;
-                float brightness = strip.brightness;
+                float brightness = strip.brightness * currentGlobalBrightnessFactor;
 
                 for (int i = 0; i < stripValues.Length; i++)
                 {
@@ -548,6 +575,8 @@ namespace LEDControl
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
                         byte currentValue = FrameBuffer[globalChannel];
+
+
                         byte newValue = (byte)(stripValues[i] * brightness);
                         FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
                     }
@@ -568,7 +597,7 @@ namespace LEDControl
                 int totLEDs = strip.totalLEDs;
                 int offset = strip.dmxChannelOffset;
                 int channelsPerLed = GetChannelsPerLed(strip);
-                float brightness = strip.brightness;
+                float brightness = strip.brightness * currentGlobalBrightnessFactor;
                 byte intensity = (byte)(curveValue * brightness * 255);
 
                 for (int i = 0; i < totLEDs; i++)
@@ -595,27 +624,52 @@ namespace LEDControl
             if (idleMode)
             {
                 BuildJsonDataSyncBuffer();
+
+                if (byteArrayFrames != null && byteArrayFrames.Length > 0)
+                {
+                    int frameIndex = Mathf.FloorToInt(Time.time * 60) % byteArrayFrames.Length;
+                    byte[] frameData = byteArrayFrames[frameIndex];
+
+                    for (int i = 0; i < frameData.Length && i < 512; i++)
+                    {
+                        int channel = i + 1;
+                        if (!IsKineticChannel(channel))
+                        {
+                            byte adjustedValue = (byte)(frameData[i] * currentGlobalBrightnessFactor);
+                            FrameBuffer[channel] = (byte)Mathf.Min(FrameBuffer[channel] + adjustedValue, 255);
+                        }
+                    }
+                }
             }
             else
             {
-                int frameIndex = Mathf.FloorToInt(Time.time * 60); 
-                frameIndex = Mathf.Clamp(frameIndex, 0, byteArrayFrames.Length - 1);
-
-                byte[] frameData = byteArrayFrames[frameIndex];
-
-                Array.Copy(frameData, 0, FrameBuffer, 1, frameData.Length);
-
-                if (enableFrameDebug)
+                if (byteArrayFrames != null && byteArrayFrames.Length > 0)
                 {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 1; i < FrameBuffer.Length; i++)
+                    int frameIndex = Mathf.FloorToInt(Time.time * 60) % byteArrayFrames.Length;
+                    byte[] frameData = byteArrayFrames[frameIndex];
+
+                    for (int i = 0; i < frameData.Length && i < 512; i++)
                     {
-                        sb.Append(FrameBuffer[i]).Append(" ");
+                        int channel = i + 1;
+                        if (!IsKineticChannel(channel))
+                        {
+                            byte adjustedValue = (byte)(frameData[i] * currentGlobalBrightnessFactor);
+                            FrameBuffer[channel] = adjustedValue;
+                        }
                     }
-                    Debug.Log($"Sent DMX Frame from byte array: {sb.ToString()}");
-                    if (debugText != null)
-                        debugText.text = sb.ToString();
                 }
+            }
+
+            if (enableFrameDebug)
+            {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 1; i < FrameBuffer.Length; i++)
+                {
+                    sb.Append(FrameBuffer[i]).Append(" ");
+                }
+                Debug.Log($"Sent DMX Frame from byte array: {sb.ToString()}");
+                if (debugText != null)
+                    debugText.text = sb.ToString();
             }
         }
 
@@ -671,29 +725,68 @@ namespace LEDControl
             dmxCommunicator.SendFrame(FrameBuffer);
         }
 
-        public IEnumerator FadeOut(float duration)
+        public void StartTransitionToActive()
         {
-            float startBrightness = globalBrightness;
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                globalBrightness = Mathf.Lerp(startBrightness, 0f, elapsed / duration);
-                yield return null;
-                elapsed += Time.deltaTime;
-            }
-            globalBrightness = 0f;
+            if (currentTransitionCoroutine != null)
+                StopCoroutine(currentTransitionCoroutine);
+
+            currentTransitionCoroutine = StartCoroutine(TransitionCoroutine(
+                transitionIdleToActive_R,
+                transitionIdleToActive_G,
+                transitionIdleToActive_B,
+                transitionIdleToActiveGlobalBrightness,
+                transitionIdleToActiveDuration,
+                true));
         }
 
-        public IEnumerator FadeIn(float duration, float targetBrightness)
+        public void StartTransitionToIdle()
         {
-            float elapsed = 0f;
-            while (elapsed < duration)
+            if (currentTransitionCoroutine != null)
+                StopCoroutine(currentTransitionCoroutine);
+
+            currentTransitionCoroutine = StartCoroutine(TransitionCoroutine(
+                transitionActiveToIdle_R,
+                transitionActiveToIdle_G,
+                transitionActiveToIdle_B,
+                transitionActiveToIdleGlobalBrightness,
+                transitionActiveToIdleDuration,
+                false));
+        }
+
+        private IEnumerator TransitionCoroutine(
+            AnimationCurve curveR,
+            AnimationCurve curveG,
+            AnimationCurve curveB,
+            AnimationCurve curveGlobalBrightness,
+            float duration,
+            bool toActive)
+        {
+            float time = 0f;
+
+            float startR = currentRFactor;
+            float startG = currentGFactor;
+            float startB = currentBFactor;
+            float startGlobal = currentGlobalBrightnessFactor;
+
+            while (time < duration)
             {
-                globalBrightness = Mathf.Lerp(0f, targetBrightness, elapsed / duration);
+                float normalizedTime = time / duration;
+
+                currentRFactor = Mathf.Lerp(startR, curveR.Evaluate(normalizedTime), normalizedTime);
+                currentGFactor = Mathf.Lerp(startG, curveG.Evaluate(normalizedTime), normalizedTime);
+                currentBFactor = Mathf.Lerp(startB, curveB.Evaluate(normalizedTime), normalizedTime);
+                currentGlobalBrightnessFactor = Mathf.Lerp(startGlobal, curveGlobalBrightness.Evaluate(normalizedTime), normalizedTime);
+
+                time += Time.deltaTime;
                 yield return null;
-                elapsed += Time.deltaTime;
             }
-            globalBrightness = targetBrightness;
+
+            currentRFactor = toActive ? 1f : 0f;
+            currentGFactor = toActive ? 1f : 0f;
+            currentBFactor = toActive ? 1f : 0f;
+            currentGlobalBrightnessFactor = toActive ? 1f : 0f;
+
+            currentTransitionCoroutine = null;
         }
 
         public void SwitchToActiveJSON()
@@ -703,11 +796,8 @@ namespace LEDControl
             {
                 strip.ResetFrames();
             }
-
-            kineticStartTime = Time.time;
             confirmTime = false;
         }
-
         public void SwitchToIdleJSON()
         {
             idleMode = true;
