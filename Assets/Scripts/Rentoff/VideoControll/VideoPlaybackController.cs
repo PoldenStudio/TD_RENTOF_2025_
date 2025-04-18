@@ -732,6 +732,7 @@ public class VideoPlaybackController : MonoBehaviour
         }
         if (newState == AppState.Active)
         {
+            ResetState();
             SetSwipeControlEnabled(true);
         }
     }
