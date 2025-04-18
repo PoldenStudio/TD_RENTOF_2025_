@@ -67,6 +67,7 @@ namespace InitializationFramework
 
                 player.Events.RemoveListener(Handler);
                 player.Play();
+                player.SeekToTime(0);
                 Debug.Log($"[InitializePlayers] Started playback for player: {player.name}");
                 yield return null;
             }

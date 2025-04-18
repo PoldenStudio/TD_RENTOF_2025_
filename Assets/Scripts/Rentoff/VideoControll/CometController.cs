@@ -1,4 +1,4 @@
-using UnityEngine;
+/*using UnityEngine;
 using System.Collections;
 using System;
 using DemolitionStudios.DemolitionMedia;
@@ -8,7 +8,7 @@ public class CometController : MonoBehaviour
     [SerializeField] private RectTransform cometRect;
     [SerializeField] private float travelDuration = 1f;
     [SerializeField] private Vector2 startOffset = new(-0.5f, 0f);
-    [SerializeField] private Vector2 endOffset = new(0.5f, 0f);    
+    [SerializeField] private Vector2 endOffset = new(0.5f, 0f);
     private Coroutine _travelCoroutine;
     private Action _onCometFinishedCallback;
 
@@ -120,4 +120,4 @@ public class CometController : MonoBehaviour
     {
         _onCometFinishedCallback = callback;
     }
-}
+}*/

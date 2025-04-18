@@ -634,7 +634,6 @@ namespace LEDControl
             }
         }
 
-        // Новый метод – предвычисление DMX-кадров для режима JsonMixByte.
         void PreCalculateMixByteFrames()
         {
             if (byteArrayFrames == null || byteArrayFrames.Length == 0)
@@ -653,7 +652,7 @@ namespace LEDControl
                 for (int i = 0; i < 140 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.leftAmbilightIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -663,7 +662,7 @@ namespace LEDControl
                 for (int i = 0; i < 140 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.rightAmbilightIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -673,7 +672,7 @@ namespace LEDControl
                 for (int i = 0; i < 5 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.upperAmbilightIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -683,7 +682,7 @@ namespace LEDControl
                 for (int i = 0; i < 5 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.lowerAmbilightIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -693,7 +692,7 @@ namespace LEDControl
                 for (int i = 0; i < 2 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.kineticLIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -703,7 +702,7 @@ namespace LEDControl
                 for (int i = 0; i < 2 && offset < frameIn.Length; i++)
                 {
                     int dmxChannel = st.kineticRIndex + i;
-                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    if (dmxChannel >= 1 && dmxChannel <= 512)
                     {
                         dmxFrame[dmxChannel] = frameIn[offset++];
                     }
@@ -723,8 +722,9 @@ namespace LEDControl
             {
                 if (preCalculatedMixByteDMXFrames != null && preCalculatedMixByteDMXFrames.Length > 0)
                 {
+
                     int videoFrameIndex = Media.Instance.VideoCurrentFrame;
-                    int byteArrayFrameIndex = videoFrameIndex / 2;
+                    int byteArrayFrameIndex = videoFrameIndex;
                     byteArrayFrameIndex %= preCalculatedMixByteDMXFrames.Length;
 
                     Array.Copy(preCalculatedMixByteDMXFrames[byteArrayFrameIndex], 0, FrameBuffer, 0, preCalculatedMixByteDMXFrames[byteArrayFrameIndex].Length);
@@ -869,10 +869,10 @@ namespace LEDControl
         public void SwitchToActiveJSON()
         {
             idleMode = false;
-            foreach (var strip in ledStrips)
+/*            foreach (var strip in ledStrips)
             {
                 strip.ResetFrames();
-            }
+            }*/
             confirmTime = false;
         }
         public void SwitchToIdleJSON()

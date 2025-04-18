@@ -424,7 +424,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 31414344}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 07bf069d2e6fe3942a92bc1a7458a2fd, type: 3}
   m_Name: 
@@ -943,6 +943,7 @@ Transform:
   - {fileID: 2002335497}
   - {fileID: 604088605}
   - {fileID: 2123512496}
+  - {fileID: 1712025733}
   - {fileID: 1631245015}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1746,7 +1747,7 @@ MonoBehaviour:
       rgba: 4278190080
     synthColor:
       serializedVersion: 2
-      rgba: 4294960384
+      rgba: 4294967295
   stripSegmentColors:
   - segments:
     - serializedVersion: 2
@@ -3498,7 +3499,6 @@ MonoBehaviour:
     volume: 1
     playOnce: 0
     hasPlayed: 0
-  timeCodeTolerance: 0.1
   timeCodeAudioSource: {fileID: 0}
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
@@ -3683,7 +3683,6 @@ MonoBehaviour:
   videoPlayer: {fileID: 5569678818555696787}
   playbackController: {fileID: 1562741572}
   curtainController: {fileID: 31414346}
-  cometController: {fileID: 31414347}
   ledController: {fileID: 1597980945}
   soundManager: {fileID: 1012292527}
   spiTouchPanel: {fileID: 1299263586}
@@ -3695,7 +3694,7 @@ MonoBehaviour:
   fadeOutDuration: 0.5
   fadeInDuration: 0.5
   soundFadeDuration: 1
-  cometDelayInTransition: 1
+  cometDelayInTransition: 2
   sunFadeOutOnTransitionDuration: 0.5
   idleTimeout: 180
 --- !u!114 &1213853306
@@ -4954,7 +4953,7 @@ MonoBehaviour:
   transitionActiveToIdleDuration: 2
   idleMode: 1
   wasIdled: 0
-  byteArrayFilePath: keys1.dat
+  byteArrayFilePath: keys.dat
   st:
     leftAmbilightIndex: 1
     rightAmbilightIndex: 141
@@ -4992,8 +4991,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1712025733}
+  m_Children: []
   m_Father: {fileID: 280193378}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1631245017
@@ -5161,7 +5159,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1631245015}
+  m_Father: {fileID: 280193378}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1712025734
 MonoBehaviour:
