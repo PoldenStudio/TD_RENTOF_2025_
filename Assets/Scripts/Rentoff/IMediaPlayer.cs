@@ -15,4 +15,6 @@ public interface IMediaPlayer
 
     float StartTime { set;  }
 
+    int VideoCurrentFrame { get; }
+
 }

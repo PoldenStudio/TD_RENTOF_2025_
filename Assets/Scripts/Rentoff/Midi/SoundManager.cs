@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using DG.Tweening.Core.Easing;
+using DemolitionStudios.DemolitionMedia;
 using static StateManager;
 
 [RequireComponent(typeof(AudioSource))]
@@ -9,7 +10,9 @@ public class SoundManager : MonoBehaviour
 {
     private AudioSource synthSource;
     private AudioLowPassFilter lowPassFilter;
+
     [SerializeField] private StateManager stateManager;
+    [SerializeField] private Media _demolitionMedia;
 
     [Header("Synth Settings")]
     public float basePitch = 1f;
@@ -31,12 +34,19 @@ public class SoundManager : MonoBehaviour
     public bool muteAtHighSpeed = false;
     public float highSpeedThreshold = 2f;
 
+    [Header("Sound Triggers")]
+    public AudioClip[] soundTriggers;
+    public float[] soundTriggerTimes;
+
     private float swipePitchMultiplier = 1f;
     private bool isSwipeSoundActive = false;
     private Coroutine currentFadeCoroutine;
 
+    private IMediaPlayer mediaPlayer;
+
     public AudioClip IdleClip;
     public AudioClip ActiveClip;
+    public AudioClip CometSound;
     private AudioClip currentClip;
 
     private void Awake()
@@ -50,14 +60,16 @@ public class SoundManager : MonoBehaviour
             return;
         }
 
+        mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
+
         SetSoundClip(IdleClip);
         synthSource.loop = true;
-        synthSource.playOnAwake = true; 
+        synthSource.playOnAwake = true;
         synthSource.volume = baseVolume;
         synthSource.pitch = basePitch;
         lowPassFilter.cutoffFrequency = maxCutoffFrequency;
 
-        synthSource.Play(); 
+        synthSource.Play();
     }
 
     public void StartFadeIn(float duration)
@@ -105,6 +117,7 @@ public class SoundManager : MonoBehaviour
         }
         currentFadeCoroutine = null;
     }
+
     void Start()
     {
         SetSoundClip(IdleClip);
@@ -121,7 +134,6 @@ public class SoundManager : MonoBehaviour
 
     public void UpdateSynthParameters(float currentSpeed)
     {
-
         if (currentFadeCoroutine != null)
             return;
 
@@ -188,5 +200,24 @@ public class SoundManager : MonoBehaviour
     public void ToggleMuteAtHighSpeed(bool enabled)
     {
         muteAtHighSpeed = enabled;
+    }
+
+    public void PlaySoundAtTime(float time)
+    {
+        for (int i = 0; i < soundTriggerTimes.Length; i++)
+        {
+            if (Mathf.Approximately(time, soundTriggerTimes[i]))
+            {
+                synthSource.PlayOneShot(soundTriggers[i]);
+            }
+        }
+    }
+
+    public void PlayCometSound()
+    {
+        if (CometSound != null)
+        {
+            synthSource.PlayOneShot(CometSound);
+        }
     }
 }

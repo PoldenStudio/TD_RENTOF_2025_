@@ -504,6 +504,7 @@ MonoBehaviour:
   loopMidiDeviceId: M1-P27-O0
   dmxComPortName: COM15
   dmxBaudRate: 250000
+  targetDisplayId: 0
 --- !u!114 &42588769
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -943,7 +944,6 @@ Transform:
   - {fileID: 604088605}
   - {fileID: 2123512496}
   - {fileID: 1631245015}
-  - {fileID: 1712025733}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &280193379
@@ -3471,6 +3471,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stateManager: {fileID: 1213853305}
+  _demolitionMedia: {fileID: 2972185125908866376}
   basePitch: 1
   maxPitch: 14
   minCutoffFrequency: 500
@@ -3481,8 +3482,13 @@ MonoBehaviour:
   volumeFadeRange: 1
   muteAtHighSpeed: 1
   highSpeedThreshold: 2
+  soundTriggers:
+  - {fileID: 0}
+  soundTriggerTimes:
+  - 12
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
+  CometSound: {fileID: 0}
 --- !u!114 &1012292528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4970,7 +4976,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1712025733}
   m_Father: {fileID: 280193378}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1631245017
@@ -5133,12 +5140,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1712025731}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 280193378}
+  m_Father: {fileID: 1631245015}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1712025734
 MonoBehaviour:

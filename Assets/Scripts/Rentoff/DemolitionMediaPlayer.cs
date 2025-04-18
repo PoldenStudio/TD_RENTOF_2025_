@@ -64,4 +64,10 @@ public class DemolitionMediaPlayer : IMediaPlayer
     {
         set { _media.StartTime = value; }
     }
+
+
+    public int VideoCurrentFrame
+    {
+        get { return _media.VideoCurrentFrame; }
+    }
 }

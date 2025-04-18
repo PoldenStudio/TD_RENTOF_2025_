@@ -133,6 +133,8 @@ public class StateManager : MonoBehaviour
         cometController.StartCometTravel(() => { cometFinished = true; });
         while (!cometFinished) yield return null;
 
+        soundManager.PlayCometSound();
+
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager.SetAppState(AppState.Active);
 

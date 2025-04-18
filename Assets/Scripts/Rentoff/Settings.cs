@@ -34,6 +34,10 @@ public class Settings : MonoBehaviour
     [Space(10)]
     public string dmxComPortName = "COM3";
     public int dmxBaudRate = 250000;
+    
+    // Display
+    [Space(10)]
+    public int targetDisplayId = 0;
     #endregion
 
     #region Runtime‑only settings (не сохраняются в JSON)
@@ -91,6 +95,29 @@ public class Settings : MonoBehaviour
     {
         QualitySettings.vSyncCount = vSync ? 1 : 0;
         Application.targetFrameRate = frameRate;
+        ApplyDisplaySettings();
+    }
+
+    private void ApplyDisplaySettings()
+    {
+        if (targetDisplayId >= 0 && targetDisplayId < Display.displays.Length)
+        {
+            for (int i = 1; i < Display.displays.Length; i++)
+            {
+                Display.displays[i].Activate();
+            }
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                mainCamera.targetDisplay = targetDisplayId;
+            }
+            else
+            {
+                Debug.LogWarning("[Settings] Главная камера не найдена!");
+            }
+            Debug.Log($"[Settings] Камера назначена на дисплей {targetDisplayId} из {Display.displays.Length}.");
+        }
     }
 
     [ContextMenu("Save Settings")]

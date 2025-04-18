@@ -98,8 +98,8 @@ namespace LEDControl
         private float pausedSecondKineticValue = 0f;
 
         // Новые переменные для JsonMixByte режима
-        [System.Serializable]
-        public class Settings
+        [Serializable]
+        public class Offset_Settings
         {
             public int leftAmbilightIndex = 0;
             public int rightAmbilightIndex = 140;
@@ -111,8 +111,11 @@ namespace LEDControl
 
         [Header("JsonMixByte Settings")]
         [SerializeField] private string byteArrayFilePath = "keys.data";
-        [SerializeField] Settings st;
+        [SerializeField] private Offset_Settings st;
         private byte[][] byteArrayFrames;
+
+        // Добавляем массив для хранения предвычисленных DMX-фреймов для режима JsonMixByte
+        private byte[][] preCalculatedMixByteDMXFrames;
 
         // Для перехода: текущие множители яркости RGB и глобальной яркости
         private float currentRFactor = 1f;
@@ -124,8 +127,8 @@ namespace LEDControl
 
         private void Awake()
         {
-            //comPortName = Settings.Instance.dmxComPortName;
-           // baudRate = Settings.Instance.dmxBaudRate;
+            comPortName = Settings.Instance.dmxComPortName;
+            baudRate = Settings.Instance.dmxBaudRate;
 
             defaultGlobalBrightness = globalBrightness;
             InitializeDMX();
@@ -151,6 +154,7 @@ namespace LEDControl
             }
 
             LoadByteArrayFrames();
+            PreCalculateMixByteFrames();
         }
 
         void CalculateTotalLedChannels()
@@ -473,7 +477,8 @@ namespace LEDControl
                     for (int j = 0; j < channelsPerLed; j++)
                     {
                         int absChannel = baseChannel + j;
-                        if (IsKineticChannel(absChannel)) continue;
+                        if (IsKineticChannel(absChannel))
+                            continue;
 
                         switch (j)
                         {
@@ -537,7 +542,8 @@ namespace LEDControl
                     for (int j = 0; j < channelsPerLed; j++)
                     {
                         int absChannel = baseChannel + j;
-                        if (IsKineticChannel(absChannel)) continue;
+                        if (IsKineticChannel(absChannel))
+                            continue;
 
                         switch (j)
                         {
@@ -585,8 +591,7 @@ namespace LEDControl
                     if (globalChannel >= 1 && globalChannel <= 512 && !IsKineticChannel(globalChannel))
                     {
                         byte currentValue = FrameBuffer[globalChannel];
-                        // Применяем переходные множители к каждому RGB каналу
-                        // Для JsonDataSync предполагается, что данные уже содержат цвета, поэтому применяем brightness * множитель
+                        // Применяем переходные множители к каждому RGB каналу;
                         byte newValue = (byte)(stripValues[i] * brightness);
                         FrameBuffer[globalChannel] = (byte)Mathf.Min(currentValue + newValue, 255);
                     }
@@ -629,6 +634,85 @@ namespace LEDControl
             }
         }
 
+        // Новый метод – предвычисление DMX-кадров для режима JsonMixByte.
+        void PreCalculateMixByteFrames()
+        {
+            if (byteArrayFrames == null || byteArrayFrames.Length == 0)
+                return;
+
+            preCalculatedMixByteDMXFrames = new byte[byteArrayFrames.Length][];
+
+            for (int f = 0; f < byteArrayFrames.Length; f++)
+            {
+                byte[] frameIn = byteArrayFrames[f];
+                // Создаём новый DMX-фрейм размером 513 (индексы 1..512 используются)
+                byte[] dmxFrame = new byte[513];
+                int offset = 0;
+
+                // Левая лента (140 байт)
+                for (int i = 0; i < 140 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.leftAmbilightIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                // Правая лента (140 байт)
+                for (int i = 0; i < 140 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.rightAmbilightIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                // Верхний свет (5 байт)
+                for (int i = 0; i < 5 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.upperAmbilightIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                // Нижний свет (5 байт)
+                for (int i = 0; i < 5 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.lowerAmbilightIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                // Кинетический L (2 байта)
+                for (int i = 0; i < 2 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.kineticLIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                // Кинетический R (2 байта)
+                for (int i = 0; i < 2 && offset < frameIn.Length; i++)
+                {
+                    int dmxChannel = st.kineticRIndex + i;
+                    if (dmxChannel >= 1 && dmxChannel <= 512 && !IsKineticChannel(dmxChannel))
+                    {
+                        dmxFrame[dmxChannel] = frameIn[offset++];
+                    }
+                }
+
+                preCalculatedMixByteDMXFrames[f] = dmxFrame;
+            }
+        }
+
         void BuildJsonMixByteBuffer()
         {
             if (idleMode)
@@ -637,99 +721,13 @@ namespace LEDControl
             }
             else
             {
-                if (byteArrayFrames != null && byteArrayFrames.Length > 0)
+                if (preCalculatedMixByteDMXFrames != null && preCalculatedMixByteDMXFrames.Length > 0)
                 {
-                    // Получаем текущее время видео
-                    float videoCurrentTime = (float)Media.Instance.VideoCurrentFrame / 120f;
-                     Mathf.Clamp((float)Media.Instance.VideoCurrentFrame, 0, (float)Media.Instance.VideoNumFrames - 1);
-
-                    // Определяем индекс текущего кадра видео (в 120 FPS)
-                    int videoFrameIndex = Mathf.FloorToInt(videoCurrentTime * 120f);
-
-                    // Переводим индекс кадра видео в индекс кадра байтового массива (60 FPS)
+                    int videoFrameIndex = Media.Instance.VideoCurrentFrame;
                     int byteArrayFrameIndex = videoFrameIndex / 2;
+                    byteArrayFrameIndex %= preCalculatedMixByteDMXFrames.Length;
 
-                    // Убеждаемся, что индекс не выходит за границы массива
-                    byteArrayFrameIndex = Mathf.Clamp(byteArrayFrameIndex, 0, byteArrayFrames.Length - 1);
-
-                    byte[] frameData = byteArrayFrames[byteArrayFrameIndex];
-
-                    ClearLEDChannels();
-
-                        if (frameData.Length == 294) // Проверяем, что достаточно данных
-                        {
-                            int offset = 0;
-
-                            // Левая лента (RGBW)
-                            for (int i = 0; i < 140 && offset < frameData.Length; i++)
-                            {
-                                if (!IsKineticChannel(st.leftAmbilightIndex + i))
-                                {
-                                    FrameBuffer[st.leftAmbilightIndex + i] = frameData[offset++];
-                                }
-                            }
-
-                            // Правая лента (RGBW)
-                            for (int i = 0; i < 140 && offset < frameData.Length; i++)
-                            {
-                                if (!IsKineticChannel(st.rightAmbilightIndex + i))
-                                {
-                                    FrameBuffer[st.rightAmbilightIndex + i] = frameData[offset++];
-                                }
-                            }
-
-                            // Верхний свет (RGBWMix)
-                            for (int i = 0; i < 5 && offset < frameData.Length; i++)
-                            {
-                                if (!IsKineticChannel(st.upperAmbilightIndex + i))
-                                {
-                                    FrameBuffer[st.upperAmbilightIndex + i] = frameData[offset++];
-                                }
-                            }
-
-                            // Нижний свет (RGBWMix)
-                            for (int i = 0; i < 5 && offset < frameData.Length; i++)
-                            {
-                                if (!IsKineticChannel(st.lowerAmbilightIndex + i))
-                                {
-                                    FrameBuffer[st.lowerAmbilightIndex + i] = frameData[offset++];
-                                }
-                            }
-
-                        // Кинетический L
-                        for (int i = 0; i < 2 && offset < frameData.Length; i++)
-                        {
-                            if (offset < frameData.Length && !IsKineticChannel(st.kineticLIndex))
-                            {
-                                FrameBuffer[st.kineticLIndex + i] = frameData[offset++];
-                            }
-                        }
-
-                        // Кинетический R
-                        for (int i = 0; i < 2 && offset < frameData.Length; i++)
-                        {
-                            if (offset < frameData.Length && !IsKineticChannel(st.kineticRIndex))
-                            {
-                                FrameBuffer[st.kineticRIndex + i] = frameData[offset++];
-                            }
-                        }
-/*
-                        for (int ch = 281; ch < 400; ch++)
-                        {
-                            if (!IsKineticChannel(ch))
-                                FrameBuffer[ch] = 0;
-                        }
-                        for (int ch = 406; ch < 410; ch++)
-                        {
-                            if (!IsKineticChannel(ch))
-                                FrameBuffer[ch] = 0;
-                        }
-                        for (int ch = 416; ch < 509; ch++)
-                        {
-                            if (!IsKineticChannel(ch))
-                                FrameBuffer[ch] = 0;
-                        }*/
-                    }
+                    Array.Copy(preCalculatedMixByteDMXFrames[byteArrayFrameIndex], 0, FrameBuffer, 0, preCalculatedMixByteDMXFrames[byteArrayFrameIndex].Length);
 
                     if (enableFrameDebug)
                     {
@@ -764,7 +762,7 @@ namespace LEDControl
 
                     using (var str = new System.IO.BinaryReader(fl))
                     {
-                        int frameCount = (int)(str.BaseStream.Length /  294);
+                        int frameCount = (int)(str.BaseStream.Length / 294);
                         byteArrayFrames = new byte[frameCount][];
 
                         for (int i = 0; i < frameCount; i++)
@@ -774,7 +772,7 @@ namespace LEDControl
                     }
                 }
             }
-            catch (System.Exception err)
+            catch (Exception err)
             {
                 Debug.LogError($"Error loading byte array frames: {err.Message}");
             }
@@ -890,7 +888,7 @@ namespace LEDControl
 
         public void ReloadJsonData()
         {
-            foreach(var strip in ledStrips)
+            foreach (var strip in ledStrips)
             {
                 strip.LoadJsonData(true);
             }
