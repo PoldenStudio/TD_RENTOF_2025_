@@ -3,6 +3,19 @@ using System.Collections;
 using DG.Tweening.Core.Easing;
 using DemolitionStudios.DemolitionMedia;
 using static StateManager;
+using System.Collections.Generic;
+
+[System.Serializable]
+public class TimeCodeSound
+{
+    public float timeCodeInSeconds;
+    public AudioClip soundClip;
+    public float volume = 1f;
+    [Tooltip("Set to true if this sound should play only once per session")]
+    public bool playOnce = false;
+    [HideInInspector]
+    public bool hasPlayed = false;
+}
 
 [RequireComponent(typeof(AudioSource))]
 [RequireComponent(typeof(AudioLowPassFilter))]
@@ -10,7 +23,6 @@ public class SoundManager : MonoBehaviour
 {
     private AudioSource synthSource;
     private AudioLowPassFilter lowPassFilter;
-
     [SerializeField] private StateManager stateManager;
     [SerializeField] private Media _demolitionMedia;
 
@@ -34,9 +46,9 @@ public class SoundManager : MonoBehaviour
     public bool muteAtHighSpeed = false;
     public float highSpeedThreshold = 2f;
 
-    [Header("Sound Triggers")]
-    public AudioClip[] soundTriggers;
-    public float[] soundTriggerTimes;
+    [Header("Time Code Sounds")]
+    [SerializeField] private List<TimeCodeSound> timeCodeSounds = new List<TimeCodeSound>();
+    [SerializeField] private AudioSource timeCodeAudioSource; // Separate audio source for time code sounds
 
     private float swipePitchMultiplier = 1f;
     private bool isSwipeSoundActive = false;
@@ -47,7 +59,9 @@ public class SoundManager : MonoBehaviour
     public AudioClip IdleClip;
     public AudioClip ActiveClip;
     public AudioClip CometSound;
+
     private AudioClip currentClip;
+    private float lastFrameTime = -1f;
 
     private void Awake()
     {
@@ -62,6 +76,14 @@ public class SoundManager : MonoBehaviour
 
         mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
 
+        // Create a separate audio source for time code sounds if not assigned
+        if (timeCodeAudioSource == null)
+        {
+            GameObject audioSourceObj = new GameObject("TimeCodeAudioSource");
+            audioSourceObj.transform.parent = this.transform;
+            timeCodeAudioSource = audioSourceObj.AddComponent<AudioSource>();
+        }
+
         SetSoundClip(IdleClip);
         synthSource.loop = true;
         synthSource.playOnAwake = true;
@@ -70,6 +92,61 @@ public class SoundManager : MonoBehaviour
         lowPassFilter.cutoffFrequency = maxCutoffFrequency;
 
         synthSource.Play();
+    }
+
+    private void FixedUpdate()
+    {
+        if (stateManager.CurrentState == AppState.Active && mediaPlayer != null)
+        {
+            float currentTime = mediaPlayer.CurrentTime;
+
+            if (lastFrameTime < 0)
+            {
+                lastFrameTime = currentTime;
+                return;
+            }
+
+            foreach (TimeCodeSound timeCodeSound in timeCodeSounds)
+            {
+                if (timeCodeSound.playOnce && timeCodeSound.hasPlayed)
+                    continue;
+
+                bool crossedForward = lastFrameTime < timeCodeSound.timeCodeInSeconds &&
+                                    currentTime >= timeCodeSound.timeCodeInSeconds;
+
+                bool crossedBackward = lastFrameTime > timeCodeSound.timeCodeInSeconds &&
+                                     currentTime <= timeCodeSound.timeCodeInSeconds;
+
+                if (crossedForward || crossedBackward)
+                {
+                    PlayTimeCodeSound(timeCodeSound);
+
+                    if (timeCodeSound.playOnce)
+                        timeCodeSound.hasPlayed = true;
+
+                    Debug.Log($"Time code sound triggered at {timeCodeSound.timeCodeInSeconds}s (Current time: {currentTime}s)");
+                }
+            }
+
+            lastFrameTime = currentTime;
+        }
+    }
+
+    public void PlayTimeCodeSound(TimeCodeSound timeCodeSound)
+    {
+        if (timeCodeSound.soundClip != null)
+        {
+            timeCodeAudioSource.PlayOneShot(timeCodeSound.soundClip, timeCodeSound.volume);
+        }
+    }
+
+    public void ResetTimeCodeSounds()
+    {
+        foreach (TimeCodeSound timeCodeSound in timeCodeSounds)
+        {
+            timeCodeSound.hasPlayed = false;
+        }
+        lastFrameTime = -1f;
     }
 
     public void StartFadeIn(float duration)
@@ -129,6 +206,14 @@ public class SoundManager : MonoBehaviour
         {
             currentClip = clip;
             synthSource.clip = clip;
+        }
+    }
+
+    public void PlayCometSound()
+    {
+        if (CometSound != null)
+        {
+            AudioSource.PlayClipAtPoint(CometSound, transform.position);
         }
     }
 
@@ -200,24 +285,5 @@ public class SoundManager : MonoBehaviour
     public void ToggleMuteAtHighSpeed(bool enabled)
     {
         muteAtHighSpeed = enabled;
-    }
-
-    public void PlaySoundAtTime(float time)
-    {
-        for (int i = 0; i < soundTriggerTimes.Length; i++)
-        {
-            if (Mathf.Approximately(time, soundTriggerTimes[i]))
-            {
-                synthSource.PlayOneShot(soundTriggers[i]);
-            }
-        }
-    }
-
-    public void PlayCometSound()
-    {
-        if (CometSound != null)
-        {
-            synthSource.PlayOneShot(CometSound);
-        }
     }
 }

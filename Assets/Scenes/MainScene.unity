@@ -494,7 +494,7 @@ MonoBehaviour:
   defaultModeMovieName: Active_mode.mov
   idleModeMovieName: Idle_mode.mov
   CurtainMovieName: Stars.mov
-  CometMovieName: Comet_mode.mov
+  CometMovieName: Comet.mov
   frameRate: 120
   serialPortNames:
   - COM27
@@ -654,7 +654,7 @@ MonoBehaviour:
   dataTimeout: 1
   idleTimeout: 180
   restartDelay: 1
-  EnableDebug: 1
+  EnableDebug: 0
   MultipleTouchPerSegmentAsHexBitmask: 0
   swipeDetector: {fileID: 2002335498}
   stateManager: {fileID: 1213853305}
@@ -3482,13 +3482,27 @@ MonoBehaviour:
   volumeFadeRange: 1
   muteAtHighSpeed: 1
   highSpeedThreshold: 2
-  soundTriggers:
-  - {fileID: 0}
-  soundTriggerTimes:
-  - 12
+  timeCodeSounds:
+  - timeCodeInSeconds: 60
+    soundClip: {fileID: 8300000, guid: d21f24f39a561cd41adfc9e97a6c221e, type: 3}
+    volume: 1
+    playOnce: 0
+    hasPlayed: 0
+  - timeCodeInSeconds: 120
+    soundClip: {fileID: 8300000, guid: 4ed9a84d410857544a68936b0dfcd809, type: 3}
+    volume: 1
+    playOnce: 0
+    hasPlayed: 0
+  - timeCodeInSeconds: 180
+    soundClip: {fileID: 8300000, guid: 2eba53ac53ca25241a481f334e396f75, type: 3}
+    volume: 1
+    playOnce: 0
+    hasPlayed: 0
+  timeCodeTolerance: 0.1
+  timeCodeAudioSource: {fileID: 0}
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
-  CometSound: {fileID: 0}
+  CometSound: {fileID: 8300000, guid: f76126cd15cbf6542a67e9e44e02da2f, type: 3}
 --- !u!114 &1012292528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3678,6 +3692,8 @@ MonoBehaviour:
   swipeDetector: {fileID: 2002335498}
   curtainFullWait: 0
   swipeReactivateDelay: 0.5
+  fadeOutDuration: 0.5
+  fadeInDuration: 0.5
   soundFadeDuration: 1
   cometDelayInTransition: 1
   sunFadeOutOnTransitionDuration: 0.5
@@ -4329,7 +4345,7 @@ MonoBehaviour:
   baseFramesPerSecond: 60
   frameSkip: 1
   debugText: {fileID: 0}
-  enableFrameDebug: 1
+  enableFrameDebug: 0
   globalBrightness: 1
   testModeCurve:
     serializedVersion: 2

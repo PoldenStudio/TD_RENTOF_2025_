@@ -25,6 +25,8 @@ public class StateManager : MonoBehaviour
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 0f;
     [SerializeField] private float swipeReactivateDelay = 0.5f;
+    [SerializeField] private float fadeOutDuration = 0.5f;
+    [SerializeField] private float fadeInDuration = 0.5f;
     [SerializeField] private float soundFadeDuration = 1f;
     [SerializeField] private float cometDelayInTransition = 1f;
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
@@ -47,6 +49,7 @@ public class StateManager : MonoBehaviour
             }
         }
 
+        // Get SwipeDetector if not assigned
         if (swipeDetector == null)
         {
             swipeDetector = FindObjectOfType<SwipeDetector>();
@@ -57,6 +60,7 @@ public class StateManager : MonoBehaviour
         }
     }
 
+
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.E))
@@ -65,7 +69,7 @@ public class StateManager : MonoBehaviour
         }
     }
 
-    private void Start()
+    void Start()
     {
         CurrentState = AppState.Idle;
         sunManager?.SetAppState(CurrentState);
@@ -121,8 +125,6 @@ public class StateManager : MonoBehaviour
 
         curtainController.SetOnCurtainFullCallback(null);
 
-        // Запускаем переход яркости в LEDController
-        ledController.StartTransitionToActive();
         ledController.SwitchToActiveJSON();
 
         bool slideCompleted = false;
@@ -157,8 +159,9 @@ public class StateManager : MonoBehaviour
         yield return new WaitForSeconds(curtainFullWait);
 
         yield return videoPlayer.SwitchToDefaultMode();
-
         soundManager?.StartFadeIn(soundFadeDuration);
+        // Reset time code sound playback flags when video starts
+        soundManager?.ResetTimeCodeSounds();
         SetState(AppState.Active, CurrentState);
 
         bool fadeCompleted = false;
@@ -184,10 +187,11 @@ public class StateManager : MonoBehaviour
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Idle);
 
-        // Запускаем переход яркости в LEDController
-        ledController.StartTransitionToIdle();
-        ledController.wasIdled = true;
-        ledController.SwitchToIdleJSON();
+        if (ledController != null)
+        {
+            ledController.wasIdled = true;
+            ledController.SwitchToIdleJSON();
+        }
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
@@ -288,7 +292,6 @@ public class StateManager : MonoBehaviour
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
         while (!fadeCompleted) yield return null;
-
         soundManager.SetSoundClip(soundManager.IdleClip);
         curtainController.ResetCurtainProgress();
         cometController.ResetComet();
