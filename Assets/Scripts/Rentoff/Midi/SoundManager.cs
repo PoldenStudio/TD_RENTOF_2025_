@@ -208,6 +208,7 @@ public class SoundManager : MonoBehaviour
     {
         if (currentClip != clip)
         {
+            synthSource.Stop();
             currentClip = clip;
             synthSource.clip = clip;
             synthSource.Play();

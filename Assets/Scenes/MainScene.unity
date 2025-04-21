@@ -405,7 +405,7 @@ MonoBehaviour:
   curtainObject: {fileID: 5636831921781003924}
   curtainRenderer: {fileID: 1652632165326128169}
   slideDuration: 2
-  fadeDuration: 2
+  fadeDuration: 4
   slideSpeed: 0.1
   minXPosition: -860
   maxXPosition: 0
@@ -3996,7 +3996,7 @@ MonoBehaviour:
   notePattern: 1
   minVelocity: 30
   maxVelocity: 127
-  useVelocityCurve: 0
+  useVelocityCurve: 1
   velocityCurve:
     serializedVersion: 2
     m_Curve:
@@ -4021,7 +4021,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  useNoteCurve: 1
+  useNoteCurve: 0
   noteCurve:
     serializedVersion: 2
     m_Curve:
@@ -4046,7 +4046,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  sendCC: 0
+  sendCC: 1
   ccNumber: 74
   ccSendInterval: 0.5
 --- !u!4 &1549342327

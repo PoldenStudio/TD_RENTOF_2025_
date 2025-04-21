@@ -196,7 +196,7 @@ public class StateManager : MonoBehaviour
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        soundManager?.StartFadeOut(soundFadeDuration);
+        soundManager?.StartFadeIn(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
         yield return null;
 
@@ -221,6 +221,9 @@ public class StateManager : MonoBehaviour
                 }
             }
         }
+
+        soundManager.SetSoundClip(soundManager.IdleClip);
+        soundManager?.StartFadeOut(soundFadeDuration);
 
         Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
@@ -279,7 +282,7 @@ public class StateManager : MonoBehaviour
 
         yield return videoPlayer.SwitchToIdleMode();
         ledController.SwitchToIdleJSON();
-        soundManager?.StartFadeOut(soundFadeDuration);
+        //soundManager?.StartFadeOut(soundFadeDuration);
 
         Debug.Log("[StateManager] Starting SwitchToIdle workflow.");
         playbackController.SetSwipeControlEnabled(false);
@@ -288,12 +291,10 @@ public class StateManager : MonoBehaviour
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
-        while (!slideCompleted) yield return null;
-
-        bool fadeCompleted = false;
-        curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
-        while (!fadeCompleted) yield return null;
+        
         soundManager.SetSoundClip(soundManager.IdleClip);
+        soundManager?.StartFadeIn(soundFadeDuration);
+
         curtainController.ResetCurtainProgress();
         curtainController.SetShouldPlayComet(false);
 
@@ -307,6 +308,7 @@ public class StateManager : MonoBehaviour
                 }
             }
         }
+        while (!slideCompleted) yield return null;
 
         Debug.Log("[StateManager] SwitchToIdle workflow completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
