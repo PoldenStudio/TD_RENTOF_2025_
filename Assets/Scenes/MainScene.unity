@@ -429,11 +429,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07bf069d2e6fe3942a92bc1a7458a2fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cometRect: {fileID: 496018452}
-  travelDuration: 1
-  startOffset: {x: -0.75, y: 0}
-  endOffset: {x: 0.75, y: 0}
-  _demolitionMedia: {fileID: 275200804}
 --- !u!114 &31414348
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3499,10 +3494,9 @@ MonoBehaviour:
     volume: 1
     playOnce: 0
     hasPlayed: 0
-  timeCodeAudioSource: {fileID: 0}
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
-  CometSound: {fileID: 8300000, guid: f76126cd15cbf6542a67e9e44e02da2f, type: 3}
+  CometSound: {fileID: 8300000, guid: d21f24f39a561cd41adfc9e97a6c221e, type: 3}
 --- !u!114 &1012292528
 MonoBehaviour:
   m_ObjectHideFlags: 0
