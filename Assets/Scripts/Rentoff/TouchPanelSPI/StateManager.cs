@@ -32,7 +32,6 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
     [SerializeField] private float idleTimeout = 180.0f;
 
-    // Internal state
     private float _lastInteractionTime;
 
     public event Action<AppState> OnStateChanged;
@@ -49,7 +48,6 @@ public class StateManager : MonoBehaviour
             }
         }
 
-        // Get SwipeDetector if not assigned
         if (swipeDetector == null)
         {
             swipeDetector = FindObjectOfType<SwipeDetector>();
@@ -59,7 +57,6 @@ public class StateManager : MonoBehaviour
             }
         }
     }
-
 
     private void Update()
     {
@@ -75,6 +72,7 @@ public class StateManager : MonoBehaviour
         sunManager?.SetAppState(CurrentState);
         playbackController?.SetSwipeControlEnabled(false);
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
+        curtainController.SetShouldPlayComet(false);
 
         _lastInteractionTime = Time.time;
     }
@@ -125,20 +123,18 @@ public class StateManager : MonoBehaviour
 
         curtainController.SetOnCurtainFullCallback(null);
 
-        ledController.SwitchToActiveJSON();
+        curtainController.SetShouldPlayComet(true);
+
+        ledController?.SwitchToActiveJSON();
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        //bool cometFinished = false;
-        //cometController.StartCometTravel(() => { cometFinished = true; });
-        //while (!cometFinished) yield return null;
-
-        soundManager.PlayCometSound();
+        soundManager?.PlayCometSound();
 
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
-        sunManager.SetAppState(AppState.Active);
+        sunManager?.SetAppState(AppState.Active);
 
         yield return new WaitForSeconds(cometDelayInTransition);
 
@@ -151,16 +147,15 @@ public class StateManager : MonoBehaviour
                     float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(effectsManager.synthLedCountBase + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedLedCountFactor));
                     float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedBrightnessFactor);
                     effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
+                    Debug.Log("[StateManager] Comet starts travel");
                 }
             }
         }
 
-        soundManager.SetSoundClip(soundManager.ActiveClip);
+        soundManager?.SetSoundClip(soundManager.ActiveClip);
         yield return new WaitForSeconds(curtainFullWait);
 
         yield return videoPlayer.SwitchToDefaultMode();
-        // soundManager?.StartFadeIn(soundFadeDuration);
-        // Reset time code sound playback flags when video starts
         soundManager?.ResetTimeCodeSounds();
         SetState(AppState.Active, CurrentState);
 
@@ -170,11 +165,11 @@ public class StateManager : MonoBehaviour
 
         yield return new WaitForSeconds(swipeReactivateDelay);
 
-        //sunManager.SetAppState(AppState.Active);
-
         playbackController.SetSwipeControlEnabled(true);
         _lastInteractionTime = Time.time;
         Debug.Log("[StateManager] Transition to Active mode completed.");
+
+        curtainController.SetShouldPlayComet(false);
     }
 
     private IEnumerator TransitionToIdleCoroutine()
@@ -183,6 +178,9 @@ public class StateManager : MonoBehaviour
         SetState(AppState.Transition, previousState);
 
         Debug.Log("[StateManager] Starting transition to Idle.");
+
+        curtainController.SetShouldPlayComet(false);
+
         playbackController.SetSwipeControlEnabled(false);
 
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
@@ -211,7 +209,7 @@ public class StateManager : MonoBehaviour
         curtainController.FadeCurtain(false, () => { });
 
         curtainController.ResetCurtainProgress();
-        //cometController.ResetComet();
+        curtainController.SetShouldPlayComet(false);
 
         if (spiTouchPanel != null && spiTouchPanel.stripDataManager != null)
         {
@@ -254,7 +252,7 @@ public class StateManager : MonoBehaviour
 
             playbackController.SetSwipeControlEnabled(false);
             curtainController.ResetCurtainProgress();
-            //cometController.ResetComet();
+            curtainController.SetShouldPlayComet(false);
             soundManager?.StopSoundImmediately();
             soundManager.SetSoundClip(soundManager.IdleClip);
 
@@ -286,6 +284,8 @@ public class StateManager : MonoBehaviour
         Debug.Log("[StateManager] Starting SwitchToIdle workflow.");
         playbackController.SetSwipeControlEnabled(false);
 
+        curtainController.SetShouldPlayComet(false);
+
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
@@ -295,7 +295,7 @@ public class StateManager : MonoBehaviour
         while (!fadeCompleted) yield return null;
         soundManager.SetSoundClip(soundManager.IdleClip);
         curtainController.ResetCurtainProgress();
-        //cometController.ResetComet();
+        curtainController.SetShouldPlayComet(false);
 
         if (spiTouchPanel != null && spiTouchPanel.stripDataManager != null)
         {

@@ -23,6 +23,9 @@ public class SoundManager : MonoBehaviour
 {
     private AudioSource synthSource;
     private AudioLowPassFilter lowPassFilter;
+    private AudioSource timeCodeAudioSource;
+    private AudioSource cometAudioSource;
+
     [SerializeField] private StateManager stateManager;
     [SerializeField] private Media _demolitionMedia;
 
@@ -48,7 +51,6 @@ public class SoundManager : MonoBehaviour
 
     [Header("Time Code Sounds")]
     [SerializeField] private List<TimeCodeSound> timeCodeSounds = new List<TimeCodeSound>();
-    [SerializeField] private AudioSource timeCodeAudioSource; // Separate audio source for time code sounds
 
     private float swipePitchMultiplier = 1f;
     private bool isSwipeSoundActive = false;
@@ -76,13 +78,15 @@ public class SoundManager : MonoBehaviour
 
         mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
 
-        // Create a separate audio source for time code sounds if not assigned
-        if (timeCodeAudioSource == null)
-        {
-            GameObject audioSourceObj = new GameObject("TimeCodeAudioSource");
-            audioSourceObj.transform.parent = this.transform;
-            timeCodeAudioSource = audioSourceObj.AddComponent<AudioSource>();
-        }
+        // Create a separate audio source for time code sounds
+        GameObject timeCodeAudioSourceObj = new GameObject("TimeCodeAudioSource");
+        timeCodeAudioSourceObj.transform.parent = this.transform;
+        timeCodeAudioSource = timeCodeAudioSourceObj.AddComponent<AudioSource>();
+
+        // Create a separate audio source for comet sounds
+        GameObject cometAudioSourceObj = new GameObject("CometSoundSource");
+        cometAudioSourceObj.transform.parent = this.transform;
+        cometAudioSource = cometAudioSourceObj.AddComponent<AudioSource>();
 
         SetSoundClip(IdleClip);
         synthSource.loop = true;
@@ -213,7 +217,9 @@ public class SoundManager : MonoBehaviour
     {
         if (CometSound != null)
         {
-            AudioSource.PlayClipAtPoint(CometSound, transform.position);
+            cometAudioSource.clip = CometSound;
+            cometAudioSource.volume = 1f; // Можете настроить громкость
+            cometAudioSource.Play();
         }
     }
 
@@ -237,16 +243,13 @@ public class SoundManager : MonoBehaviour
         synthSource.pitch = Mathf.Lerp(synthSource.pitch, targetPitch, Time.deltaTime * parameterSmoothing);
         lowPassFilter.cutoffFrequency = Mathf.Lerp(lowPassFilter.cutoffFrequency, targetCutoff, Time.deltaTime * parameterSmoothing);
 
-        // Управление громкостью
         float targetVolume = baseVolume;
 
-        // 1. Плавное снижение громкости около нулевой скорости
         if (Mathf.Abs(currentSpeed) <= volumeFadeRange)
         {
             targetVolume = Mathf.Lerp(0f, baseVolume, Mathf.Abs(currentSpeed) / volumeFadeRange);
         }
 
-        // 2. Режим "Mute at High Speed": затухание при |currentSpeed| > highSpeedThreshold
         if (muteAtHighSpeed && Mathf.Abs(currentSpeed) > highSpeedThreshold)
         {
             targetVolume = 0f;

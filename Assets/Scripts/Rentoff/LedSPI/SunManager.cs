@@ -329,7 +329,7 @@ namespace LEDControl
             {
                 float currentTime = frame * frameDuration;
                 Array.Clear(pixelBrightness, 0, totalLEDs);
-                StringBuilder currentFrameHex = new StringBuilder(totalLEDs * hexPerPixel);
+                StringBuilder currentFrameHex = new(totalLEDs * hexPerPixel);
 
                 bool isActiveTime = false;
                 SunMode currentSunMode = SunMode.Warm;
@@ -348,7 +348,7 @@ namespace LEDControl
 
                         int stripPixelCount = stripDataManager.GetSunPixelCountForStrip(stripIndex);
                         float sunRadius = Mathf.Max(1f, stripPixelCount) * 1f;
-                        float virtualLength = totalLEDs + 2 * sunRadius;
+                        float virtualLength = totalLEDs + 4 * sunRadius;
                         float sunPositionContinuous = (virtualLength * (1f - progress)) - sunRadius;
                         float sigma = sunRadius / Mathf.Max(0.1f, settingsRef.gaussianSpreadFactor);
                         float denominator = 2f * sigma * sigma;
@@ -365,7 +365,7 @@ namespace LEDControl
                     }
                 }
 
-                StringBuilder frameHexBuilder = new StringBuilder(totalLEDs * hexPerPixel);
+                StringBuilder frameHexBuilder = new(totalLEDs * hexPerPixel);
                 Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode);
 
                 if (!isActiveTime)

@@ -30,7 +30,7 @@ public class CurtainController : MonoBehaviour
 
     [Header("Media Players")]
     [SerializeField] private Media curtainMedia;
-    [SerializeField] private InitializationFramework.InitializePlayers initializePlayers; // Reference to InitializePlayers
+    [SerializeField] private InitializationFramework.InitializePlayers initializePlayers;
     [SerializeField] private StateManager stateManager;
 
     private readonly float _finalApproachDelay = 0.3f;
@@ -46,6 +46,9 @@ public class CurtainController : MonoBehaviour
 
     private float _lastControlTime = 0f;
     private float _inactivityTimer = 0f;
+
+    private bool _shouldPlayComet = false;
+    private bool _shouldCheckCometOnFull = false;
 
     public bool IsCurtainFull => _isCurtainFull;
 
@@ -63,7 +66,6 @@ public class CurtainController : MonoBehaviour
             return;
         }
 
-        // Initialize position
         curtainObject.localPosition = new Vector3(
             minXPosition,
             curtainObject.localPosition.y,
@@ -278,16 +280,15 @@ public class CurtainController : MonoBehaviour
         );
     }
 
+    // Исправлено: гарантировано запустит комету при каждом переходе Idle->Active
     private void CheckCurtainFullState()
     {
         bool wasFull = _isCurtainFull;
         _isCurtainFull = _currentProgress >= targetProgressThreshold;
 
-        if (_isCurtainFull && !wasFull)
+        if (_isCurtainFull && _shouldPlayComet && _shouldCheckCometOnFull)
         {
-            Debug.Log("[CurtainController] Curtain is now full");
-
-            // Play comet video when curtain is full
+            _shouldCheckCometOnFull = false;
             if (!_isCometPlaying && initializePlayers != null)
             {
                 _isCometPlaying = true;
@@ -297,7 +298,11 @@ public class CurtainController : MonoBehaviour
                 }
                 _cometPlaybackCoroutine = StartCoroutine(PlayCometSequence());
             }
+        }
 
+        if (_isCurtainFull && !wasFull)
+        {
+            Debug.Log("[CurtainController] Curtain is now full");
             _onCurtainFullCallback?.Invoke();
         }
     }
@@ -491,6 +496,8 @@ public class CurtainController : MonoBehaviour
         _isCurtainFull = false;
         _isCurtainAnimating = false;
         _isCometPlaying = false;
+        _shouldPlayComet = false;
+        _shouldCheckCometOnFull = false;
         ResetInactivityTimer();
         _lastCommittedSwipeSign = 0;
         _oppositeSwipeStreak = 0;
@@ -502,6 +509,12 @@ public class CurtainController : MonoBehaviour
             SetCurtainAlpha(1f);
             curtainRenderer.enabled = true;
         }
+    }
+
+    public void SetShouldPlayComet(bool value)
+    {
+        _shouldPlayComet = value;
+        _shouldCheckCometOnFull = value;
     }
 
     #endregion
