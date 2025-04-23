@@ -196,7 +196,7 @@ public class StateManager : MonoBehaviour
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        soundManager?.StartFadeIn(soundFadeDuration);
+        //soundManager?.StartFadeIn(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
         yield return null;
 
@@ -223,7 +223,7 @@ public class StateManager : MonoBehaviour
         }
 
         soundManager.SetSoundClip(soundManager.IdleClip);
-        soundManager?.StartFadeOut(soundFadeDuration);
+        //soundManager?.StartFadeOut(soundFadeDuration);
 
         Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);

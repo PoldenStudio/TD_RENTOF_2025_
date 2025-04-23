@@ -2982,7 +2982,7 @@ MonoBehaviour:
     baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 184
+      endTime: 170
       sunMode: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
@@ -2990,10 +2990,13 @@ MonoBehaviour:
     baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 92
+      endTime: 40
       sunMode: 0
-    - startTime: 92
-      endTime: 184
+    - startTime: 60
+      endTime: 80
+      sunMode: 1
+    - startTime: 100
+      endTime: 120
       sunMode: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
