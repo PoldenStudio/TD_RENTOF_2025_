@@ -38,10 +38,6 @@ public class MainController : MonoBehaviour
     [Header("Mouse Input Configuration")]
     [SerializeField] private bool enableMouseInput = true; // Управление включением ввода мыши
 
-    private void Awake()
-    {
-    }
-
     private void Start()
     {
         if (_demolitionMedia == null)

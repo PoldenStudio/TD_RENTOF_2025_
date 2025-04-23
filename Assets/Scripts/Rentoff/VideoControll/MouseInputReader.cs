@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using static StateManager;
 
 public class MouseInputReader : InputReader
 {
@@ -43,6 +44,11 @@ public class MouseInputReader : InputReader
 
     protected override void ReadInput()
     {
+        if (stateManager == null || (stateManager.CurrentState != AppState.Active && stateManager.CurrentState != AppState.Idle))
+        {
+            return;
+        }
+
         if (Input.GetMouseButtonDown(0))
         {
             isMouseDragging = true;
@@ -52,7 +58,7 @@ public class MouseInputReader : InputReader
             dragStartTime = Time.time;
             lastUpdateTime = Time.time;
 
-            if (enableHoldDetection)
+            if (enableHoldDetection && stateManager.CurrentState == AppState.Active)
             {
                 isHoldChecking = true;
                 isHolding = false;
@@ -70,7 +76,7 @@ public class MouseInputReader : InputReader
             float distance = Vector2.Distance(startDragPosition, endPosition) * distanceMultiplier;
 
             // Если удерживаем - завершаем hold
-            if (isHolding && enableHoldDetection)
+            if (isHolding && enableHoldDetection && stateManager.CurrentState == AppState.Active)
             {
                 swipeDetector?.ProcessMouseHold(startDragPosition, endPosition, duration, false);
 
@@ -96,7 +102,7 @@ public class MouseInputReader : InputReader
             currentDragPosition = Input.mousePosition;
 
             // Проверка на удержание (hold)
-            if (isHoldChecking && enableHoldDetection && !holdProcessed)
+            if (isHoldChecking && enableHoldDetection && stateManager.CurrentState == AppState.Active && !holdProcessed)
             {
                 float currentHoldDistance = Vector2.Distance(startDragPosition, currentDragPosition);
                 holdMovementDistance = Mathf.Max(holdMovementDistance, currentHoldDistance);

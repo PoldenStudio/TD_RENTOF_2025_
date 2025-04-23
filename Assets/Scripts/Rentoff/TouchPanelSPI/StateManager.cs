@@ -135,12 +135,6 @@ public class StateManager : MonoBehaviour
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        yield return new WaitForSeconds(delayBeforeVideoSwitch);
-
-
-        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
-        sunManager?.SetAppState(AppState.Active);
-
         yield return new WaitForSeconds(cometDelayInTransition);
 
         if (spiTouchPanel != null && spiTouchPanel.stripDataManager != null)
@@ -156,6 +150,15 @@ public class StateManager : MonoBehaviour
                 }
             }
         }
+
+        yield return new WaitForSeconds(delayBeforeVideoSwitch);
+
+
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        sunManager?.SetAppState(AppState.Active);
+
+        //yield return new WaitForSeconds(cometDelayInTransition);
+
 
         yield return videoPlayer.SwitchToDefaultMode();
         soundManager?.ResetTimeCodeSounds();
