@@ -31,6 +31,8 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float cometDelayInTransition = 1f;
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
     [SerializeField] private float idleTimeout = 180.0f;
+    [SerializeField] private float delayBeforeVideoSwitch = 1f; // задержка перед переключением видео
+    [SerializeField] private float delayBeforeCurtainFadeOut = 0.5f; // задержка перед закрытием шторки
 
     private float _lastInteractionTime;
 
@@ -124,14 +126,17 @@ public class StateManager : MonoBehaviour
         curtainController.SetOnCurtainFullCallback(null);
 
         curtainController.SetShouldPlayComet(true);
-
+        soundManager?.PlayCometSound();
+        //soundManager?.StartFadeIn(delayBeforeVideoSwitch);
         ledController?.SwitchToActiveJSON();
+
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        soundManager?.PlayCometSound();
+        yield return new WaitForSeconds(delayBeforeVideoSwitch);
+
 
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Active);
@@ -152,11 +157,13 @@ public class StateManager : MonoBehaviour
             }
         }
 
-        soundManager?.SetSoundClip(soundManager.ActiveClip);
-        yield return new WaitForSeconds(curtainFullWait);
-
         yield return videoPlayer.SwitchToDefaultMode();
         soundManager?.ResetTimeCodeSounds();
+        soundManager.SetSoundClip(soundManager.ActiveClip);
+        //soundManager?.StartFadeOut(fadeInDuration);
+
+        yield return new WaitForSeconds(delayBeforeCurtainFadeOut);
+
         SetState(AppState.Active, CurrentState);
 
         bool fadeCompleted = false;
@@ -291,7 +298,7 @@ public class StateManager : MonoBehaviour
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
-        
+
         soundManager.SetSoundClip(soundManager.IdleClip);
         soundManager?.StartFadeIn(soundFadeDuration);
 

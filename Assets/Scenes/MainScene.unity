@@ -3004,6 +3004,7 @@ MonoBehaviour:
   dataSender: {fileID: 1299263587}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData
+  virtualPadding: 10
   currentSpeedRaw: 1
   MultiplySpeed: 1
   stripDataManager: {fileID: 770569964}
@@ -3694,6 +3695,8 @@ MonoBehaviour:
   cometDelayInTransition: 2
   sunFadeOutOnTransitionDuration: 0.5
   idleTimeout: 180
+  delayBeforeVideoSwitch: 5
+  delayBeforeCurtainFadeOut: 5
 --- !u!114 &1213853306
 MonoBehaviour:
   m_ObjectHideFlags: 0
