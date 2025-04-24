@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO.Ports;
 using System.Text;
 using UnityEngine;
+using LEDControl;
+using System.Linq;
 using static StateManager;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.IO.Ports;
 
 namespace LEDControl
 {
@@ -18,15 +20,12 @@ namespace LEDControl
         [SerializeField] private StripDataManager stripManager;
 
         private SerialPort serialPort;
-
         private float lastSendTime = 0f;
-        // Интервал отправки (например, 28 мс)
         private float sendInterval = 0.028f;
 
         private Dictionary<int, string> previousGlobalData = new();
         private Dictionary<int, string> previousSegmentData = new();
 
-        // Поля для многопоточности
         private Thread portThread;
         private volatile bool threadRunning = false;
         private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
@@ -36,7 +35,6 @@ namespace LEDControl
         {
             portName = Settings.Instance.dataSenderPortName;
             baudRate = Settings.Instance.dataSenderBaudRate;
-
             Initialize();
         }
 
@@ -61,7 +59,6 @@ namespace LEDControl
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
 
-                    // Запускаем поток для отправки
                     threadRunning = true;
                     portThread = new Thread(SerialThreadLoop);
                     portThread.IsBackground = true;
@@ -104,7 +101,14 @@ namespace LEDControl
 
         public void SendString(string row)
         {
-            serialPort.Write(row);
+            if (IsPortOpen())
+            {
+                serialPort.Write(row);
+            }
+            if (debugMode)
+            {
+                Debug.Log($"[DataSender] SendString: {row}");
+            }
         }
 
         public void CloseSerialPort()
@@ -124,7 +128,7 @@ namespace LEDControl
                     {
                         for (int i = 0; i < 4; i++)
                         {
-                            serialPort.Write(i + ":clear\r\n");
+                            SendString(i + ":clear\r\n");
                         }
                         serialPort.Close();
                     }
@@ -153,10 +157,15 @@ namespace LEDControl
 
         public void EnqueueData(string dataString)
         {
-            if (string.IsNullOrEmpty(dataString) || !IsPortOpen())
+            if (string.IsNullOrEmpty(dataString))
                 return;
 
-            sendQueue.Enqueue(dataString);
+            if (debugMode)
+                Debug.Log($"[DataSender] Enqueuing data: {dataString.Replace("\r\n", "\\r\\n")}");
+
+            if (IsPortOpen())
+                sendQueue.Enqueue(dataString);
+
             lastSendTime = Time.time;
         }
 
@@ -165,9 +174,6 @@ namespace LEDControl
             return ((int)mode).ToString() + ":";
         }
 
-        /// <summary>
-        /// Оптимизирует hex-строку, обрезая пиксели, у которых данные равны значению blackHex (например, "00").
-        /// </summary>
         private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel, int totalPixels, ref int lastSentPixel)
         {
             int changedPixels = totalPixels;
@@ -264,7 +270,6 @@ namespace LEDControl
             DataMode dataMode = stripManager.currentDataModes[stripIndex];
             DisplayMode displayMode = stripManager.currentDisplayModes[stripIndex];
 
-
             if (appState == AppState.Idle && displayMode == DisplayMode.SpeedSynthMode)
             {
                 return "";
@@ -272,15 +277,13 @@ namespace LEDControl
 
             if (appState == AppState.Transition)
             {
-
-                if (transfer == true)
+                if (transfer)
                 {
                     transfer = false;
                     for (int i = 0; i < 4; i++)
                     {
-                        serialPort.Write(i + ":clear\r\n");
+                        SendString(i + ":clear\r\n");
                     }
-
                 }
             }
             else
@@ -313,9 +316,7 @@ namespace LEDControl
             }
             return sb.Length > 0 ? sb.ToString() : "";
         }
-        public float SendInterval
-        {
-            get { return sendInterval; }
-        }
+
+        public float SendInterval => sendInterval;
     }
 }

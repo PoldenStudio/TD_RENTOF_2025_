@@ -3790,7 +3790,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   portName: COM23
   baudRate: 921600
-  debugMode: 0
+  debugMode: 1
   stripManager: {fileID: 770569964}
 --- !u!114 &1299263588
 MonoBehaviour:
