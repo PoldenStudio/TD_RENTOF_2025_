@@ -40,14 +40,17 @@ public class Comet
         int ledCount = Mathf.CeilToInt(length);
         brightnessProfile = new float[ledCount];
 
-        // Create a smooth falloff for the tail
+        // Bright head and quickly fading tail
         for (int i = 0; i < ledCount; i++)
         {
             float normalizedPosition = (float)i / (ledCount - 1);
-            // Smoother falloff using a cosine curve
-            float falloff = Mathf.Cos(normalizedPosition * Mathf.PI * 0.5f);
-            brightnessProfile[i] = falloff * tailIntensity;
+            // Exponential falloff for sharp brightness drop
+            float falloff = Mathf.Pow(tailIntensity, normalizedPosition * 5); // 5 is the sharpness factor
+            brightnessProfile[i] = falloff;
         }
+
+        // Ensure the head is at maximum brightness
+        brightnessProfile[0] = 1.0f;
     }
 
     public void UpdatePosition(float deltaTime, float speed, int newTotalLEDs)
@@ -78,6 +81,12 @@ public class Comet
         profileIndex = Mathf.Clamp(profileIndex, 0, brightnessProfile.Length - 1);
 
         float ledBrightness = brightnessProfile[profileIndex] * brightness * globalBrightness;
+
+        // Ensure the head is always at full brightness
+        if (profileIndex == 0)
+        {
+            ledBrightness = brightness * globalBrightness;
+        }
 
         return new Color32(
             (byte)(color.r * ledBrightness),

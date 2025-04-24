@@ -1639,7 +1639,7 @@ MonoBehaviour:
   synthLedCountBase: 30
   speedLedCountFactor: 2
   speedBrightnessFactor: 5
-  tailIntensity: 0.8
+  tailIntensity: 0.7
   moveDirection: 0
   toggleTouchMode: 0
   startFromEnd: 1
