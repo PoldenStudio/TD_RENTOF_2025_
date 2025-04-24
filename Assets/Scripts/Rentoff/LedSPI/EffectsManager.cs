@@ -190,6 +190,10 @@ namespace LEDControl
             pixelCache.Remove(stripIndex);
             hexCache.Remove(stripIndex);
             lastUpdateTime.Remove(stripIndex);
+
+
+            Debug.LogFormat("AddComet: stripIndex={0}, position={1}, color=({2},{3},{4},{5}), length={6}, brightness={7}, direction={8}, totalLeds={9}, tailIntensity={10}",
+                stripIndex, startPos, color.r, color.g, color.b, color.a, dynamicLength, baseBrightness, direction, totalLeds, tailIntensity);
         }
 
         public void UpdateLastTouchTime(int stripIndex)

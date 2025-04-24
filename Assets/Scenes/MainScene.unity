@@ -353,7 +353,7 @@ MonoBehaviour:
   openWithFramedrop: 0
   GPUComputeBasedDecompression: 0
   urlType: 2
-  targetFramerateLikeVideo: 1
+  targetFramerateLikeVideo: 0
   snappyComputeShader: {fileID: 0}
   writeCompressedTextureComputeShader: {fileID: 0}
 --- !u!1 &31414344
@@ -899,7 +899,7 @@ MonoBehaviour:
   openWithFramedrop: 0
   GPUComputeBasedDecompression: 0
   urlType: 2
-  targetFramerateLikeVideo: 1
+  targetFramerateLikeVideo: 0
   snappyComputeShader: {fileID: 0}
   writeCompressedTextureComputeShader: {fileID: 0}
 --- !u!1 &280193377
@@ -1636,9 +1636,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd463a62003821847914e5abaa37cd9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  synthLedCountBase: 30
-  speedLedCountFactor: 2
-  speedBrightnessFactor: 5
+  synthLedCountBase: 180
+  speedLedCountFactor: 1.5
+  speedBrightnessFactor: 1.5
   tailIntensity: 0.7
   moveDirection: 0
   toggleTouchMode: 0
@@ -6164,7 +6164,7 @@ MonoBehaviour:
   openWithFramedrop: 0
   GPUComputeBasedDecompression: 0
   urlType: 2
-  targetFramerateLikeVideo: 1
+  targetFramerateLikeVideo: 0
   snappyComputeShader: {fileID: 0}
   writeCompressedTextureComputeShader: {fileID: 0}
 --- !u!4 &3091056487410872809

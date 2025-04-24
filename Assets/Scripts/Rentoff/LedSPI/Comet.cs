@@ -56,7 +56,7 @@ public class Comet
         position = WrapPosition(position, totalLEDs);
     }
 
-    public Color32 GetColorAtLed(int ledIndex, float globalBrightness)
+/*    public Color32 GetColorAtLed(int ledIndex, float globalBrightness)
     {
         float distance = GetDistanceOnCircle(ledIndex, position, totalLEDs);
         if (distance >= length) return new Color32(0, 0, 0, 0);
@@ -70,7 +70,25 @@ public class Comet
             (byte)(color.b * ledBrightness),
             255
         );
+    }*/
+
+    public Color32 GetColorAtLed(int ledIndex, float globalBrightness)
+    {
+        float distance = GetDistanceOnCircle(ledIndex, position, totalLEDs);
+        if (distance >= length) return new Color32(0, 0, 0, 0);
+
+        int profileIndex = Mathf.FloorToInt(distance / length * (brightnessProfile.Length - 1));
+        float ledBrightness = brightnessProfile[profileIndex] * globalBrightness;
+
+        // Возвращаем исходный цвет без гамма-коррекции, только с яркостью
+        return new Color32(
+            (byte)(color.r * ledBrightness),
+            (byte)(color.g * ledBrightness),
+            (byte)(color.b * ledBrightness),
+            255
+        );
     }
+
 
     private float GetDistanceOnCircle(int ledIndex, float centerPosition, int totalLeds)
     {
