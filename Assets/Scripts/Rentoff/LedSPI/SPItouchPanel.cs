@@ -25,6 +25,12 @@ public class SPItouchPanel : MonoBehaviour
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
     private Dictionary<int, MoveDirection> lastSwipeDirection = new Dictionary<int, MoveDirection>();
 
+    //Pre-allocated StringBuilder
+    private readonly StringBuilder fullDataBuilder = new StringBuilder(4096); // Adjust capacity as needed
+
+    //Cached values to avoid allocations during runtime
+    private Color32 blackColor = new Color32(0, 0, 0, 255);
+
     private void Awake()
     {
         if (stripDataManager == null) stripDataManager = gameObject.AddComponent<StripDataManager>();
@@ -196,7 +202,7 @@ public class SPItouchPanel : MonoBehaviour
                 if (segmentIndex >= 0 && segmentIndex < totalSegments)
                 {
                     Color32 currentColor = stripDataManager.GetSegmentColor(stripIndex, segmentIndex);
-                    Color32 blackColor = new Color32(0, 0, 0, 255);
+
                     Color32 synthColor = stripDataManager.GetSynthColorForStrip(stripIndex);
 
                     if (isPressed)
@@ -226,7 +232,8 @@ public class SPItouchPanel : MonoBehaviour
 
     private void SendDataToLEDStrip()
     {
-        StringBuilder fullData = new StringBuilder();
+        fullDataBuilder.Clear();
+
         for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
         {
             if (!stripDataManager.stripEnabled[stripIndex]) continue;
@@ -239,9 +246,9 @@ public class SPItouchPanel : MonoBehaviour
             }
 
             string dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, sunManager, effectsManager, colorProcessor, stateManager.CurrentState);
-            fullData.Append(dataString);
+            fullDataBuilder.Append(dataString);
         }
-        dataSender.EnqueueData(fullData.ToString());
+        dataSender.EnqueueData(fullDataBuilder.ToString());
     }
 
     public void UpdateSynthParameters(float speed)

@@ -32,12 +32,28 @@ namespace LEDControl
         private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
         private bool transfer = true;
 
-        private object serialLock = new object(); // Lock for serial port access
+        private object serialLock = new object();
+
+        private readonly StringBuilder globalDataBuilder = new StringBuilder(2048);
+        private readonly StringBuilder segmentDataBuilder = new StringBuilder(2048);
+        private readonly StringBuilder allDataBuilder = new StringBuilder(4096); 
+
+        private readonly string[] dataModePrefixes = new string[4];
+        private string clearCommand;
 
         void Awake()
         {
             portName = Settings.Instance.dataSenderPortName;
             baudRate = Settings.Instance.dataSenderBaudRate;
+
+            // Pre-format the data mode prefixes
+            for (int i = 0; i < dataModePrefixes.Length; i++)
+            {
+                dataModePrefixes[i] = i.ToString() + ":";
+            }
+
+            clearCommand = "0:clear\r\n";
+
             Initialize();
         }
 
@@ -58,7 +74,7 @@ namespace LEDControl
                         WriteTimeout = 1000
                     };
 
-                    lock (serialLock) // Lock before opening the port
+                    lock (serialLock)
                     {
                         serialPort.Open();
                     }
@@ -87,7 +103,7 @@ namespace LEDControl
                 {
                     if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out string dataString))
                     {
-                        lock (serialLock) // Lock before writing to the port
+                        lock (serialLock)
                         {
                             serialPort.Write(dataString);
                         }
@@ -102,7 +118,7 @@ namespace LEDControl
                 catch (Exception e)
                 {
                     Debug.LogError($"[DataSender][Thread] Serial port exception: {e.Message}");
-                    lock (serialLock) // Lock before closing the port
+                    lock (serialLock)
                     {
                         try { serialPort?.Close(); } catch { }
                     }
@@ -110,7 +126,7 @@ namespace LEDControl
 
                     Thread.Sleep(500);
 
-                    lock (serialLock) // Lock before reopening the port
+                    lock (serialLock)
                     {
                         try { serialPort?.Open(); } catch { }
                     }
@@ -123,7 +139,7 @@ namespace LEDControl
         {
             if (IsPortOpen())
             {
-                lock (serialLock) // Lock before writing to the port
+                lock (serialLock)
                 {
                     serialPort.Write(row);
                 }
@@ -151,10 +167,10 @@ namespace LEDControl
                     {
                         for (int i = 0; i < 4; i++)
                         {
-                            SendString(i + ":clear\r\n");
+                            SendString(dataModePrefixes[i] + "clear\r\n");
                         }
 
-                        lock (serialLock) // Lock before closing the port
+                        lock (serialLock)
                         {
                             serialPort.Close();
                         }
@@ -165,7 +181,7 @@ namespace LEDControl
                     Debug.LogWarning($"[DataSender] Error closing port: {e.Message}");
                 }
 
-                lock (serialLock) // Lock before disposing the port
+                lock (serialLock)
                 {
                     serialPort.Dispose();
                 }
@@ -197,14 +213,14 @@ namespace LEDControl
             if (IsPortOpen())
             {
                 sendQueue.Enqueue(dataString);
-                lastSendTime = Time.time; // Update last send time immediately after enqueuing.  This is important to ensure the send interval is respected.
+                lastSendTime = Time.time;
             }
 
         }
 
         private string GetPrefixForDataMode(DataMode mode)
         {
-            return ((int)mode).ToString() + ":";
+            return dataModePrefixes[(int)mode];
         }
 
         private string OptimizeHexString(string hexString, string blackHex, int hexPerPixel, int totalPixels, ref int lastSentPixel)
@@ -241,12 +257,12 @@ namespace LEDControl
                 _ => ""
             };
 
-            StringBuilder sb = new StringBuilder(pixelsToGenerate * hexPerPixel);
+            globalDataBuilder.Clear();
             for (int i = 0; i < pixelsToGenerate; i++)
-                sb.Append(pixelHex);
+                globalDataBuilder.Append(pixelHex);
 
             int lastSentPixel = 0;
-            string optimizedHex = OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel, pixelsToGenerate, ref lastSentPixel);
+            string optimizedHex = OptimizeHexString(globalDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, pixelsToGenerate, ref lastSentPixel);
 
             if (previousGlobalData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
                 return "";
@@ -266,8 +282,8 @@ namespace LEDControl
             float stripBrightness = stripManager.GetStripBrightness(stripIndex);
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
-            StringBuilder sb = new StringBuilder(totalPixels * hexPerPixel);
 
+            segmentDataBuilder.Clear();
             foreach (Color32 color in segmentColors)
             {
                 string pixelHex = mode switch
@@ -279,11 +295,11 @@ namespace LEDControl
                 };
 
                 for (int j = 0; j < ledsPerSegment; j++)
-                    sb.Append(pixelHex);
+                    segmentDataBuilder.Append(pixelHex);
             }
 
             int lastSentPixel = 0;
-            string optimizedHex = OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel, totalPixels, ref lastSentPixel);
+            string optimizedHex = OptimizeHexString(segmentDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, totalPixels, ref lastSentPixel);
 
             if (previousSegmentData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
                 return "";
@@ -315,7 +331,7 @@ namespace LEDControl
                     transfer = false;
                     for (int i = 0; i < 4; i++)
                     {
-                        SendString(i + ":clear\r\n");
+                        SendString(dataModePrefixes[i] + "clear\r\n");
                     }
                 }
             }
@@ -335,19 +351,30 @@ namespace LEDControl
                 _ => GetHexDataForGlobalColor(stripIndex, dataMode, stripManager, colorProcessor)
             };
 
-            return string.IsNullOrEmpty(colorData) ? "" : $"{prefix}{colorData}\r\n";
+            if (string.IsNullOrEmpty(colorData))
+            {
+                return "";
+            }
+
+            globalDataBuilder.Clear();
+            globalDataBuilder.Append(prefix);
+            globalDataBuilder.Append(colorData);
+            globalDataBuilder.Append("\r\n");
+
+            return globalDataBuilder.ToString();
+
         }
 
         public string GenerateAllDataString(StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
-            StringBuilder sb = new StringBuilder();
+            allDataBuilder.Clear();
             for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; i++)
             {
                 string stripData = GenerateDataString(i, stripManager, SunManager, effectsManager, colorProcessor, appState);
                 if (!string.IsNullOrEmpty(stripData))
-                    sb.Append(stripData);
+                    allDataBuilder.Append(stripData);
             }
-            return sb.Length > 0 ? sb.ToString() : "";
+            return allDataBuilder.Length > 0 ? allDataBuilder.ToString() : "";
         }
 
         public float SendInterval => sendInterval;
