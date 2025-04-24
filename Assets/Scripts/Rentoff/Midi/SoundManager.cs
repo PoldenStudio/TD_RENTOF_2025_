@@ -234,7 +234,7 @@ public class SoundManager : MonoBehaviour
             synthSource.Stop();
             currentClip = clip;
             synthSource.clip = clip;
-            synthSource.Play();
+            //synthSource.Play();
         }
     }
 

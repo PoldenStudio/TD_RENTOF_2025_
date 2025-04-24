@@ -52,7 +52,7 @@ public class StateManager : MonoBehaviour
 
         if (swipeDetector == null)
         {
-            swipeDetector = FindObjectOfType<SwipeDetector>();
+            swipeDetector = GetComponent<SwipeDetector>();
             if (swipeDetector == null)
             {
                 Debug.LogError("[StateManager] SwipeDetector not assigned and not found in scene!");
@@ -124,12 +124,12 @@ public class StateManager : MonoBehaviour
         SetState(AppState.Transition, previousState);
 
         curtainController.SetOnCurtainFullCallback(null);
-
         curtainController.SetShouldPlayComet(true);
-        soundManager?.PlayCometSound();
-        //soundManager?.StartFadeIn(delayBeforeVideoSwitch);
-        ledController?.SwitchToActiveJSON();
 
+        soundManager?.PlayCometSound();
+        soundManager?.StartFadeOut(delayBeforeVideoSwitch);
+
+        ledController?.StartTransitionToActive();
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
@@ -161,9 +161,10 @@ public class StateManager : MonoBehaviour
 
 
         yield return videoPlayer.SwitchToDefaultMode();
+        ledController?.SwitchToActiveJSON();
         soundManager?.ResetTimeCodeSounds();
         soundManager.SetSoundClip(soundManager.ActiveClip);
-        //soundManager?.StartFadeOut(fadeInDuration);
+        soundManager?.StartFadeIn(fadeInDuration);
 
         yield return new WaitForSeconds(delayBeforeCurtainFadeOut);
 
@@ -196,6 +197,8 @@ public class StateManager : MonoBehaviour
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Idle);
 
+        ledController?.StartTransitionToIdle();
+
         if (ledController != null)
         {
             ledController.wasIdled = true;
@@ -206,7 +209,7 @@ public class StateManager : MonoBehaviour
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        //soundManager?.StartFadeIn(soundFadeDuration);
+        soundManager?.StartFadeOut(0.2f);
         yield return videoPlayer.SwitchToIdleMode();
         yield return null;
 
@@ -233,7 +236,7 @@ public class StateManager : MonoBehaviour
         }
 
         soundManager.SetSoundClip(soundManager.IdleClip);
-        //soundManager?.StartFadeOut(soundFadeDuration);
+        soundManager?.StartFadeIn(soundFadeDuration);
 
         Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
@@ -292,7 +295,7 @@ public class StateManager : MonoBehaviour
 
         yield return videoPlayer.SwitchToIdleMode();
         ledController.SwitchToIdleJSON();
-        //soundManager?.StartFadeOut(soundFadeDuration);
+        soundManager?.StartFadeOut(0.2f);
 
         Debug.Log("[StateManager] Starting SwitchToIdle workflow.");
         playbackController.SetSwipeControlEnabled(false);

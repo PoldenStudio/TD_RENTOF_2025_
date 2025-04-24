@@ -110,13 +110,6 @@ namespace LEDControl
             }
         }
 
-        private float GetWrappedDistance(float p1, float p2, int wrap)
-        {
-            float diffNormal = Mathf.Abs(p1 - p2);
-            float diffWrap = wrap - diffNormal;
-            return Mathf.Min(diffNormal, diffWrap);
-        }
-
         private void Awake()
         {
             PreloadBakedSunData();
@@ -276,7 +269,7 @@ namespace LEDControl
 
             DataMode dataMode = stripDataManager.currentDataModes[stripIndex];
             int actualLEDs = stripDataManager.totalLEDsPerStrip[stripIndex];
-            int totalLEDs = actualLEDs + virtualPadding * 2; // Add virtual padding on both sides
+            int totalLEDs = actualLEDs + virtualPadding * 2;
 
             Debug.Log($"Pre-baking SunMovement data for Strip {stripIndex} ({actualLEDs} LEDs + {virtualPadding * 2} virtual LEDs) in {dataMode} mode...");
 
@@ -315,11 +308,11 @@ namespace LEDControl
 
             if (settingsRef == null || settingsRef.baseCycleLength <= 0f)
             {
-                Debug.LogWarning($"Skipping bake for state {appState}: Invalid settings or cycle length.");
+                Debug.LogWarning($"Skipping bake for state {appState}");
                 return stateData;
             }
 
-            Debug.Log($"Baking state {appState}, key {stateKey} for strip {stripIndex}...");
+            Debug.Log($"Baking state {appState}, key {stateKey} for strip {stripIndex}");
 
             float totalCycleLength = settingsRef.baseCycleLength;
             int frameCount = Mathf.Max(1, Mathf.CeilToInt(totalCycleLength * preBakeFrameRate));
@@ -377,7 +370,6 @@ namespace LEDControl
 
                 if (!isActiveTime)
                 {
-                    // Send black color if not in active interval
                     for (int i = 0; i < totalLEDs; i++)
                     {
                         frameHexBuilder.Append(blackHexValue);
@@ -419,7 +411,6 @@ namespace LEDControl
 
                 string fullHexString = frameHexBuilder.ToString();
 
-                // Trim the virtual padding to get only the actual LED data
                 string trimmedHexString = TrimVirtualPadding(fullHexString, hexPerPixel, virtualPadding, actualLEDs);
 
                 string optimizedHex = OptimizeHexStringForBaking(trimmedHexString, blackHexValue, hexPerPixel);
@@ -432,11 +423,9 @@ namespace LEDControl
 
         private string TrimVirtualPadding(string fullHexString, int hexPerPixel, int padding, int actualLEDs)
         {
-            // Calculate start and end positions to extract only the actual LED data
             int startIndex = padding * hexPerPixel;
             int length = actualLEDs * hexPerPixel;
 
-            // Make sure we don't exceed the string length
             if (startIndex + length > fullHexString.Length)
             {
                 length = Mathf.Max(0, fullHexString.Length - startIndex);
@@ -640,7 +629,6 @@ namespace LEDControl
                 int currentFrame = Mathf.FloorToInt(currentCycleTime / frameDuration);
                 currentFrame = Mathf.Clamp(currentFrame, 0, frameCount - 1);
 
-                // The frames are already trimmed during pre-baking
                 string hexData = stateData.hexFrames[currentFrame];
 
                 hexCache[cacheKey] = hexData;
@@ -663,15 +651,6 @@ namespace LEDControl
         private int GetCacheKey(int stripIndex, StateManager.AppState appState)
         {
             return HashCode.Combine(stripIndex, appState);
-        }
-
-        private StringBuilder GetStringBuilderForStrip(int stripIndex)
-        {
-            if (!stringBuilderCache.ContainsKey(stripIndex))
-            {
-                stringBuilderCache[stripIndex] = new StringBuilder();
-            }
-            return stringBuilderCache[stripIndex];
         }
 
         public void OnSunSettingsChanged()

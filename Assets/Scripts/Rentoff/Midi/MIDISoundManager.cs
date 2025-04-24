@@ -46,6 +46,9 @@ public class MIDISoundManager : MonoBehaviour
     public int ccNumber = 74;
     public float ccSendInterval = 0.5f;
 
+    [Header("Debug")]
+    public bool debugMode = false; // Add DebugMode bool
+
     private float currentSpeed = 1f;
     private float lastNoteTime = 0f;
     private float lastCCSendTime = 0f;
@@ -80,7 +83,7 @@ public class MIDISoundManager : MonoBehaviour
         MidiManager.Instance.StartRtpMidiServer(loopMidiDeviceId, 5004);
 
 
-    Debug.Log("[MIDI] Initialized.");
+        Debug.Log("[MIDI] Initialized.");
 
         isMidiReady = true;
 
@@ -201,14 +204,16 @@ private void FixedUpdate()
         int note = SelectNote();
         int velocity = GetVelocityFromSpeed();
 
-        Debug.Log($"[MIDI] Sending NoteOn: Device={loopMidiDeviceId}, Channel={midiChannel}, Note={note}, Velocity={velocity}");
+        if (debugMode)
+            Debug.Log($"[MIDI] Sending NoteOn: Device={loopMidiDeviceId}, Channel={midiChannel}, Note={note}, Velocity={velocity}");
         MidiManager.Instance.SendMidiNoteOn(loopMidiDeviceId, 0, midiChannel, note, velocity);
         activeNotes.Enqueue(note);
 
         if (activeNotes.Count > maxSimultaneousNotes)
         {
             int oldestNote = activeNotes.Dequeue();
-            Debug.Log($"[MIDI] Sending NoteOff: Device={loopMidiDeviceId}, Channel={midiChannel}, Note={oldestNote}");
+            if (debugMode)
+                Debug.Log($"[MIDI] Sending NoteOff: Device={loopMidiDeviceId}, Channel={midiChannel}, Note={oldestNote}");
             MidiManager.Instance.SendMidiNoteOff(loopMidiDeviceId, 0, midiChannel, oldestNote, 0);
         }
 
@@ -218,7 +223,8 @@ private void FixedUpdate()
     private IEnumerator SendNoteOffDelayed(int note, float delay)
     {
         yield return new WaitForSeconds(delay);
-        Debug.Log($"[MIDI] Sending NoteOff (Delayed): Device={loopMidiDeviceId}, Channel={midiChannel}, Note={note}");
+        if (debugMode)
+            Debug.Log($"[MIDI] Sending NoteOff (Delayed): Device={loopMidiDeviceId}, Channel={midiChannel}, Note={note}");
         MidiManager.Instance.SendMidiNoteOff(loopMidiDeviceId, 0, midiChannel, note, 0);
     }
 
@@ -269,7 +275,8 @@ private void FixedUpdate()
         }
 
         int ccValue = Mathf.Clamp((int)(currentSpeed * 127f), 0, 127);
-        Debug.Log($"[MIDI] Sending CC: Device={loopMidiDeviceId}, CC={ccNumber}, Value={ccValue}");
+        if (debugMode)
+            Debug.Log($"[MIDI] Sending CC: Device={loopMidiDeviceId}, CC={ccNumber}, Value={ccValue}");
         MidiManager.Instance.SendMidiControlChange(loopMidiDeviceId, 0, midiChannel, ccNumber, ccValue);
     }
 }
