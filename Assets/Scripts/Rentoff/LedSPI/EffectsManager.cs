@@ -10,7 +10,6 @@ using UnityEditor;
 
 namespace LEDControl
 {
-
     public class EffectsManager : MonoBehaviour
     {
         [Header("Speed Synth Mode Settings")]
@@ -46,7 +45,7 @@ namespace LEDControl
         private Dictionary<int, Color32[]> pixelCache = new();
         private Dictionary<int, string> hexCache = new();
         private Dictionary<int, float> lastUpdateTime = new();
-        private float cacheLifetime = 0.05f;
+        private float cacheLifetime = 0.02f; // Уменьшили время жизни кэша
 
         private Dictionary<int, StringBuilder> stringBuilderCache = new();
         private Dictionary<int, List<Comet>> stripComets = new();
@@ -78,7 +77,6 @@ namespace LEDControl
 
         private void Update()
         {
-            // Update all active comets
             foreach (var stripIndex in stripComets.Keys)
             {
                 if (stripDataManager != null && stripIndex < stripDataManager.totalLEDsPerStrip.Count)
@@ -110,10 +108,8 @@ namespace LEDControl
                 if (!comet.isActive) continue;
                 anyActive = true;
 
-                // Ensure comet tail intensity is updated if needed
                 comet.UpdateTailIntensity(tailIntensity);
 
-                // Start moving after delay
                 if (canMove && !comet.isMoving)
                 {
                     comet.isMoving = true;
@@ -123,7 +119,6 @@ namespace LEDControl
                 {
                     float speed = Mathf.Abs(CurrentCometSpeed) * baseMovementSpeed;
 
-                    // Set direction based on settings and current speed
                     if (startFromEnd)
                     {
                         comet.direction = CurrentCometSpeed >= 0 ? -1f : 1f;
@@ -133,12 +128,10 @@ namespace LEDControl
                         comet.direction = CurrentCometSpeed >= 0 ? 1f : -1f;
                     }
 
-                    // Update position with smooth movement
                     comet.UpdatePosition(deltaTime, speed, totalLEDs);
                 }
             }
 
-            // Clean up cache if no active comets
             if (!anyActive && pixelCache.ContainsKey(stripIndex))
             {
                 pixelCache.Remove(stripIndex);
@@ -147,7 +140,6 @@ namespace LEDControl
             }
             else if (anyActive)
             {
-                // Clear cache to force update
                 hexCache.Remove(stripIndex);
                 lastUpdateTime.Remove(stripIndex);
             }
@@ -177,10 +169,8 @@ namespace LEDControl
             if (stripIndex < 0 || stripIndex >= stripDataManager.totalLEDsPerStrip.Count) return;
             int totalLeds = stripDataManager.totalLEDsPerStrip[stripIndex];
 
-            // Calculate comet length based on speed
             float dynamicLength = synthLedCountBase + Mathf.Abs(CurrentCometSpeed) * speedLedCountFactor;
 
-            // Set the starting position
             float startPos = position;
             if (startFromEnd)
             {
@@ -191,13 +181,12 @@ namespace LEDControl
             float direction = CurrentCometSpeed >= 0 ? 1f : -1f;
             if (startFromEnd) direction *= -1;
 
-            float baseBrightness = 0.8f;
+            float baseBrightness = 1.0f; // Увеличили базовую яркость
 
             Comet newComet = new Comet(startPos, color, dynamicLength, baseBrightness, direction, totalLeds, tailIntensity);
             comets.Add(newComet);
             lastTouchTimes[stripIndex] = Time.time;
 
-            // Clear caches to force update
             pixelCache.Remove(stripIndex);
             hexCache.Remove(stripIndex);
             lastUpdateTime.Remove(stripIndex);
@@ -230,7 +219,6 @@ namespace LEDControl
             float stripGamma = stripManager.GetStripGamma(stripIndex);
             bool stripGammaEnabled = stripManager.IsGammaCorrectionEnabled(stripIndex);
 
-            // If no active comets, return empty string
             if (!stripComets.TryGetValue(stripIndex, out List<Comet> comets) || comets.All(c => !c.isActive))
             {
                 string emptyHex = OptimizeHexString("", new string('0', hexPerPixel), hexPerPixel);
@@ -247,8 +235,8 @@ namespace LEDControl
             {
                 float dynamicBrightness = comet.brightness;
 
-                float speedDifference = Mathf.Abs(CurrentCometSpeed); 
-                dynamicBrightness += speedDifference * 0.5f;
+                float speedDifference = Mathf.Abs(CurrentCometSpeed);
+                dynamicBrightness += speedDifference * 1.5f; // Увеличили коэффициент для speedDifference
 
                 dynamicBrightness = Mathf.Clamp01(dynamicBrightness * stripBrightness);
 
