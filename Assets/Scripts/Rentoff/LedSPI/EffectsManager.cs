@@ -247,7 +247,7 @@ namespace LEDControl
             {
                 float dynamicBrightness = comet.brightness;
 
-                float speedDifference = Mathf.Abs(CurrentCometSpeed) - 1f; 
+                float speedDifference = Mathf.Abs(CurrentCometSpeed); 
                 dynamicBrightness += speedDifference * 0.5f;
 
                 dynamicBrightness = Mathf.Clamp01(dynamicBrightness * stripBrightness);
