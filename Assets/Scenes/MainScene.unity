@@ -3500,7 +3500,7 @@ MonoBehaviour:
     hasPlayed: 0
   IdleClip: {fileID: 8300000, guid: 2c4abf58a29dddf45acee32849fa549c, type: 3}
   ActiveClip: {fileID: 8300000, guid: 9d5023b254de3c74da75c4372307dcff, type: 3}
-  CometSound: {fileID: 8300000, guid: f76126cd15cbf6542a67e9e44e02da2f, type: 3}
+  CometSound: {fileID: 8300000, guid: 937a8f119a98c594ebe1851e03621938, type: 3}
 --- !u!114 &1012292528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3792,6 +3792,7 @@ MonoBehaviour:
   baudRate: 921600
   debugMode: 1
   stripManager: {fileID: 770569964}
+  sendInterval: 0.028
 --- !u!114 &1299263588
 MonoBehaviour:
   m_ObjectHideFlags: 0

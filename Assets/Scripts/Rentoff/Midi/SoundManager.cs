@@ -78,15 +78,15 @@ public class SoundManager : MonoBehaviour
 
         mediaPlayer = new DemolitionMediaPlayer(_demolitionMedia);
 
-        // Create a separate audio source for time code sounds
         GameObject timeCodeAudioSourceObj = new GameObject("TimeCodeAudioSource");
         timeCodeAudioSourceObj.transform.parent = this.transform;
         timeCodeAudioSource = timeCodeAudioSourceObj.AddComponent<AudioSource>();
 
-        // Create a separate audio source for comet sounds
         GameObject cometAudioSourceObj = new GameObject("CometSoundSource");
         cometAudioSourceObj.transform.parent = this.transform;
         cometAudioSource = cometAudioSourceObj.AddComponent<AudioSource>();
+
+        PreloadAudioClips();
 
         SetSoundClip(IdleClip);
         synthSource.loop = true;
@@ -96,6 +96,29 @@ public class SoundManager : MonoBehaviour
         lowPassFilter.cutoffFrequency = maxCutoffFrequency;
 
         synthSource.Play();
+    }
+
+    private void PreloadAudioClips()
+    {
+        if (IdleClip != null)
+        {
+            IdleClip.LoadAudioData();
+        }
+        if (ActiveClip != null)
+        {
+            ActiveClip.LoadAudioData();
+        }
+        if (CometSound != null)
+        {
+            CometSound.LoadAudioData();
+        }
+        foreach (var timeCodeSound in timeCodeSounds)
+        {
+            if (timeCodeSound.soundClip != null)
+            {
+                timeCodeSound.soundClip.LoadAudioData();
+            }
+        }
     }
 
     private void FixedUpdate()
