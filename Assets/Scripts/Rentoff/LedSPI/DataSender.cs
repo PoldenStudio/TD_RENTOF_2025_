@@ -21,7 +21,8 @@ namespace LEDControl
 
         private SerialPort serialPort;
         private float lastSendTime = 0f;
-        private float sendInterval = 0.028f;
+        [Tooltip("Minimum time in seconds between sending data.  Adjust to prevent overwhelming the serial connection.")]
+        [SerializeField] private float sendInterval = 0.028f;
 
         private Dictionary<int, string> previousGlobalData = new();
         private Dictionary<int, string> previousSegmentData = new();
@@ -30,6 +31,8 @@ namespace LEDControl
         private volatile bool threadRunning = false;
         private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
         private bool transfer = true;
+
+        private object serialLock = new object(); // Lock for serial port access
 
         void Awake()
         {
@@ -54,7 +57,12 @@ namespace LEDControl
                         ReadTimeout = 1000,
                         WriteTimeout = 1000
                     };
-                    serialPort.Open();
+
+                    lock (serialLock) // Lock before opening the port
+                    {
+                        serialPort.Open();
+                    }
+
 
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
@@ -79,7 +87,10 @@ namespace LEDControl
                 {
                     if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out string dataString))
                     {
-                        serialPort.Write(dataString);
+                        lock (serialLock) // Lock before writing to the port
+                        {
+                            serialPort.Write(dataString);
+                        }
                         if (debugMode)
                             Debug.Log($"[DataSender][Thread] Sent data: {dataString.Replace("\r\n", "\\r\\n")}");
                     }
@@ -91,10 +102,19 @@ namespace LEDControl
                 catch (Exception e)
                 {
                     Debug.LogError($"[DataSender][Thread] Serial port exception: {e.Message}");
-                    try { serialPort?.Close(); } catch { }
+                    lock (serialLock) // Lock before closing the port
+                    {
+                        try { serialPort?.Close(); } catch { }
+                    }
+
 
                     Thread.Sleep(500);
-                    try { serialPort?.Open(); } catch { }
+
+                    lock (serialLock) // Lock before reopening the port
+                    {
+                        try { serialPort?.Open(); } catch { }
+                    }
+
                 }
             }
         }
@@ -103,7 +123,10 @@ namespace LEDControl
         {
             if (IsPortOpen())
             {
-                serialPort.Write(row);
+                lock (serialLock) // Lock before writing to the port
+                {
+                    serialPort.Write(row);
+                }
             }
             if (debugMode)
             {
@@ -130,14 +153,22 @@ namespace LEDControl
                         {
                             SendString(i + ":clear\r\n");
                         }
-                        serialPort.Close();
+
+                        lock (serialLock) // Lock before closing the port
+                        {
+                            serialPort.Close();
+                        }
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning($"[DataSender] Error closing port: {e.Message}");
                 }
-                serialPort.Dispose();
+
+                lock (serialLock) // Lock before disposing the port
+                {
+                    serialPort.Dispose();
+                }
                 serialPort = null;
             }
 
@@ -152,7 +183,7 @@ namespace LEDControl
 
         public bool ShouldSendData()
         {
-            return Time.time - lastSendTime > sendInterval;
+            return Time.time - lastSendTime >= sendInterval;
         }
 
         public void EnqueueData(string dataString)
@@ -164,9 +195,11 @@ namespace LEDControl
                 Debug.Log($"[DataSender] Enqueuing data: {dataString.Replace("\r\n", "\\r\\n")}");
 
             if (IsPortOpen())
+            {
                 sendQueue.Enqueue(dataString);
+                lastSendTime = Time.time; // Update last send time immediately after enqueuing.  This is important to ensure the send interval is respected.
+            }
 
-            lastSendTime = Time.time;
         }
 
         private string GetPrefixForDataMode(DataMode mode)

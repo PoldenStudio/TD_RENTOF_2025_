@@ -19,6 +19,7 @@ public class SPItouchPanel : MonoBehaviour
     [SerializeField] private bool debugMode = false;
 
     private bool dataChanged = true;
+    private float lastDataSendTime = 0f;
 
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>();
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
@@ -115,10 +116,12 @@ public class SPItouchPanel : MonoBehaviour
             dataChanged = true;
         }
 
-        if (dataChanged && dataSender.ShouldSendData())
+        //  Check if data has changed AND if enough time has passed since the last send.
+        if (dataChanged && Time.time - lastDataSendTime >= dataSender.SendInterval)
         {
             SendDataToLEDStrip();
             dataChanged = false;
+            lastDataSendTime = Time.time; // Update the last send time.
         }
     }
 
