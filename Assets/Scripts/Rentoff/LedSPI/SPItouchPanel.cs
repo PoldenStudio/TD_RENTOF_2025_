@@ -1,9 +1,11 @@
-﻿using System;
+﻿
+
+using LEDControl;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
-using LEDControl;
-using System.Linq;
 
 public class SPItouchPanel : MonoBehaviour
 {
@@ -18,17 +20,15 @@ public class SPItouchPanel : MonoBehaviour
     [Header("Debug Settings")]
     [SerializeField] private bool debugMode = false;
 
-    private bool dataChanged = true;
     private float lastDataSendTime = 0f;
+    private const float sendDataInterval = 0.028f;
 
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>();
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
     private Dictionary<int, MoveDirection> lastSwipeDirection = new Dictionary<int, MoveDirection>();
 
-    //Pre-allocated StringBuilder
-    private readonly StringBuilder fullDataBuilder = new StringBuilder(4096); // Adjust capacity as needed
+    private readonly StringBuilder fullDataBuilder = new StringBuilder(4096);
 
-    //Cached values to avoid allocations during runtime
     private Color32 blackColor = new Color32(0, 0, 0, 255);
 
     private void Awake()
@@ -62,13 +62,11 @@ public class SPItouchPanel : MonoBehaviour
         {
             case StateManager.AppState.Idle:
             case StateManager.AppState.Transition:
-                dataChanged = true;
                 activeSegments.Clear();
                 lastSwipeTime.Clear();
                 lastSwipeDirection.Clear();
                 break;
             case StateManager.AppState.Active:
-                dataChanged = true;
                 break;
         }
     }
@@ -91,11 +89,9 @@ public class SPItouchPanel : MonoBehaviour
     {
         bool colorsChanged = false;
         if (stripDataManager != null) colorsChanged = stripDataManager.CheckForChanges();
-        if (colorsChanged) dataChanged = true;
     }
 
-
-    void FixedUpdate()
+    private void FixedUpdate()
     {
         bool shouldUpdateEffects = false;
 
@@ -117,22 +113,16 @@ public class SPItouchPanel : MonoBehaviour
             shouldUpdateEffects = true;
         }
 
-        if (shouldUpdateEffects)
-        {
-            dataChanged = true;
-        }
+        if (shouldUpdateEffects) { }
 
-        //  Check if data has changed AND if enough time has passed since the last send.
-        if (dataChanged && Time.time - lastDataSendTime >= dataSender.SendInterval)
+        if (Time.time - lastDataSendTime >= sendDataInterval)
         {
             SendDataToLEDStrip();
-            dataChanged = false;
-            lastDataSendTime = Time.time; // Update the last send time.
+            lastDataSendTime = Time.time;
         }
     }
 
-
-    public void UpdateSun()
+    private void UpdateSun()
     {
         sunManager.UpdateSunMovementPhase();
         for (int stripIndex = 0; stripIndex < stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
@@ -143,7 +133,6 @@ public class SPItouchPanel : MonoBehaviour
             }
         }
     }
-
 
     private void HandleSwipeDetected(SwipeDetector.SwipeData swipeData)
     {
@@ -183,7 +172,6 @@ public class SPItouchPanel : MonoBehaviour
                     effectsManager.AddComet(stripIndex, minSegment * stripDataManager.ledsPerSegment[stripIndex], stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
                     effectsManager.moveDirection = lastSwipeDirection[stripIndex];
                 }
-                dataChanged = true;
             }
         }
     }
@@ -202,7 +190,6 @@ public class SPItouchPanel : MonoBehaviour
                 if (segmentIndex >= 0 && segmentIndex < totalSegments)
                 {
                     Color32 currentColor = stripDataManager.GetSegmentColor(stripIndex, segmentIndex);
-
                     Color32 synthColor = stripDataManager.GetSynthColorForStrip(stripIndex);
 
                     if (isPressed)
@@ -220,11 +207,11 @@ public class SPItouchPanel : MonoBehaviour
                         else if (currentColor.Equals(blackColor))
                         {
                             stripDataManager.SetSegmentColor(stripIndex, segmentIndex, synthColor, debugMode);
+                            stripDataManager.SetSegmentColor(stripIndex, segmentIndex, synthColor, debugMode);
                             activeSegments[stripIndex].Add(segmentIndex);
                         }
                         effectsManager.UpdateLastTouchTime(stripIndex);
                     }
-                    dataChanged = true;
                 }
             }
         }
@@ -245,7 +232,14 @@ public class SPItouchPanel : MonoBehaviour
                 continue;
             }
 
-            string dataString = dataSender.GenerateDataString(stripIndex, stripDataManager, sunManager, effectsManager, colorProcessor, stateManager.CurrentState);
+            string dataString = dataSender.GenerateDataString(
+                stripIndex,
+                stripDataManager,
+                sunManager,
+                effectsManager,
+                colorProcessor,
+                stateManager.CurrentState
+            );
             fullDataBuilder.Append(dataString);
         }
         dataSender.EnqueueData(fullDataBuilder.ToString());
@@ -255,6 +249,5 @@ public class SPItouchPanel : MonoBehaviour
     {
         effectsManager.UpdateSpeed(speed);
         sunManager.UpdateSpeed(speed);
-        dataChanged = true;
     }
 }

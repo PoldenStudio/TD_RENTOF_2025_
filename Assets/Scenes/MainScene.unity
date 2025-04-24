@@ -1638,15 +1638,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   synthLedCountBase: 30
   speedLedCountFactor: 1.5
-  speedBrightnessFactor: 5
-  tailIntensity: 0.7
+  speedBrightnessFactor: 1.5
+  tailIntensity: 0.5
   moveDirection: 0
   toggleTouchMode: 0
   startFromEnd: 1
   stationaryBrightnessFactor: 1
   currentSpeedRaw: 1
   MultiplySpeed: 1
-  baseMovementSpeed: 10
+  baseMovementSpeed: 20
   dataSender: {fileID: 1299263587}
   stripDataManager: {fileID: 770569964}
   colorProcessor: {fileID: 1299263585}
@@ -1690,10 +1690,10 @@ MonoBehaviour:
       rgba: 4286282619
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4278190335
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4285164138
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4286085240
@@ -1702,10 +1702,10 @@ MonoBehaviour:
       rgba: 4294967295
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4288980132
+      rgba: 4278190335
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294967295
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4294966784
@@ -1714,10 +1714,10 @@ MonoBehaviour:
       rgba: 4278518015
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4294931456
+      rgba: 4278190335
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4278321407
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
@@ -3012,7 +3012,7 @@ MonoBehaviour:
     - startTime: 25
       endTime: 35
       sunMode: 0
-      startPosition: 0.5
+      startPosition: 0
     - startTime: 45
       endTime: 55
       sunMode: 2
@@ -4891,27 +4891,27 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionIdleToActiveDuration: 2
+  transitionIdleToActiveDuration: 6
   transitionActiveToIdle_R:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
       time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
+      value: 1
+      inSlope: 0
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.3066743
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -4921,21 +4921,21 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
       time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
+      value: 1
+      inSlope: 0
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.3066743
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -4945,21 +4945,21 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
       time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
+      value: 1
+      inSlope: 0
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.3066743
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -4969,6 +4969,15 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
       value: 1
       inSlope: 0
       outSlope: 0
@@ -4976,19 +4985,10 @@ MonoBehaviour:
       weightedMode: 0
       inWeight: 0
       outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.3066743
-      outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdleDuration: 2
+  transitionActiveToIdleDuration: 1
   idleMode: 1
   wasIdled: 0
   byteArrayFilePath: keys.dat

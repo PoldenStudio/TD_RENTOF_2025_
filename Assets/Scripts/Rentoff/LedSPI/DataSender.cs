@@ -22,7 +22,7 @@ namespace LEDControl
         private SerialPort serialPort;
         private float lastSendTime = 0f;
         [Tooltip("Minimum time in seconds between sending data.  Adjust to prevent overwhelming the serial connection.")]
-        [SerializeField] private float sendInterval = 0.028f;
+        [SerializeField] public float sendInterval = 0.028f;
 
         private Dictionary<int, string> previousGlobalData = new();
         private Dictionary<int, string> previousSegmentData = new();
@@ -36,7 +36,7 @@ namespace LEDControl
 
         private readonly StringBuilder globalDataBuilder = new StringBuilder(2048);
         private readonly StringBuilder segmentDataBuilder = new StringBuilder(2048);
-        private readonly StringBuilder allDataBuilder = new StringBuilder(4096); 
+        private readonly StringBuilder allDataBuilder = new StringBuilder(4096);
 
         private readonly string[] dataModePrefixes = new string[4];
         private string clearCommand;
@@ -78,7 +78,6 @@ namespace LEDControl
                     {
                         serialPort.Open();
                     }
-
 
                     if (debugMode)
                         Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
@@ -122,7 +121,6 @@ namespace LEDControl
                     {
                         try { serialPort?.Close(); } catch { }
                     }
-
 
                     Thread.Sleep(500);
 
@@ -215,7 +213,6 @@ namespace LEDControl
                 sendQueue.Enqueue(dataString);
                 lastSendTime = Time.time;
             }
-
         }
 
         private string GetPrefixForDataMode(DataMode mode)
@@ -362,7 +359,6 @@ namespace LEDControl
             globalDataBuilder.Append("\r\n");
 
             return globalDataBuilder.ToString();
-
         }
 
         public string GenerateAllDataString(StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)

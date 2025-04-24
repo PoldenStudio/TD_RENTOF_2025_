@@ -197,7 +197,7 @@ public class StateManager : MonoBehaviour
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Idle);
 
-        ledController?.StartTransitionToIdle();
+        //ledController?.StartTransitionToIdle();
 
         if (ledController != null)
         {

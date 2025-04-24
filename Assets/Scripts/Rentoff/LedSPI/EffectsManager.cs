@@ -1,41 +1,25 @@
 ﻿using UnityEngine;
 using System;
-using System.Text;
 using System.Collections.Generic;
+using System.Text;
 using System.Linq;
-using System.IO;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
+using LEDControl;
 
 namespace LEDControl
 {
     public class EffectsManager : MonoBehaviour
     {
         [Header("Speed Synth Mode Settings")]
-        [Tooltip("Base length of the comet in LEDs")]
         public int synthLedCountBase = 5;
-        [Tooltip("How much speed affects the comet length")]
         public float speedLedCountFactor = 0.5f;
-        [Tooltip("How much speed affects brightness")]
         public float speedBrightnessFactor = 1.5f;
-        [Range(0f, 1f)]
-        [Tooltip("Intensity of the comet tail")]
-        public float tailIntensity = 0.7f;
-        [Tooltip("Default direction of movement")]
+        [Range(0f, 1f)] public float tailIntensity = 0.7f;
         public MoveDirection moveDirection = MoveDirection.Forward;
-        [Tooltip("Whether to toggle touch mode")]
         public bool toggleTouchMode = false;
-        [Tooltip("Whether comets start from the end of the strip")]
         public bool startFromEnd = false;
-        [Range(0f, 1f)]
-        [Tooltip("Brightness factor when comet is stationary")]
-        public float stationaryBrightnessFactor = 0.5f;
-        [Tooltip("Raw speed value")]
+        [Range(0f, 1f)] public float stationaryBrightnessFactor = 0.5f;
         public float currentSpeedRaw = 1f;
-        [Tooltip("Speed multiplier")]
         public float MultiplySpeed = 1f;
-        [Tooltip("Base movement speed")]
         public float baseMovementSpeed = 10f;
 
         public float CurrentCometSpeed => currentSpeedRaw * MultiplySpeed;
@@ -45,7 +29,7 @@ namespace LEDControl
         private Dictionary<int, Color32[]> pixelCache = new();
         private Dictionary<int, string> hexCache = new();
         private Dictionary<int, float> lastUpdateTime = new();
-        private float cacheLifetime = 0.02f; // Уменьшили время жизни кэша
+        private float cacheLifetime = 0.05f;
 
         private Dictionary<int, StringBuilder> stringBuilderCache = new();
         private Dictionary<int, List<Comet>> stripComets = new();
@@ -75,7 +59,7 @@ namespace LEDControl
             lastUpdateTime.Clear();
         }
 
-        private void Update()
+        private void FixedUpdate()
         {
             foreach (var stripIndex in stripComets.Keys)
             {
@@ -181,7 +165,7 @@ namespace LEDControl
             float direction = CurrentCometSpeed >= 0 ? 1f : -1f;
             if (startFromEnd) direction *= -1;
 
-            float baseBrightness = 1.0f; // Увеличили базовую яркость
+            float baseBrightness = 0.8f;
 
             Comet newComet = new Comet(startPos, color, dynamicLength, baseBrightness, direction, totalLeds, tailIntensity);
             comets.Add(newComet);
@@ -190,7 +174,6 @@ namespace LEDControl
             pixelCache.Remove(stripIndex);
             hexCache.Remove(stripIndex);
             lastUpdateTime.Remove(stripIndex);
-
 
             Debug.LogFormat("AddComet: stripIndex={0}, position={1}, color=({2},{3},{4},{5}), length={6}, brightness={7}, direction={8}, totalLeds={9}, tailIntensity={10}",
                 stripIndex, startPos, color.r, color.g, color.b, color.a, dynamicLength, baseBrightness, direction, totalLeds, tailIntensity);
@@ -206,6 +189,7 @@ namespace LEDControl
             return true;
         }
 
+        // --- Изменения для полной передачи данных без обрезки нулей ---
         public string GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             if (hexCache.TryGetValue(stripIndex, out string cachedHex) &&
@@ -225,7 +209,8 @@ namespace LEDControl
 
             if (!stripComets.TryGetValue(stripIndex, out List<Comet> comets) || comets.All(c => !c.isActive))
             {
-                string emptyHex = OptimizeHexString("", new string('0', hexPerPixel), hexPerPixel);
+                int hexLength = totalLEDs * hexPerPixel;
+                string emptyHex = new string('0', hexLength);
                 hexCache[stripIndex] = emptyHex;
                 lastUpdateTime[stripIndex] = Time.time;
                 return emptyHex;
@@ -233,15 +218,11 @@ namespace LEDControl
 
             Color32[] pixelColors = GetPixelBuffer(stripIndex, totalLEDs, blackColor);
 
-            var activeComets = comets.Where(c => c.isActive).ToList();
-
-            foreach (Comet comet in activeComets)
+            foreach (Comet comet in comets.Where(c => c.isActive))
             {
                 float dynamicBrightness = comet.brightness;
-
                 float speedDifference = Mathf.Abs(CurrentCometSpeed);
-                dynamicBrightness += speedDifference * 1.5f; // Увеличили коэффициент для speedDifference
-
+                dynamicBrightness += speedDifference * 0.5f;
                 dynamicBrightness = Mathf.Clamp01(dynamicBrightness * stripBrightness);
 
                 for (int ledIndex = 0; ledIndex < totalLEDs; ledIndex++)
@@ -261,10 +242,34 @@ namespace LEDControl
                 }
             }
 
-            string result = GenerateOptimizedHexString(pixelColors, mode, colorProcessor, stripIndex);
+            string result = GenerateRawHexString(pixelColors, mode, colorProcessor, stripIndex);
             hexCache[stripIndex] = result;
             lastUpdateTime[stripIndex] = Time.time;
             return result;
+        }
+
+        private string GenerateRawHexString(Color32[] pixelColors, DataMode mode, ColorProcessor colorProcessor, int stripIndex)
+        {
+            int totalLEDs = pixelColors.Length;
+            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
+            StringBuilder sb = GetStringBuilder(totalLEDs * hexPerPixel);
+
+            float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
+            float stripGamma = stripDataManager.GetStripGamma(stripIndex);
+            bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
+
+            for (int i = 0; i < totalLEDs; ++i)
+            {
+                Color32 pixelColor = pixelColors[i];
+                string hexColor = mode switch
+                {
+                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
+                    DataMode.RGB => colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
+                    _ => colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
+                };
+                sb.Append(hexColor);
+            }
+            return sb.ToString();
         }
 
         private StringBuilder GetStringBuilderForStrip(int stripIndex)
@@ -303,53 +308,6 @@ namespace LEDControl
                 sb.Clear();
             }
             return sb;
-        }
-
-        private string GenerateOptimizedHexString(Color32[] pixelColors, DataMode mode, ColorProcessor colorProcessor, int stripIndex)
-        {
-            int totalLEDs = pixelColors.Length;
-            int hexPerPixel = (mode == DataMode.RGBW ? 8 : mode == DataMode.RGB ? 6 : 2);
-            StringBuilder sb = GetStringBuilder(totalLEDs * hexPerPixel);
-
-            float stripBrightness = stripDataManager.GetStripBrightness(stripIndex);
-            float stripGamma = stripDataManager.GetStripGamma(stripIndex);
-            bool stripGammaEnabled = stripDataManager.IsGammaCorrectionEnabled(stripIndex);
-
-            for (int i = 0; i < totalLEDs; ++i)
-            {
-                Color32 pixelColor = pixelColors[i];
-                string hexColor = mode switch
-                {
-                    DataMode.RGBW => colorProcessor.ColorToHexRGBW(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
-                    DataMode.RGB => colorProcessor.ColorToHexRGB(pixelColor, pixelColor, pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
-                    _ => colorProcessor.ColorToHexMonochrome(pixelColor, stripBrightness, stripGamma, stripGammaEnabled),
-                };
-                sb.Append(hexColor);
-            }
-            return OptimizeHexString(sb.ToString(), new string('0', hexPerPixel), hexPerPixel);
-        }
-
-        public string OptimizeHexString(string hexString, string blackHex, int hexPerPixel)
-        {
-            if (string.IsNullOrEmpty(hexString)) return "";
-            if (hexPerPixel <= 0) return hexString;
-            int totalPixels = hexString.Length / hexPerPixel;
-            if (totalPixels == 0) return "";
-
-            int lastNonBlack = -1;
-            for (int i = totalPixels - 1; i >= 0; i--)
-            {
-                int startIndex = i * hexPerPixel;
-                if (startIndex + hexPerPixel <= hexString.Length &&
-                    hexString.Substring(startIndex, hexPerPixel) != blackHex)
-                {
-                    lastNonBlack = i;
-                    break;
-                }
-            }
-
-            if (lastNonBlack == -1) return "";
-            return hexString.Substring(0, (lastNonBlack + 1) * hexPerPixel);
         }
     }
 }
