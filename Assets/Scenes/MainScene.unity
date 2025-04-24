@@ -1643,7 +1643,7 @@ MonoBehaviour:
   moveDirection: 0
   toggleTouchMode: 0
   startFromEnd: 1
-  stationaryBrightnessFactor: 0.8
+  stationaryBrightnessFactor: 1
   currentSpeedRaw: 1
   MultiplySpeed: 1
   baseMovementSpeed: 10

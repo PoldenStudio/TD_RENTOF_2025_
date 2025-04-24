@@ -188,12 +188,12 @@ namespace LEDControl
                 moveDirection = MoveDirection.Backward;
             }
 
-            // Set the direction based on current speed and settings
             float direction = CurrentCometSpeed >= 0 ? 1f : -1f;
             if (startFromEnd) direction *= -1;
 
-            // Create the new comet with more parameters
-            Comet newComet = new Comet(startPos, color, dynamicLength, brightness, direction, totalLeds, tailIntensity);
+            float baseBrightness = 0.8f;
+
+            Comet newComet = new Comet(startPos, color, dynamicLength, baseBrightness, direction, totalLeds, tailIntensity);
             comets.Add(newComet);
             lastTouchTimes[stripIndex] = Time.time;
 
@@ -210,13 +210,11 @@ namespace LEDControl
 
         public bool CheckForChanges()
         {
-            // Check for any changes that would require updating the display
             return true;
         }
 
         public string GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
-            // Use cached data if it's still valid
             if (hexCache.TryGetValue(stripIndex, out string cachedHex) &&
                 lastUpdateTime.TryGetValue(stripIndex, out float lastUpdate) &&
                 Time.time - lastUpdate < cacheLifetime)
@@ -241,36 +239,23 @@ namespace LEDControl
                 return emptyHex;
             }
 
-            // Get pixel buffer for this strip
             Color32[] pixelColors = GetPixelBuffer(stripIndex, totalLEDs, blackColor);
 
-            // Filter active comets
             var activeComets = comets.Where(c => c.isActive).ToList();
 
-            // Apply each comet's colors to the buffer
             foreach (Comet comet in activeComets)
             {
                 float dynamicBrightness = comet.brightness;
 
-                // Apply speed brightness multiplier
-                float speedBrightnessMultiplier = 1f + Mathf.Abs(CurrentCometSpeed) * speedBrightnessFactor;
-                dynamicBrightness *= speedBrightnessMultiplier;
+                float speedDifference = Mathf.Abs(CurrentCometSpeed) - 1f; 
+                dynamicBrightness += speedDifference * 0.5f;
 
-                // Apply stationary brightness reduction if needed
-                if (!comet.isMoving)
-                {
-                    dynamicBrightness *= stationaryBrightnessFactor;
-                }
-
-                // Ensure brightness is properly clamped
                 dynamicBrightness = Mathf.Clamp01(dynamicBrightness * stripBrightness);
 
-                // Calculate color for each LED affected by this comet
                 for (int ledIndex = 0; ledIndex < totalLEDs; ledIndex++)
                 {
                     Color32 cometColor = comet.GetColorAtLed(ledIndex, dynamicBrightness);
 
-                    // Only update if this LED has some color
                     if (cometColor.r > 0 || cometColor.g > 0 || cometColor.b > 0)
                     {
                         Color32 currentColor = pixelColors[ledIndex];
@@ -284,7 +269,6 @@ namespace LEDControl
                 }
             }
 
-            // Generate and cache the hex string
             string result = GenerateOptimizedHexString(pixelColors, mode, colorProcessor, stripIndex);
             hexCache[stripIndex] = result;
             lastUpdateTime[stripIndex] = Time.time;
@@ -308,7 +292,6 @@ namespace LEDControl
                 pixelCache[stripIndex] = pixelColors;
             }
 
-            // Reset buffer to black
             for (int i = 0; i < totalLEDs; i++)
             {
                 pixelColors[i] = defaultColor;
