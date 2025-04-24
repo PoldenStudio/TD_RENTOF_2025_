@@ -35,6 +35,8 @@ namespace LEDControl
     {
         public Color32 warmColor = new Color32(255, 180, 0, 255);
         public Color32 coldColor = new Color32(0, 150, 255, 255);
+        public Color32 gradientStartColor = new Color32(255, 0, 0, 255);
+        public Color32 gradientEndColor = new Color32(0, 0, 255, 255);
     }
 
     [Serializable]
@@ -297,7 +299,23 @@ namespace LEDControl
             {
                 SunMode.Warm => sunColorSettings[stripIndex].warmColor,
                 SunMode.Cold => sunColorSettings[stripIndex].coldColor,
+                SunMode.Gradient => sunColorSettings[stripIndex].gradientStartColor, // Will be blended in SunManager
                 _ => Color.white
+            };
+        }
+
+        public Color32 GetSunEndColorForStrip(int stripIndex, SunMode sunMode)
+        {
+            if (stripIndex < 0 || stripIndex >= sunColorSettings.Count)
+            {
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return Color.white;
+            }
+
+            return sunMode switch
+            {
+                SunMode.Gradient => sunColorSettings[stripIndex].gradientEndColor,
+                _ => GetSunColorForStrip(stripIndex, sunMode) // For non-gradient modes, return the same color
             };
         }
 
@@ -367,7 +385,9 @@ namespace LEDControl
             for (int i = 0; i < sunColorSettings.Count; i++)
             {
                 if (sunColorSettings[i].warmColor.IsDifferent(previousSunColorSettings[i].warmColor) ||
-                    sunColorSettings[i].coldColor.IsDifferent(previousSunColorSettings[i].coldColor)) { colorsChanged = true; break; }
+                    sunColorSettings[i].coldColor.IsDifferent(previousSunColorSettings[i].coldColor) ||
+                    sunColorSettings[i].gradientStartColor.IsDifferent(previousSunColorSettings[i].gradientStartColor) ||
+                    sunColorSettings[i].gradientEndColor.IsDifferent(previousSunColorSettings[i].gradientEndColor)) { colorsChanged = true; break; }
             }
 
             for (int i = 0; i < sunStripSettings.Count; i++)
@@ -532,7 +552,6 @@ public class StripDataManagerEditor : Editor
                 SerializedProperty segmentSettingProp = ledsPerSegmentProperty.GetArrayElementAtIndex(stripIndex);
                 EditorGUILayout.PropertyField(segmentSettingProp, new GUIContent("Диодов в сегменте"));
 
-
                 if (displayMode == LEDControl.DisplayMode.GlobalColor)
                 {
                     if (dataMode == LEDControl.DataMode.Monochrome1Color || dataMode == LEDControl.DataMode.Monochrome2Color)
@@ -559,13 +578,22 @@ public class StripDataManagerEditor : Editor
                 else if (displayMode == LEDControl.DisplayMode.SunMovement)
                 {
                     SerializedProperty sunModeProp = sunModesProperty.GetArrayElementAtIndex(stripIndex);
-                    EditorGUILayout.PropertyField(sunModeProp, new GUIContent("Режим солнца (Warm/Cold)"));
+                    EditorGUILayout.PropertyField(sunModeProp, new GUIContent("Режим солнца (Warm/Cold/Gradient)"));
 
                     SerializedProperty sunColorSettingsProp = sunColorSettingsProperty.GetArrayElementAtIndex(stripIndex);
                     SerializedProperty warmColorProp = sunColorSettingsProp.FindPropertyRelative("warmColor");
                     SerializedProperty coldColorProp = sunColorSettingsProp.FindPropertyRelative("coldColor");
+                    SerializedProperty gradientStartColorProp = sunColorSettingsProp.FindPropertyRelative("gradientStartColor");
+                    SerializedProperty gradientEndColorProp = sunColorSettingsProp.FindPropertyRelative("gradientEndColor");
+
                     EditorGUILayout.PropertyField(warmColorProp, new GUIContent("Цвет тёплого солнца"));
                     EditorGUILayout.PropertyField(coldColorProp, new GUIContent("Цвет холодного солнца"));
+
+                    if ((SunManager.SunMode)sunModeProp.enumValueIndex == SunManager.SunMode.Gradient)
+                    {
+                        EditorGUILayout.PropertyField(gradientStartColorProp, new GUIContent("Начальный цвет градиента"));
+                        EditorGUILayout.PropertyField(gradientEndColorProp, new GUIContent("Конечный цвет градиента"));
+                    }
 
                     SerializedProperty sunStripSettingsProp = sunStripSettingsProperty.GetArrayElementAtIndex(stripIndex);
                     SerializedProperty pixelCountProp = sunStripSettingsProp.FindPropertyRelative("pixelCount");
@@ -609,3 +637,11 @@ public class StripDataManagerEditor : Editor
     }
 }
 #endif
+
+public static class ColorExtensions
+{
+    public static bool IsDifferent(this Color32 color1, Color32 color2)
+    {
+        return color1.r != color2.r || color1.g != color2.g || color1.b != color2.b || color1.a != color2.a;
+    }
+}

@@ -1667,7 +1667,7 @@ MonoBehaviour:
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 02000000020000000200000001000000
-  currentSunModes: 00000000000000000000000000000000
+  currentSunModes: 02000000000000000000000000000000
   stripSettings:
   - brightness: 1
     gammaValue: 2.2
@@ -1688,24 +1688,48 @@ MonoBehaviour:
     coldColor:
       serializedVersion: 2
       rgba: 4286282619
+    gradientStartColor:
+      serializedVersion: 2
+      rgba: 4278190335
+    gradientEndColor:
+      serializedVersion: 2
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4286085240
     coldColor:
       serializedVersion: 2
       rgba: 4294967295
+    gradientStartColor:
+      serializedVersion: 2
+      rgba: 4278190335
+    gradientEndColor:
+      serializedVersion: 2
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4294966784
     coldColor:
       serializedVersion: 2
       rgba: 4278518015
+    gradientStartColor:
+      serializedVersion: 2
+      rgba: 4278190335
+    gradientEndColor:
+      serializedVersion: 2
+      rgba: 4294901760
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
     coldColor:
       serializedVersion: 2
       rgba: 4294940160
+    gradientStartColor:
+      serializedVersion: 2
+      rgba: 4278190335
+    gradientEndColor:
+      serializedVersion: 2
+      rgba: 4294901760
   sunStripSettings:
   - pixelCount: 10
   - pixelCount: 10
@@ -2984,6 +3008,7 @@ MonoBehaviour:
     - startTime: 0
       endTime: 170
       sunMode: 1
+      startPosition: 0
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   activeSunSettings:
@@ -2991,13 +3016,16 @@ MonoBehaviour:
     intervals:
     - startTime: 0
       endTime: 40
-      sunMode: 0
+      sunMode: 2
+      startPosition: 0
     - startTime: 60
       endTime: 80
       sunMode: 1
+      startPosition: 0
     - startTime: 100
       endTime: 120
       sunMode: 1
+      startPosition: 0
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   sunFadeDuration: 1

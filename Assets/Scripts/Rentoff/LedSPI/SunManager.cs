@@ -56,9 +56,9 @@ namespace LEDControl
         public enum SunMode
         {
             Warm,
-            Cold
+            Cold,
+            Gradient
         }
-
 
         [Serializable]
         public struct TimeInterval
@@ -66,6 +66,7 @@ namespace LEDControl
             public float startTime;
             public float endTime;
             public SunMode sunMode;
+            [Range(0f, 1f)] public float startPosition; // Normalized position (0-1)
         }
 
         [Serializable]
@@ -333,6 +334,7 @@ namespace LEDControl
 
                 bool isActiveTime = false;
                 SunMode currentSunMode = SunMode.Warm;
+                float startPosition = 0f;
 
                 foreach (var interval in settingsRef.intervals)
                 {
@@ -342,9 +344,13 @@ namespace LEDControl
                     {
                         isActiveTime = true;
                         currentSunMode = interval.sunMode;
+                        startPosition = interval.startPosition;
                         float intervalDuration = interval.endTime - interval.startTime;
                         float activeTime = currentTime - interval.startTime;
                         float progress = Mathf.Clamp01(activeTime / intervalDuration);
+
+                        // Adjust progress based on start position
+                        progress = startPosition + progress * (1f - startPosition);
 
                         int stripPixelCount = stripDataManager.GetSunPixelCountForStrip(stripIndex);
                         float sunRadius = Mathf.Max(1f, stripPixelCount) * 1f;
@@ -367,6 +373,7 @@ namespace LEDControl
 
                 StringBuilder frameHexBuilder = new(totalLEDs * hexPerPixel);
                 Color32 sunColor = stripDataManager.GetSunColorForStrip(stripIndex, currentSunMode);
+                Color32 sunEndColor = stripDataManager.GetSunEndColorForStrip(stripIndex, currentSunMode);
 
                 if (!isActiveTime)
                 {
@@ -379,9 +386,14 @@ namespace LEDControl
                 {
                     for (int i = 0; i < totalLEDs; i++)
                     {
-                        pixelColor.r = (byte)(sunColor.r * pixelBrightness[i] / 255f);
-                        pixelColor.g = (byte)(sunColor.g * pixelBrightness[i] / 255f);
-                        pixelColor.b = (byte)(sunColor.b * pixelBrightness[i] / 255f);
+                        float normalizedPos = (float)i / totalLEDs;
+                        Color32 blendedColor = currentSunMode == SunMode.Gradient
+                            ? Color32.Lerp(sunColor, sunEndColor, normalizedPos)
+                            : sunColor;
+
+                        pixelColor.r = (byte)(blendedColor.r * pixelBrightness[i] / 255f);
+                        pixelColor.g = (byte)(blendedColor.g * pixelBrightness[i] / 255f);
+                        pixelColor.b = (byte)(blendedColor.b * pixelBrightness[i] / 255f);
 
                         string pixelHex = "";
 
