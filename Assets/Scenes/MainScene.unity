@@ -497,7 +497,7 @@ MonoBehaviour:
   dataSenderPortName: COM23
   dataSenderBaudRate: 921600
   loopMidiDeviceId: M1-P27-O0
-  dmxComPortName: COM15
+  dmxComPortName: COM10
   dmxBaudRate: 250000
   targetDisplayId: 0
 --- !u!114 &42588769
@@ -1636,9 +1636,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd463a62003821847914e5abaa37cd9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  synthLedCountBase: 180
+  synthLedCountBase: 30
   speedLedCountFactor: 1.5
-  speedBrightnessFactor: 1.5
+  speedBrightnessFactor: 5
   tailIntensity: 0.7
   moveDirection: 0
   toggleTouchMode: 0
@@ -1667,7 +1667,7 @@ MonoBehaviour:
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 02000000020000000200000001000000
-  currentSunModes: 02000000000000000000000000000000
+  currentSunModes: 02000000020000000200000000000000
   stripSettings:
   - brightness: 1
     gammaValue: 2.2
@@ -1690,10 +1690,10 @@ MonoBehaviour:
       rgba: 4286282619
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4294967295
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4285164138
   - warmColor:
       serializedVersion: 2
       rgba: 4286085240
@@ -1702,10 +1702,10 @@ MonoBehaviour:
       rgba: 4294967295
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4288980132
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4294967295
   - warmColor:
       serializedVersion: 2
       rgba: 4294966784
@@ -1714,10 +1714,10 @@ MonoBehaviour:
       rgba: 4278518015
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4294931456
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4278321407
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
@@ -3006,8 +3006,16 @@ MonoBehaviour:
     baseCycleLength: 184
     intervals:
     - startTime: 0
-      endTime: 170
+      endTime: 10
       sunMode: 1
+      startPosition: 0
+    - startTime: 25
+      endTime: 35
+      sunMode: 0
+      startPosition: 0.5
+    - startTime: 45
+      endTime: 55
+      sunMode: 2
       startPosition: 0
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
