@@ -4891,7 +4891,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionIdleToActiveDuration: 6
+  transitionIdleToActiveDuration: 4
   transitionActiveToIdle_R:
     serializedVersion: 2
     m_Curve:
@@ -4988,7 +4988,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdleDuration: 1
+  transitionActiveToIdleDuration: 3
   idleMode: 1
   wasIdled: 0
   byteArrayFilePath: keys.dat
