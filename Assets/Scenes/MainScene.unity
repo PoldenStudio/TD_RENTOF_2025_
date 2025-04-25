@@ -3732,7 +3732,7 @@ MonoBehaviour:
   sunFadeOutOnTransitionDuration: 0.5
   idleTimeout: 180
   delayBeforeVideoSwitch: 5
-  delayBeforeCurtainFadeOut: 5
+  delayBeforeCurtainFadeOut: 2
 --- !u!114 &1213853306
 MonoBehaviour:
   m_ObjectHideFlags: 0

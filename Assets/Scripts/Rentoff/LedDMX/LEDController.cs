@@ -802,7 +802,7 @@ namespace LEDControl
             dmxCommunicator.SendFrame(FrameBuffer);
         }
 
-        public void StartTransitionToActive()
+        public void StartFadeIn()
         {
             if (currentTransitionCoroutine != null)
                 StopCoroutine(currentTransitionCoroutine);
@@ -813,10 +813,17 @@ namespace LEDControl
                 transitionIdleToActive_B,
                 transitionIdleToActiveGlobalBrightness,
                 transitionIdleToActiveDuration,
-                true));
+                true,
+                (finalR, finalG, finalB, finalGlobal) => {
+                    // Сохраняем финальные коэффициенты для последующего использования
+                    currentRFactor = finalR;
+                    currentGFactor = finalG;
+                    currentBFactor = finalB;
+                    currentGlobalBrightnessFactor = finalGlobal;
+                }));
         }
 
-        public void StartTransitionToIdle()
+        public void StartFadeOut()
         {
             if (currentTransitionCoroutine != null)
                 StopCoroutine(currentTransitionCoroutine);
@@ -827,7 +834,14 @@ namespace LEDControl
                 transitionActiveToIdle_B,
                 transitionActiveToIdleGlobalBrightness,
                 transitionActiveToIdleDuration,
-                false));
+                false,
+                (finalR, finalG, finalB, finalGlobal) => {
+                    // После завершения fade out сбрасываем коэффициенты
+                    currentRFactor = 1f;
+                    currentGFactor = 1f;
+                    currentBFactor = 1f;
+                    currentGlobalBrightnessFactor = 1f;
+                }));
         }
 
         private IEnumerator TransitionCoroutine(
@@ -836,7 +850,8 @@ namespace LEDControl
             AnimationCurve curveB,
             AnimationCurve curveGlobalBrightness,
             float duration,
-            bool toActive)
+            bool toActive,
+            Action<float, float, float, float> onTransitionComplete)
         {
             float time = 0f;
 
@@ -845,34 +860,40 @@ namespace LEDControl
             float startB = currentBFactor;
             float startGlobal = currentGlobalBrightnessFactor;
 
+            float finalR = toActive ? 1f : 0f;
+            float finalG = toActive ? 1f : 0f;
+            float finalB = toActive ? 1f : 0f;
+            float finalGlobal = toActive ? 1f : 0f;
+
             while (time < duration)
             {
                 float normalizedTime = time / duration;
 
-                currentRFactor = Mathf.Lerp(startR, curveR.Evaluate(normalizedTime), normalizedTime);
-                currentGFactor = Mathf.Lerp(startG, curveG.Evaluate(normalizedTime), normalizedTime);
-                currentBFactor = Mathf.Lerp(startB, curveB.Evaluate(normalizedTime), normalizedTime);
-                currentGlobalBrightnessFactor = Mathf.Lerp(startGlobal, curveGlobalBrightness.Evaluate(normalizedTime), normalizedTime);
+                currentRFactor = Mathf.Lerp(startR, finalR, curveR.Evaluate(normalizedTime));
+                currentGFactor = Mathf.Lerp(startG, finalG, curveG.Evaluate(normalizedTime));
+                currentBFactor = Mathf.Lerp(startB, finalB, curveB.Evaluate(normalizedTime));
+                currentGlobalBrightnessFactor = Mathf.Lerp(startGlobal, finalGlobal, curveGlobalBrightness.Evaluate(normalizedTime));
 
                 time += Time.deltaTime;
                 yield return null;
             }
 
-            currentRFactor = toActive ? 1f : 0f;
-            currentGFactor = toActive ? 1f : 0f;
-            currentBFactor = toActive ? 1f : 0f;
-            currentGlobalBrightnessFactor = toActive ? 1f : 0f;
+            currentRFactor = finalR;
+            currentGFactor = finalG;
+            currentBFactor = finalB;
+            currentGlobalBrightnessFactor = finalGlobal;
 
+            onTransitionComplete?.Invoke(currentRFactor, currentGFactor, currentBFactor, currentGlobalBrightnessFactor);
             currentTransitionCoroutine = null;
         }
 
         public void SwitchToActiveJSON()
         {
             idleMode = false;
-/*            foreach (var strip in ledStrips)
+            foreach (var strip in ledStrips)
             {
                 strip.ResetFrames();
-            }*/
+            }
             confirmTime = false;
         }
         public void SwitchToIdleJSON()

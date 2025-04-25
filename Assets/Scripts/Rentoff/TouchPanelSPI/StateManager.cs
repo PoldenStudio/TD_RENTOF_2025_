@@ -129,7 +129,7 @@ public class StateManager : MonoBehaviour
         soundManager?.PlayCometSound();
         soundManager?.StartFadeOut(delayBeforeVideoSwitch);
 
-        ledController?.StartTransitionToActive();
+        ledController?.StartFadeIn();
 
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
@@ -162,6 +162,7 @@ public class StateManager : MonoBehaviour
 
         yield return videoPlayer.SwitchToDefaultMode();
         ledController?.SwitchToActiveJSON();
+        ledController?.StartFadeOut();
         soundManager?.ResetTimeCodeSounds();
         soundManager.SetSoundClip(soundManager.ActiveClip);
         soundManager?.StartFadeIn(fadeInDuration);
