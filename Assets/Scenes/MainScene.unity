@@ -414,6 +414,9 @@ MonoBehaviour:
   swipeProgressMultiplier: 1
   inactivityCloseDelay: 4
   oppositeSwipeTolerance: 0
+  smoothTimeNormal: 0.15
+  smoothTimeSwipeMin: 0.1
+  smoothTimeSwipeMax: 0.3
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
   stateManager: {fileID: 1213853305}
@@ -3870,7 +3873,7 @@ MonoBehaviour:
     baudRate: 115200
   - portName: COM6
     baudRate: 115200
-  debugMode: 1
+  debugMode: 0
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
 --- !u!114 &1299263588
@@ -4426,7 +4429,7 @@ MonoBehaviour:
   baseFramesPerSecond: 60
   frameSkip: 1
   debugText: {fileID: 0}
-  enableFrameDebug: 0
+  enableFrameDebug: 1
   globalBrightness: 1
   testModeCurve:
     serializedVersion: 2
@@ -4458,7 +4461,7 @@ MonoBehaviour:
   - name: LED Strip
     totalLEDs: 35
     ledsPerSegment: 1
-    dmxChannelOffset: 0
+    dmxChannelOffset: 1
     brightness: 3
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:

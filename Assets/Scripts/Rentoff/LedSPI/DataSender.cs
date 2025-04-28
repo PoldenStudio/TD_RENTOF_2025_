@@ -20,6 +20,25 @@ namespace LEDControl
 
     public class DataSender : MonoBehaviour
     {
+        private static DataSender instance;
+
+        public static DataSender Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = FindObjectOfType<DataSender>();
+                    if (instance == null)
+                    {
+                        GameObject obj = new GameObject("DataSender");
+                        instance = obj.AddComponent<DataSender>();
+                    }
+                }
+                return instance;
+            }
+        }
+
         [Header("Serial Port Settings")]
         public List<SerialPortConfig> portConfigs = new List<SerialPortConfig>()
         {
@@ -56,24 +75,36 @@ namespace LEDControl
 
         void Awake()
         {
-            portConfigs.Clear();
-            foreach (var config in Settings.Instance.dataSenderPortConfigs)
+            if (instance == null)
             {
-                portConfigs.Add(new SerialPortConfig
+                instance = this;
+                DontDestroyOnLoad(gameObject);
+
+                portConfigs.Clear();
+                foreach (var config in Settings.Instance.dataSenderPortConfigs)
                 {
-                    portName = config.portName,
-                    baudRate = config.baudRate
-                });
-            }
+                    portConfigs.Add(new SerialPortConfig
+                    {
+                        portName = config.portName,
+                        baudRate = config.baudRate
+                    });
+                }
 
-            for (int i = 0; i < dataModePrefixes.Length; i++)
+                portConfigs = portConfigs.GroupBy(pc => pc.portName).Select(g => g.First()).ToList();
+
+                for (int i = 0; i < dataModePrefixes.Length; i++)
+                {
+                    dataModePrefixes[i] = i.ToString() + ":";
+                }
+
+                clearCommand = "0:clear\r\n";
+
+                Initialize();
+            }
+            else if (instance != this)
             {
-                dataModePrefixes[i] = i.ToString() + ":";
+                Destroy(gameObject);
             }
-
-            clearCommand = "0:clear\r\n";
-
-            Initialize();
         }
 
         void OnDestroy()
@@ -83,7 +114,14 @@ namespace LEDControl
 
         public void Initialize()
         {
-            int portCount = portConfigs.Count;
+            if (serialPorts.Count > 0)
+            {
+                return;
+            }
+
+            var uniqueConfigs = portConfigs;
+
+            int portCount = uniqueConfigs.Count;
             serialPorts.Clear();
             sendQueues = new ConcurrentQueue<string>[portCount];
             threadRunning = new bool[portCount];
@@ -92,13 +130,11 @@ namespace LEDControl
             previousGlobalData.Clear();
             previousSegmentData.Clear();
 
-
-
             for (int i = 0; i < portCount; i++)
             {
                 try
                 {
-                    SerialPort serialPort = new SerialPort(portConfigs[i].portName, portConfigs[i].baudRate)
+                    SerialPort serialPort = new SerialPort(uniqueConfigs[i].portName, uniqueConfigs[i].baudRate)
                     {
                         ReadTimeout = 1000,
                         WriteTimeout = 1000
@@ -110,16 +146,17 @@ namespace LEDControl
                     serialLocks[i] = new object();
 
                     if (debugMode)
-                        Debug.Log($"[DataSender] Serial port {portConfigs[i].portName} opened successfully.");
+                        Debug.Log($"[DataSender] Serial port {uniqueConfigs[i].portName} opened successfully.");
 
                     threadRunning[i] = true;
-                    portThreads[i] = new Thread(() => SerialThreadLoop(i));
+                    int index = i;
+                    portThreads[i] = new Thread(() => SerialThreadLoop(index));
                     portThreads[i].IsBackground = true;
                     portThreads[i].Start();
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[DataSender] Failed to open serial port {portConfigs[i].portName}: {e.Message}");
+                    Debug.LogError($"[DataSender] Failed to open serial port {uniqueConfigs[i].portName}: {e.Message}");
                 }
             }
         }
@@ -161,6 +198,7 @@ namespace LEDControl
                 }
             }
         }
+
 
         public void SendString(int portIndex, string row)
         {
