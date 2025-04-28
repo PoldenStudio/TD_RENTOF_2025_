@@ -3,10 +3,12 @@ using LEDControl;
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class StateManager : MonoBehaviour
 {
     public enum AppState { Idle, Active, Transition }
+    public enum IdleTransitionMode { Curtain, ImageOverlay }
 
     public AppState CurrentState { get; private set; } = AppState.Idle;
 
@@ -14,7 +16,6 @@ public class StateManager : MonoBehaviour
     [SerializeField] private InitializePlayers videoPlayer;
     [SerializeField] private VideoPlaybackController playbackController;
     [SerializeField] private CurtainController curtainController;
-    //[SerializeField] private CometController cometController;
     [SerializeField] private LEDController ledController;
     [SerializeField] private SoundManager soundManager;
     [SerializeField] private SPItouchPanel spiTouchPanel;
@@ -31,8 +32,14 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float cometDelayInTransition = 1f;
     [SerializeField] private float sunFadeOutOnTransitionDuration = 0.5f;
     [SerializeField] private float idleTimeout = 180.0f;
-    [SerializeField] private float delayBeforeVideoSwitch = 1f; // задержка перед переключением видео
-    [SerializeField] private float delayBeforeCurtainFadeOut = 0.5f; // задержка перед закрытием шторки
+    [SerializeField] private float delayBeforeVideoSwitch = 1f;
+    [SerializeField] private float delayBeforeCurtainFadeOut = 0.5f;
+
+    [Header("Idle Image Overlay Transition")]
+    [SerializeField] private IdleTransitionMode idleTransitionMode = IdleTransitionMode.Curtain;
+    [SerializeField] private Image transitionImage;
+    [SerializeField] private float imageFadeDuration = 0.5f;
+    [SerializeField] private float imageHoldDuration = 1f;
 
     private float _lastInteractionTime;
 
@@ -42,41 +49,34 @@ public class StateManager : MonoBehaviour
     private void Awake()
     {
         if (effectsManager == null)
-        {
             effectsManager = GetComponent<EffectsManager>();
-            if (effectsManager == null)
-            {
-                Debug.LogError("[StateManager] EffectsManager not assigned and not found on GameObject!");
-            }
-        }
 
         if (swipeDetector == null)
-        {
             swipeDetector = GetComponent<SwipeDetector>();
-            if (swipeDetector == null)
-            {
-                Debug.LogError("[StateManager] SwipeDetector not assigned and not found in scene!");
-            }
-        }
     }
 
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.E))
-        {
             StartTransitionToIdle();
-        }
     }
 
-    void Start()
+    private void Start()
     {
         CurrentState = AppState.Idle;
         sunManager?.SetAppState(CurrentState);
         playbackController?.SetSwipeControlEnabled(false);
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
         curtainController.SetShouldPlayComet(false);
-
         _lastInteractionTime = Time.time;
+
+        if (transitionImage != null)
+        {
+            var col = transitionImage.color;
+            col.a = 0;
+            transitionImage.color = col;
+            transitionImage.gameObject.SetActive(false);
+        }
     }
 
     private void FixedUpdate()
@@ -146,19 +146,14 @@ public class StateManager : MonoBehaviour
                     float dynamicLedCount = Mathf.Max(1, Mathf.RoundToInt(effectsManager.synthLedCountBase + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedLedCountFactor));
                     float dynamicBrightness = Mathf.Clamp01(spiTouchPanel.stripDataManager.GetStripBrightness(stripIndex) + Mathf.Abs(effectsManager.CurrentCometSpeed) * effectsManager.speedBrightnessFactor);
                     effectsManager.AddComet(stripIndex, 0, spiTouchPanel.stripDataManager.GetSynthColorForStrip(stripIndex), dynamicLedCount, dynamicBrightness);
-                    Debug.Log("[StateManager] Comet starts travel");
                 }
             }
         }
 
         yield return new WaitForSeconds(delayBeforeVideoSwitch);
 
-
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Active);
-
-        //yield return new WaitForSeconds(cometDelayInTransition);
-
 
         yield return videoPlayer.SwitchToDefaultMode();
         ledController?.SwitchToActiveJSON();
@@ -179,7 +174,6 @@ public class StateManager : MonoBehaviour
 
         playbackController.SetSwipeControlEnabled(true);
         _lastInteractionTime = Time.time;
-        Debug.Log("[StateManager] Transition to Active mode completed.");
 
         curtainController.SetShouldPlayComet(false);
     }
@@ -192,13 +186,10 @@ public class StateManager : MonoBehaviour
         Debug.Log("[StateManager] Starting transition to Idle.");
 
         curtainController.SetShouldPlayComet(false);
-
         playbackController.SetSwipeControlEnabled(false);
 
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Idle);
-
-        //ledController?.StartTransitionToIdle();
 
         if (ledController != null)
         {
@@ -206,16 +197,69 @@ public class StateManager : MonoBehaviour
             ledController.SwitchToIdleJSON();
         }
 
+        switch (idleTransitionMode)
+        {
+            case IdleTransitionMode.Curtain:
+                yield return StartCoroutine(CurtainIdleTransition());
+                break;
+
+            case IdleTransitionMode.ImageOverlay:
+                yield return StartCoroutine(ImageOverlayIdleTransition());
+                break;
+        }
+
+        SetState(AppState.Idle, CurrentState);
+        CompleteTransitionToIdle();
+    }
+
+    private IEnumerator CurtainIdleTransition()
+    {
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
         soundManager?.StartFadeOut(0.2f);
         yield return videoPlayer.SwitchToIdleMode();
-        yield return null;
+    }
 
-        SetState(AppState.Idle, CurrentState);
-        CompleteTransitionToIdle();
+    private IEnumerator ImageOverlayIdleTransition()
+    {
+        if (transitionImage == null)
+        {
+            Debug.LogError("[StateManager] Transition image not assigned, falling back to curtain transition.");
+            yield return StartCoroutine(CurtainIdleTransition());
+            yield break;
+        }
+
+        transitionImage.gameObject.SetActive(true);
+
+        yield return StartCoroutine(FadeImage(true, imageFadeDuration));
+        yield return new WaitForSeconds(imageHoldDuration);
+
+        soundManager?.StartFadeOut(0.2f);
+        yield return videoPlayer.SwitchToIdleMode();
+
+        yield return StartCoroutine(FadeImage(false, imageFadeDuration));
+
+        transitionImage.gameObject.SetActive(false);
+    }
+
+    private IEnumerator FadeImage(bool fadeIn, float duration)
+    {
+        float timer = 0f;
+        Color startColor = transitionImage.color;
+        Color targetColor = startColor;
+        targetColor.a = fadeIn ? 1f : 0f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            float t = Mathf.Clamp01(timer / duration);
+            transitionImage.color = Color.Lerp(startColor, targetColor, t);
+            yield return null;
+        }
+
+        transitionImage.color = targetColor;
     }
 
     private void CompleteTransitionToIdle()
@@ -230,16 +274,13 @@ public class StateManager : MonoBehaviour
             for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
                 if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-                {
                     effectsManager?.ResetComets(stripIndex);
-                }
             }
         }
 
         soundManager.SetSoundClip(soundManager.IdleClip);
         soundManager?.StartFadeIn(soundFadeDuration);
 
-        Debug.Log("[StateManager] Transition to Idle mode completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
 
@@ -251,9 +292,7 @@ public class StateManager : MonoBehaviour
         sunManager?.SetAppState(CurrentState);
 
         if (CurrentState == AppState.Active)
-        {
             _lastInteractionTime = Time.time;
-        }
     }
 
     public void SwitchToIdleDirect(bool performTransition = true)
@@ -278,13 +317,10 @@ public class StateManager : MonoBehaviour
                 for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
                 {
                     if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-                    {
                         effectsManager?.ResetComets(stripIndex);
-                    }
                 }
             }
 
-            Debug.Log("[StateManager] Switched directly to Idle mode.");
             curtainController.SetOnCurtainFullCallback(OnCurtainFull);
         }
     }
@@ -298,7 +334,6 @@ public class StateManager : MonoBehaviour
         ledController.SwitchToIdleJSON();
         soundManager?.StartFadeOut(0.2f);
 
-        Debug.Log("[StateManager] Starting SwitchToIdle workflow.");
         playbackController.SetSwipeControlEnabled(false);
 
         curtainController.SetShouldPlayComet(false);
@@ -317,14 +352,12 @@ public class StateManager : MonoBehaviour
             for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
             {
                 if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-                {
                     effectsManager?.ResetComets(stripIndex);
-                }
             }
         }
+
         while (!slideCompleted) yield return null;
 
-        Debug.Log("[StateManager] SwitchToIdle workflow completed.");
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
 }

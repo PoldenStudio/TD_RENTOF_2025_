@@ -3766,6 +3766,10 @@ MonoBehaviour:
   idleTimeout: 180
   delayBeforeVideoSwitch: 5
   delayBeforeCurtainFadeOut: 2
+  idleTransitionMode: 1
+  transitionImage: {fileID: 2098835844}
+  imageFadeDuration: 0.5
+  imageHoldDuration: 1
 --- !u!114 &1213853306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5582,7 +5586,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 0
