@@ -1,5 +1,4 @@
-﻿using LEDControl;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -46,6 +45,12 @@ namespace LEDControl
         public int pixelCount = 10;
     }
 
+    [Serializable]
+    public class StripPortAssignment
+    {
+        public int portIndex = 0;
+    }
+
     [ExecuteInEditMode]
     public class StripDataManager : MonoBehaviour
     {
@@ -65,6 +70,7 @@ namespace LEDControl
 
         [Header("Strip-Specific Settings")]
         public List<StripSettings> stripSettings = new();
+        public List<StripPortAssignment> stripPortAssignments = new();
 
         [Header("Sun Color Settings (for strips in SunMovement mode)")]
         public List<SunColorSettings> sunColorSettings = new();
@@ -104,6 +110,7 @@ namespace LEDControl
         private List<SunColorSettings> previousSunColorSettings = new();
         private List<SunStripSettings> previousSunStripSettings = new();
         private List<int> previousLedsPerSegment = new();
+        private List<StripPortAssignment> previousStripPortAssignments = new();
 
         private void OnValidate()
         {
@@ -147,6 +154,12 @@ namespace LEDControl
             {
                 while (stripSettings.Count < totalLEDsPerStrip.Count) stripSettings.Add(new StripSettings());
                 while (stripSettings.Count > totalLEDsPerStrip.Count) stripSettings.RemoveAt(stripSettings.Count - 1);
+            }
+
+            if (stripPortAssignments.Count != totalLEDsPerStrip.Count)
+            {
+                while (stripPortAssignments.Count < totalLEDsPerStrip.Count) stripPortAssignments.Add(new StripPortAssignment());
+                while (stripPortAssignments.Count > totalLEDsPerStrip.Count) stripPortAssignments.RemoveAt(stripPortAssignments.Count - 1);
             }
 
             if (sunColorSettings.Count != totalLEDsPerStrip.Count)
@@ -193,6 +206,16 @@ namespace LEDControl
                 rgbStripSettings.Add(new RGBStripSettings() { globalColor = new Color32(255, 0, 0, 255), synthColor = new Color32(255, 255, 255, 255) });
 
             CachePreviousValues();
+        }
+
+        public int GetPortIndexForStrip(int stripIndex)
+        {
+            if (stripIndex < 0 || stripIndex >= stripPortAssignments.Count)
+            {
+                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
+                return 0;
+            }
+            return stripPortAssignments[stripIndex].portIndex;
         }
 
         public Color32 GetDefaultColor(int stripIndex)
@@ -589,7 +612,7 @@ public class StripDataManagerEditor : Editor
                     EditorGUILayout.PropertyField(warmColorProp, new GUIContent("Цвет тёплого солнца"));
                     EditorGUILayout.PropertyField(coldColorProp, new GUIContent("Цвет холодного солнца"));
 
-                    if ((SunManager.SunMode)sunModeProp.enumValueIndex == SunManager.SunMode.Gradient)
+                    //if ((SunManager.SunMode)sunModeProp.enumValueIndex == SunManager.SunMode.Gradient)
                     {
                         EditorGUILayout.PropertyField(gradientStartColorProp, new GUIContent("Начальный цвет градиента"));
                         EditorGUILayout.PropertyField(gradientEndColorProp, new GUIContent("Конечный цвет градиента"));

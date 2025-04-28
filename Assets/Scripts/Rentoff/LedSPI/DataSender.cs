@@ -11,28 +11,41 @@ using System.IO.Ports;
 
 namespace LEDControl
 {
+    [Serializable]
+    public class SerialPortConfig
+    {
+        public string portName = "COM6";
+        public int baudRate = 115200;
+    }
+
     public class DataSender : MonoBehaviour
     {
         [Header("Serial Port Settings")]
-        [SerializeField] private string portName = "COM6";
-        [SerializeField] private int baudRate = 115200;
+        public List<SerialPortConfig> portConfigs = new List<SerialPortConfig>()
+        {
+            new SerialPortConfig(),
+            new SerialPortConfig(),
+            new SerialPortConfig(),
+            new SerialPortConfig()
+        };
+
         [SerializeField] private bool debugMode = false;
         [SerializeField] private StripDataManager stripManager;
 
-        private SerialPort serialPort;
+        private List<SerialPort> serialPorts = new List<SerialPort>();
         private float lastSendTime = 0f;
         [Tooltip("Minimum time in seconds between sending data.  Adjust to prevent overwhelming the serial connection.")]
         [SerializeField] public float sendInterval = 0.028f;
 
-        private Dictionary<int, string> previousGlobalData = new();
-        private Dictionary<int, string> previousSegmentData = new();
+        private Dictionary<int, Dictionary<int, string>> previousGlobalData = new();
+        private Dictionary<int, Dictionary<int, string>> previousSegmentData = new();
 
-        private Thread portThread;
-        private volatile bool threadRunning = false;
-        private ConcurrentQueue<string> sendQueue = new ConcurrentQueue<string>();
+        private Thread[] portThreads;
+        private volatile bool[] threadRunning;
+        private ConcurrentQueue<string>[] sendQueues;
         private bool transfer = true;
 
-        private object serialLock = new object();
+        private object[] serialLocks;
 
         private readonly StringBuilder globalDataBuilder = new StringBuilder(2048);
         private readonly StringBuilder segmentDataBuilder = new StringBuilder(2048);
@@ -43,10 +56,16 @@ namespace LEDControl
 
         void Awake()
         {
-            portName = Settings.Instance.dataSenderPortName;
-            baudRate = Settings.Instance.dataSenderBaudRate;
+            portConfigs.Clear();
+            foreach (var config in Settings.Instance.dataSenderPortConfigs)
+            {
+                portConfigs.Add(new SerialPortConfig
+                {
+                    portName = config.portName,
+                    baudRate = config.baudRate
+                });
+            }
 
-            // Pre-format the data mode prefixes
             for (int i = 0; i < dataModePrefixes.Length; i++)
             {
                 dataModePrefixes[i] = i.ToString() + ":";
@@ -59,55 +78,66 @@ namespace LEDControl
 
         void OnDestroy()
         {
-            CloseSerialPort();
+            CloseSerialPorts();
         }
 
         public void Initialize()
         {
-            try
+            int portCount = portConfigs.Count;
+            serialPorts.Clear();
+            sendQueues = new ConcurrentQueue<string>[portCount];
+            threadRunning = new bool[portCount];
+            portThreads = new Thread[portCount];
+            serialLocks = new object[portCount];
+            previousGlobalData.Clear();
+            previousSegmentData.Clear();
+
+
+
+            for (int i = 0; i < portCount; i++)
             {
-                if (serialPort == null)
+                try
                 {
-                    serialPort = new SerialPort(portName, baudRate)
+                    SerialPort serialPort = new SerialPort(portConfigs[i].portName, portConfigs[i].baudRate)
                     {
                         ReadTimeout = 1000,
                         WriteTimeout = 1000
                     };
 
-                    lock (serialLock)
-                    {
-                        serialPort.Open();
-                    }
+                    serialPort.Open();
+                    serialPorts.Add(serialPort);
+                    sendQueues[i] = new ConcurrentQueue<string>();
+                    serialLocks[i] = new object();
 
                     if (debugMode)
-                        Debug.Log($"[DataSender] Serial port {portName} opened successfully.");
+                        Debug.Log($"[DataSender] Serial port {portConfigs[i].portName} opened successfully.");
 
-                    threadRunning = true;
-                    portThread = new Thread(SerialThreadLoop);
-                    portThread.IsBackground = true;
-                    portThread.Start();
+                    threadRunning[i] = true;
+                    portThreads[i] = new Thread(() => SerialThreadLoop(i));
+                    portThreads[i].IsBackground = true;
+                    portThreads[i].Start();
                 }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[DataSender] Failed to open serial port {portName}: {e.Message}");
+                catch (Exception e)
+                {
+                    Debug.LogError($"[DataSender] Failed to open serial port {portConfigs[i].portName}: {e.Message}");
+                }
             }
         }
 
-        private void SerialThreadLoop()
+        private void SerialThreadLoop(int portIndex)
         {
-            while (threadRunning)
+            while (threadRunning[portIndex])
             {
                 try
                 {
-                    if (serialPort != null && serialPort.IsOpen && sendQueue.TryDequeue(out string dataString))
+                    if (serialPorts[portIndex] != null && serialPorts[portIndex].IsOpen && sendQueues[portIndex].TryDequeue(out string dataString))
                     {
-                        lock (serialLock)
+                        lock (serialLocks[portIndex])
                         {
-                            serialPort.Write(dataString);
+                            serialPorts[portIndex].Write(dataString);
                         }
                         if (debugMode)
-                            Debug.Log($"[DataSender][Thread] Sent data: {dataString.Replace("\r\n", "\\r\\n")}");
+                            Debug.Log($"[DataSender][Thread] Sent data to {portConfigs[portIndex].portName}: {dataString.Replace("\r\n", "\\r\\n")}");
                     }
                     else
                     {
@@ -116,83 +146,88 @@ namespace LEDControl
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[DataSender][Thread] Serial port exception: {e.Message}");
-                    lock (serialLock)
+                    Debug.LogError($"[DataSender][Thread] Serial port {portConfigs[portIndex].portName} exception: {e.Message}");
+                    lock (serialLocks[portIndex])
                     {
-                        try { serialPort?.Close(); } catch { }
+                        try { serialPorts[portIndex]?.Close(); } catch { }
                     }
 
                     Thread.Sleep(500);
 
-                    lock (serialLock)
+                    lock (serialLocks[portIndex])
                     {
-                        try { serialPort?.Open(); } catch { }
+                        try { serialPorts[portIndex]?.Open(); } catch { }
                     }
-
                 }
             }
         }
 
-        public void SendString(string row)
+        public void SendString(int portIndex, string row)
         {
-            if (IsPortOpen())
+            if (portIndex >= 0 && portIndex < serialPorts.Count && IsPortOpen(portIndex))
             {
-                lock (serialLock)
+                lock (serialLocks[portIndex])
                 {
-                    serialPort.Write(row);
+                    serialPorts[portIndex].Write(row);
                 }
             }
             if (debugMode)
             {
-                Debug.Log($"[DataSender] SendString: {row}");
+                Debug.Log($"[DataSender] SendString to {portConfigs[portIndex].portName}: {row}");
             }
         }
 
-        public void CloseSerialPort()
+        public void CloseSerialPorts()
         {
-            threadRunning = false;
-
-            if (portThread != null && portThread.IsAlive)
+            for (int i = 0; i < threadRunning.Length; i++)
             {
-                portThread.Join(500);
+                threadRunning[i] = false;
             }
 
-            if (serialPort != null)
+            for (int i = 0; i < portThreads.Length; i++)
+            {
+                if (portThreads[i] != null && portThreads[i].IsAlive)
+                {
+                    portThreads[i].Join(500);
+                }
+            }
+
+            for (int i = 0; i < serialPorts.Count; i++)
             {
                 try
                 {
-                    if (serialPort.IsOpen)
+                    if (serialPorts[i] != null && serialPorts[i].IsOpen)
                     {
-                        for (int i = 0; i < 4; i++)
+                        for (int j = 0; j < 4; j++)
                         {
-                            SendString(dataModePrefixes[i] + "clear\r\n");
+                            SendString(i, dataModePrefixes[j] + "clear\r\n");
                         }
 
-                        lock (serialLock)
+                        lock (serialLocks[i])
                         {
-                            serialPort.Close();
+                            serialPorts[i].Close();
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"[DataSender] Error closing port: {e.Message}");
+                    Debug.LogWarning($"[DataSender] Error closing port {portConfigs[i].portName}: {e.Message}");
                 }
 
-                lock (serialLock)
+                lock (serialLocks[i])
                 {
-                    serialPort.Dispose();
+                    if (serialPorts[i] != null)
+                    {
+                        serialPorts[i].Dispose();
+                    }
                 }
-                serialPort = null;
             }
-
-            if (debugMode)
-                Debug.Log("[DataSender] Serial port closed and thread stopped.");
+            serialPorts.Clear();
         }
 
-        public bool IsPortOpen()
+        public bool IsPortOpen(int portIndex)
         {
-            return serialPort != null && serialPort.IsOpen;
+            return portIndex >= 0 && portIndex < serialPorts.Count && serialPorts[portIndex] != null && serialPorts[portIndex].IsOpen;
         }
 
         public bool ShouldSendData()
@@ -200,17 +235,17 @@ namespace LEDControl
             return Time.time - lastSendTime >= sendInterval;
         }
 
-        public void EnqueueData(string dataString)
+        public void EnqueueData(int portIndex, string dataString)
         {
             if (string.IsNullOrEmpty(dataString))
                 return;
 
             if (debugMode)
-                Debug.Log($"[DataSender] Enqueuing data: {dataString.Replace("\r\n", "\\r\\n")}");
+                Debug.Log($"[DataSender] Enqueuing data to {portConfigs[portIndex].portName}: {dataString.Replace("\r\n", "\\r\\n")}");
 
-            if (IsPortOpen())
+            if (IsPortOpen(portIndex))
             {
-                sendQueue.Enqueue(dataString);
+                sendQueues[portIndex].Enqueue(dataString);
                 lastSendTime = Time.time;
             }
         }
@@ -258,13 +293,20 @@ namespace LEDControl
             for (int i = 0; i < pixelsToGenerate; i++)
                 globalDataBuilder.Append(pixelHex);
 
+            if (!previousGlobalData.TryGetValue(stripIndex, out Dictionary<int, string> stripData))
+            {
+                stripData = new Dictionary<int, string>();
+                previousGlobalData[stripIndex] = stripData;
+            }
+
+            int portIndex = stripManager.GetPortIndexForStrip(stripIndex);
             int lastSentPixel = 0;
             string optimizedHex = OptimizeHexString(globalDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, pixelsToGenerate, ref lastSentPixel);
 
-            if (previousGlobalData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
+            if (stripData.TryGetValue(portIndex, out string prevHex) && prevHex == optimizedHex)
                 return "";
 
-            previousGlobalData[stripIndex] = optimizedHex;
+            stripData[portIndex] = optimizedHex;
             return optimizedHex;
         }
 
@@ -295,13 +337,20 @@ namespace LEDControl
                     segmentDataBuilder.Append(pixelHex);
             }
 
+            if (!previousSegmentData.TryGetValue(stripIndex, out Dictionary<int, string> stripData))
+            {
+                stripData = new Dictionary<int, string>();
+                previousSegmentData[stripIndex] = stripData;
+            }
+
+            int portIndex = stripManager.GetPortIndexForStrip(stripIndex);
             int lastSentPixel = 0;
             string optimizedHex = OptimizeHexString(segmentDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, totalPixels, ref lastSentPixel);
 
-            if (previousSegmentData.TryGetValue(stripIndex, out string prevHex) && prevHex == optimizedHex)
+            if (stripData.TryGetValue(portIndex, out string prevHex) && prevHex == optimizedHex)
                 return "";
 
-            previousSegmentData[stripIndex] = optimizedHex;
+            stripData[portIndex] = optimizedHex;
             return optimizedHex;
         }
 
@@ -328,7 +377,8 @@ namespace LEDControl
                     transfer = false;
                     for (int i = 0; i < 4; i++)
                     {
-                        SendString(dataModePrefixes[i] + "clear\r\n");
+                        int portIndex = stripManager.GetPortIndexForStrip(i);
+                        SendString(portIndex, dataModePrefixes[i] + "clear\r\n");
                     }
                 }
             }
@@ -361,16 +411,18 @@ namespace LEDControl
             return globalDataBuilder.ToString();
         }
 
-        public string GenerateAllDataString(StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
+        public void SendAllData(StripDataManager stripManager, SunManager SunManager, EffectsManager effectsManager, ColorProcessor colorProcessor, AppState appState)
         {
             allDataBuilder.Clear();
             for (int i = 0; i < stripManager.totalLEDsPerStrip.Count; i++)
             {
                 string stripData = GenerateDataString(i, stripManager, SunManager, effectsManager, colorProcessor, appState);
                 if (!string.IsNullOrEmpty(stripData))
-                    allDataBuilder.Append(stripData);
+                {
+                    int portIndex = stripManager.GetPortIndexForStrip(i);
+                    EnqueueData(portIndex, stripData);
+                }
             }
-            return allDataBuilder.Length > 0 ? allDataBuilder.ToString() : "";
         }
 
         public float SendInterval => sendInterval;

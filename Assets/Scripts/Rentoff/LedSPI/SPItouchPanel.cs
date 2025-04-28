@@ -77,9 +77,19 @@ public class SPItouchPanel : MonoBehaviour
         stripDataManager.CachePreviousValues();
         dataSender.Initialize();
 
-        if (!dataSender.IsPortOpen())
+        bool anyPortOpen = false;
+        for (int i = 0; i < dataSender.portConfigs.Count; i++)
         {
-            Debug.LogError("[SPItouchPanel] Serial port not open. Disabling component.");
+            if (dataSender.IsPortOpen(i)) 
+            {
+                anyPortOpen = true;
+                break;
+            }
+        }
+
+        if (!anyPortOpen)
+        {
+            Debug.LogError("[SPItouchPanel] Ни один из serial-портов не открыт. Disabling component.");
             enabled = false;
             return;
         }
@@ -240,9 +250,13 @@ public class SPItouchPanel : MonoBehaviour
                 colorProcessor,
                 stateManager.CurrentState
             );
-            fullDataBuilder.Append(dataString);
+
+            if (!string.IsNullOrEmpty(dataString))
+            {
+                int portIndex = stripDataManager.GetPortIndexForStrip(stripIndex);
+                dataSender.EnqueueData(portIndex, dataString);
+            }
         }
-        dataSender.EnqueueData(fullDataBuilder.ToString());
     }
 
     public void UpdateSynthParameters(float speed)

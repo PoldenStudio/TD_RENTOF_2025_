@@ -494,8 +494,15 @@ MonoBehaviour:
   serialPortNames:
   - COM27
   serialBaudRate: 115200
-  dataSenderPortName: COM23
-  dataSenderBaudRate: 921600
+  dataSenderPortConfigs:
+  - portName: COM23
+    baudRate: 921600
+  - portName: COM23
+    baudRate: 921600
+  - portName: COM30
+    baudRate: 921600
+  - portName: COM23
+    baudRate: 921600
   loopMidiDeviceId: M1-P27-O0
   dmxComPortName: COM10
   dmxBaudRate: 250000
@@ -1681,6 +1688,11 @@ MonoBehaviour:
   - brightness: 1
     gammaValue: 2.2
     enableGammaCorrection: 0
+  stripPortAssignments:
+  - portIndex: 0
+  - portIndex: 0
+  - portIndex: 0
+  - portIndex: 0
   sunColorSettings:
   - warmColor:
       serializedVersion: 2
@@ -1690,10 +1702,10 @@ MonoBehaviour:
       rgba: 4286282619
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4294967295
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4286282619
   - warmColor:
       serializedVersion: 2
       rgba: 4286085240
@@ -1702,10 +1714,10 @@ MonoBehaviour:
       rgba: 4294967295
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4286085240
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4294967295
   - warmColor:
       serializedVersion: 2
       rgba: 4294966784
@@ -1714,10 +1726,10 @@ MonoBehaviour:
       rgba: 4278518015
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4294966784
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4294901760
+      rgba: 4278190335
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
@@ -3003,37 +3015,58 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   idleSunSettings:
-    baseCycleLength: 184
+    baseCycleLength: 180
     intervals:
     - startTime: 0
-      endTime: 10
-      sunMode: 1
-      startPosition: 0
-    - startTime: 25
-      endTime: 35
-      sunMode: 0
-      startPosition: 0
-    - startTime: 45
-      endTime: 55
+      endTime: 44
       sunMode: 2
       startPosition: 0
+      endPosition: 0.95
+    - startTime: 64
+      endTime: 130
+      sunMode: 1
+      startPosition: 0
+      endPosition: 0.65
+    - startTime: 130
+      endTime: 140
+      sunMode: 0
+      startPosition: 0.65
+      endPosition: 0.95
+    - startTime: 166
+      endTime: 180
+      sunMode: 2
+      startPosition: 0
+      endPosition: 0.95
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   activeSunSettings:
     baseCycleLength: 184
     intervals:
-    - startTime: 0
-      endTime: 40
+    - startTime: 21
+      endTime: 43
       sunMode: 2
       startPosition: 0
-    - startTime: 60
-      endTime: 80
+      endPosition: 0.5
+    - startTime: 43
+      endTime: 50
+      sunMode: 2
+      startPosition: 0.5
+      endPosition: 0.95
+    - startTime: 65
+      endTime: 96
+      sunMode: 0
+      startPosition: 0
+      endPosition: 0.95
+    - startTime: 120
+      endTime: 137
       sunMode: 1
       startPosition: 0
-    - startTime: 100
-      endTime: 120
+      endPosition: 0.95
+    - startTime: 154
+      endTime: 184
       sunMode: 1
       startPosition: 0
+      endPosition: 0.95
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
@@ -3824,8 +3857,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1f509732dd3f354d8aca1ebdf7485ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portName: COM23
-  baudRate: 921600
+  portConfigs:
+  - portName: COM6
+    baudRate: 115200
+  - portName: COM6
+    baudRate: 115200
+  - portName: COM6
+    baudRate: 115200
+  - portName: COM6
+    baudRate: 115200
   debugMode: 1
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
@@ -4382,7 +4422,7 @@ MonoBehaviour:
   baseFramesPerSecond: 60
   frameSkip: 1
   debugText: {fileID: 0}
-  enableFrameDebug: 1
+  enableFrameDebug: 0
   globalBrightness: 1
   testModeCurve:
     serializedVersion: 2

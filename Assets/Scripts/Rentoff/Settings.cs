@@ -1,6 +1,15 @@
 ﻿using UnityEngine;
 using System;
 using System.IO;
+using System.Linq;
+using LEDControl;
+
+[Serializable]
+public class DataSenderPortConfig
+{
+    public string portName = "COM6";
+    public int baudRate = 115200;
+}
 
 public class Settings : MonoBehaviour
 {
@@ -23,8 +32,13 @@ public class Settings : MonoBehaviour
 
     // DataSender
     [Space(10)]
-    public string dataSenderPortName = "COM6";
-    public int dataSenderBaudRate = 115200;
+    public DataSenderPortConfig[] dataSenderPortConfigs = new DataSenderPortConfig[]
+    {
+        new DataSenderPortConfig { portName = "COM6", baudRate = 115200 },
+        new DataSenderPortConfig { portName = "COM7", baudRate = 115200 },
+        new DataSenderPortConfig { portName = "COM8", baudRate = 115200 },
+        new DataSenderPortConfig { portName = "COM9", baudRate = 115200 }
+    };
 
     // MIDI
     [Space(10)]
@@ -34,7 +48,7 @@ public class Settings : MonoBehaviour
     [Space(10)]
     public string dmxComPortName = "COM3";
     public int dmxBaudRate = 250000;
-    
+
     // Display
     [Space(10)]
     public int targetDisplayId = 0;
@@ -96,6 +110,21 @@ public class Settings : MonoBehaviour
         QualitySettings.vSyncCount = vSync ? 1 : 0;
         Application.targetFrameRate = frameRate;
         ApplyDisplaySettings();
+
+        // Теперь инициализируем DataSender портами из настроек
+        DataSender dataSender = FindObjectOfType<DataSender>();
+        if (dataSender != null)
+        {
+            dataSender.portConfigs.Clear();
+            foreach (var config in dataSenderPortConfigs)
+            {
+                dataSender.portConfigs.Add(new LEDControl.SerialPortConfig
+                {
+                    portName = config.portName,
+                    baudRate = config.baudRate
+                });
+            }
+        }
     }
 
     private void ApplyDisplaySettings()
@@ -127,6 +156,16 @@ public class Settings : MonoBehaviour
         {
             InitializeSettingsPath();
 
+            // Фикс: Убедимся, что массив не null
+            if (dataSenderPortConfigs == null)
+            {
+                dataSenderPortConfigs = new DataSenderPortConfig[]
+                {
+                    new DataSenderPortConfig { portName = "COM6", baudRate = 115200 },
+                    new DataSenderPortConfig { portName = "COM7", baudRate = 115200 }
+                };
+            }
+
             // Serialize only public fields (JsonUtility ignores [NonSerialized])
             string json = JsonUtility.ToJson(this, prettyPrint: true);
             File.WriteAllText(settingsPath, json);
@@ -150,6 +189,17 @@ public class Settings : MonoBehaviour
             {
                 string json = File.ReadAllText(settingsPath);
                 JsonUtility.FromJsonOverwrite(json, this);
+
+                // Фикс: Если загрузился null массив
+                if (dataSenderPortConfigs == null || dataSenderPortConfigs.Length == 0)
+                {
+                    dataSenderPortConfigs = new DataSenderPortConfig[]
+                    {
+                        new DataSenderPortConfig { portName = "COM6", baudRate = 115200 },
+                        new DataSenderPortConfig { portName = "COM7", baudRate = 115200 }
+                    };
+                }
+
                 Debug.Log($"[Settings] Loaded from {settingsPath}");
             }
             else
@@ -161,6 +211,11 @@ public class Settings : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError($"[Settings] Load failed: {ex}");
+            dataSenderPortConfigs = new DataSenderPortConfig[]
+            {
+                new DataSenderPortConfig { portName = "COM6", baudRate = 115200 },
+                new DataSenderPortConfig { portName = "COM7", baudRate = 115200 }
+            };
         }
         finally
         {
