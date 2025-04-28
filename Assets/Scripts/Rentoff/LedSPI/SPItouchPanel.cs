@@ -21,7 +21,7 @@ public class SPItouchPanel : MonoBehaviour
     [SerializeField] private bool debugMode = false;
 
     private float lastDataSendTime = 0f;
-    private const float sendDataInterval = 0.028f;
+    private const float sendDataInterval = 0.008f;
 
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>();
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
@@ -90,7 +90,7 @@ public class SPItouchPanel : MonoBehaviour
         if (!anyPortOpen)
         {
             Debug.LogError("[SPItouchPanel] Ни один из serial-портов не открыт. Disabling component.");
-            enabled = false;
+            //enabled = false;
             return;
         }
     }
