@@ -156,8 +156,8 @@ public class StateManager : MonoBehaviour
         sunManager?.SetAppState(AppState.Active);
 
         yield return videoPlayer.SwitchToDefaultMode();
+        //ledController?.StartFadeOut();
         ledController?.SwitchToActiveJSON();
-        ledController?.StartFadeOut();
         soundManager?.ResetTimeCodeSounds();
         soundManager.SetSoundClip(soundManager.ActiveClip);
         soundManager?.StartFadeIn(fadeInDuration);

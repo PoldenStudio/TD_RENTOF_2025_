@@ -755,13 +755,13 @@ namespace LEDControl
                     Array.Copy(preCalculatedMixByteDMXFrames[byteArrayFrameIndex], 1, FrameBuffer, 1, 512);
 
 
-                    if (currentTransitionCoroutine != null || currentGlobalBrightnessFactor != 1.0f || currentRFactor != 1.0f || currentGFactor != 1.0f || currentBFactor != 1.0f || globalBrightness != defaultGlobalBrightness)
+/*                    if (currentTransitionCoroutine != null || currentGlobalBrightnessFactor != 1.0f || currentRFactor != 1.0f || currentGFactor != 1.0f || currentBFactor != 1.0f || globalBrightness != defaultGlobalBrightness)
                     {
                         ApplyFadeToDmxRange(FrameBuffer, st.leftAmbilightIndex, 140, ColorFormat.RGB);
                         ApplyFadeToDmxRange(FrameBuffer, st.rightAmbilightIndex, 140, ColorFormat.RGB);
                         ApplyFadeToDmxRange(FrameBuffer, st.upperAmbilightIndex, 5, ColorFormat.RGBWMix);
                         ApplyFadeToDmxRange(FrameBuffer, st.lowerAmbilightIndex, 5, ColorFormat.RGBWMix);
-                    }
+                    }*/
 
                     if (enableFrameDebug && debugText != null)
                     {

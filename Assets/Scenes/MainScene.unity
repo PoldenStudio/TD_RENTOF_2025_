@@ -3073,7 +3073,7 @@ MonoBehaviour:
   dataSender: {fileID: 1299263587}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData
-  virtualPadding: 10
+  virtualPadding: 5
   currentSpeedRaw: 1
   MultiplySpeed: 1
   stripDataManager: {fileID: 770569964}
@@ -3870,7 +3870,7 @@ MonoBehaviour:
     baudRate: 115200
   - portName: COM6
     baudRate: 115200
-  debugMode: 0
+  debugMode: 1
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
 --- !u!114 &1299263588
@@ -4426,7 +4426,7 @@ MonoBehaviour:
   baseFramesPerSecond: 60
   frameSkip: 1
   debugText: {fileID: 0}
-  enableFrameDebug: 1
+  enableFrameDebug: 0
   globalBrightness: 1
   testModeCurve:
     serializedVersion: 2
@@ -4935,7 +4935,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  StartFadeInDuration: 8
+  StartFadeInDuration: 1
   StartFadeOut_R:
     serializedVersion: 2
     m_Curve:

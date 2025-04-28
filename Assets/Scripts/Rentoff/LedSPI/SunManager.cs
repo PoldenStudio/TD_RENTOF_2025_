@@ -26,7 +26,7 @@ namespace LEDControl
 
         [Header("Virtual Strip Settings")]
         [Tooltip("Number of virtual LEDs to add on each end of the strip")]
-        public int virtualPadding = 10;
+        public int virtualPadding = 5;
 
         public float currentSpeedRaw = 1f;
         public float MultiplySpeed = 1f;
@@ -331,7 +331,7 @@ namespace LEDControl
 
             for (int frame = 0; frame < frameCount; frame++)
             {
-                float currentTime = frame * frameDuration;
+                float currentTime = (frame * frameDuration) % totalCycleLength;
 
                 bool isActiveTime = false;
                 SunMode currentSunMode = SunMode.Warm;
