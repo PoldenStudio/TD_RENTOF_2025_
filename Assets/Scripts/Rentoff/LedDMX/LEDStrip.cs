@@ -45,25 +45,22 @@ namespace LEDControl
         [HideInInspector]
         public string fullIdleJsonPath;
 
-        // Загруженные данные JSON (active и idle)
         [HideInInspector]
         public LEDDataFrame[] normalJsonData;
         [HideInInspector]
         public LEDDataFrame[] idleJsonData;
 
-        // Предрассчитанные DMX кадры (active и idle)
         [HideInInspector]
         public PreCalculatedDmxFrame[] preCalculatedNormalFrames;
         [HideInInspector]
         public PreCalculatedDmxFrame[] preCalculatedIdleFrames;
 
-        // Счётчики кадров для каждого режима
         [HideInInspector]
         public float currentFrameActive = 0;
         [HideInInspector]
         public float currentFrameIdle = 0;
 
-        public int TotalSegments { get { return totalLEDs / ledsPerSegment; } }
+        public int TotalSegments { get { return totalLEDs > 0 && ledsPerSegment > 0 ? totalLEDs / ledsPerSegment : 0; } }
 
         public LEDStrip()
         {
@@ -105,21 +102,20 @@ namespace LEDControl
             }
         }
 
-        /// <summary>
-        /// Загружает JSON данные для активного и idle режимов.
-        /// </summary>
-        /// <param name="loadBothModes">Если true – загружаются оба режима.</param>
         public void LoadJsonData(bool loadBothModes = false)
         {
             if (!string.IsNullOrEmpty(normalJsonPath))
                 fullNormalJsonPath = Path.Combine(Application.streamingAssetsPath, normalJsonPath);
+            else
+                fullNormalJsonPath = string.Empty;
+
             if (!string.IsNullOrEmpty(idleJsonPath))
                 fullIdleJsonPath = Path.Combine(Application.streamingAssetsPath, idleJsonPath);
+            else
+                fullIdleJsonPath = string.Empty;
 
-            // Всегда загружаем активный режим
             normalJsonData = JsonFrameLoader.LoadJsonFrames(fullNormalJsonPath, jsonFormat);
 
-            // Если требуется, загружаем idle режим
             if (loadBothModes)
             {
                 idleJsonData = JsonFrameLoader.LoadJsonFrames(fullIdleJsonPath, jsonFormat);
@@ -135,6 +131,10 @@ namespace LEDControl
                     preCalculatedNormalFrames[i] = DmxFrameCalculator.CalculateDmxFrame(normalJsonData[i], dmxChannelOffset, tot, jsonFormat);
                 }
             }
+            else
+            {
+                preCalculatedNormalFrames = null;
+            }
 
             if (loadBothModes && idleJsonData != null)
             {
@@ -143,6 +143,10 @@ namespace LEDControl
                 {
                     preCalculatedIdleFrames[i] = DmxFrameCalculator.CalculateDmxFrame(idleJsonData[i], dmxChannelOffset, tot, jsonFormat);
                 }
+            }
+            else if (loadBothModes)
+            {
+                preCalculatedIdleFrames = null;
             }
         }
 

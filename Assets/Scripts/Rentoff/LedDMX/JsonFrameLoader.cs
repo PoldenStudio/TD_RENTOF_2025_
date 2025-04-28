@@ -2,6 +2,7 @@
 using System.IO;
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 
 namespace LEDControl
 {
@@ -23,7 +24,7 @@ namespace LEDControl
         {
             if (string.IsNullOrEmpty(fullJsonPath) || !File.Exists(fullJsonPath))
             {
-                Debug.LogWarning($"JSON path invalid: {fullJsonPath}");
+                // Debug.LogWarning($"JSON path invalid or file not found: {fullJsonPath}");
                 return null;
             }
             try
@@ -34,32 +35,42 @@ namespace LEDControl
 
                 try
                 {
+                    // Try parsing with format hint first
                     LEDDataWithFormat formattedData = JsonConvert.DeserializeObject<LEDDataWithFormat>(jsonString);
                     if (formattedData != null && formattedData.frames != null)
                     {
                         rawData = formattedData.frames;
                         if (!string.IsNullOrEmpty(formattedData.color_format))
                         {
-                            string cf = formattedData.color_format.ToLower();
-                            if (cf == "rgb")
-                                detectedFormat = ColorFormat.RGB;
-                            else if (cf == "rgbw")
-                                detectedFormat = ColorFormat.RGBW;
-                            else if (cf == "hsv")
-                                detectedFormat = ColorFormat.HSV;
-                            else if (cf == "rgbwmix")
-                                detectedFormat = ColorFormat.RGBWMix;
+                            string cf = formattedData.color_format.Trim().ToLower();
+                            if (cf == "rgb") detectedFormat = ColorFormat.RGB;
+                            else if (cf == "rgbw") detectedFormat = ColorFormat.RGBW;
+                            else if (cf == "hsv") detectedFormat = ColorFormat.HSV;
+                            else if (cf == "rgbwmix") detectedFormat = ColorFormat.RGBWMix;
                         }
+                    }
+                    else
+                    {
+                        rawData = JsonConvert.DeserializeObject<LEDDataFrameRaw[]>(jsonString);
                     }
                 }
                 catch
                 {
-                    rawData = JsonConvert.DeserializeObject<LEDDataFrameRaw[]>(jsonString);
+                    try
+                    {
+                        rawData = JsonConvert.DeserializeObject<LEDDataFrameRaw[]>(jsonString);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Failed to parse JSON (both attempts): {fullJsonPath}. Error: {ex.Message}");
+                        return null;
+                    }
                 }
+
 
                 if (rawData == null)
                 {
-                    Debug.LogError($"Failed to parse JSON: {fullJsonPath}");
+                    Debug.LogError($"Failed to parse JSON data from: {fullJsonPath}");
                     return null;
                 }
 
@@ -68,61 +79,32 @@ namespace LEDControl
                 {
                     frames[i].frame = rawData[i].frame;
                     frames[i].format = detectedFormat;
+
+                    if (rawData[i].pixels == null)
+                    {
+                        frames[i].pixels = Array.Empty<byte[]>();
+                        continue;
+                    }
+
                     frames[i].pixels = new byte[rawData[i].pixels.Length][];
 
                     for (int j = 0; j < rawData[i].pixels.Length; j++)
                     {
-                        // Определяем размер массива в зависимости от формата
-                        int pixelSize;
-                        switch (detectedFormat)
+                        int[] pixelIntArray = rawData[i].pixels[j];
+                        if (pixelIntArray == null)
                         {
-                            case ColorFormat.RGB:
-                                pixelSize = 3;
-                                break;
-                            case ColorFormat.RGBW:
-                                pixelSize = 4;
-                                break;
-                            case ColorFormat.RGBWMix:
-                                pixelSize = 5;
-                                break;
-                            case ColorFormat.HSV:
-                                pixelSize = 3;
-                                break;
-                            default:
-                                pixelSize = 3;
-                                break;
+                            frames[i].pixels[j] = Array.Empty<byte>();
+                            continue;
                         }
 
+                        int pixelSize = pixelIntArray.Length;
                         frames[i].pixels[j] = new byte[pixelSize];
-                        int len = Math.Min(pixelSize, rawData[i].pixels[j].Length);
-                        for (int k = 0; k < len; k++)
+                        for (int k = 0; k < pixelSize; k++)
                         {
-                            frames[i].pixels[j][k] = (byte)Mathf.Clamp(rawData[i].pixels[j][k], 0, 255);
-                        }
-
-                        // Дополнение недостающих данных для различных форматов
-                        if (detectedFormat == ColorFormat.RGBWMix && rawData[i].pixels[j].Length < 5 && len >= 3)
-                        {
-                            byte r = frames[i].pixels[j][0],
-                                 g = frames[i].pixels[j][1],
-                                 b = frames[i].pixels[j][2];
-                            byte warmWhite = (byte)Mathf.Min(r, g);
-                            byte coolWhite = (byte)Mathf.Min(b, g);
-                            if (pixelSize > 3) frames[i].pixels[j][3] = warmWhite;
-                            if (pixelSize > 4) frames[i].pixels[j][4] = coolWhite;
-                        }
-                        else if (detectedFormat == ColorFormat.RGBW && rawData[i].pixels[j].Length < 4 && len >= 3)
-                        {
-                            byte r = frames[i].pixels[j][0],
-                                 g = frames[i].pixels[j][1],
-                                 b = frames[i].pixels[j][2];
-                            byte white = (byte)Mathf.Min(Mathf.Min(r, g), b);
-                            frames[i].pixels[j][3] = white;
+                            frames[i].pixels[j][k] = (byte)Mathf.Clamp(pixelIntArray[k], 0, 255);
                         }
                     }
                 }
-
-                Debug.Log($"Loaded {frames.Length} frames from {fullJsonPath} with format {detectedFormat}");
                 return frames;
             }
             catch (Exception e)

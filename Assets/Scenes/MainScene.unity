@@ -4382,7 +4382,7 @@ MonoBehaviour:
   baseFramesPerSecond: 60
   frameSkip: 1
   debugText: {fileID: 0}
-  enableFrameDebug: 0
+  enableFrameDebug: 1
   globalBrightness: 1
   testModeCurve:
     serializedVersion: 2
@@ -4795,118 +4795,21 @@ MonoBehaviour:
     m_RotationOrder: 4
   secondKineticHeightDmxChannel1: 511
   secondKineticHeightDmxChannel2: 512
-  transitionIdleToActive_R:
+  StartFadeIn_R:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
       value: 1
-      inSlope: 0
-      outSlope: 0
+      inSlope: -2.1185377
+      outSlope: -2.1185377
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.065682024
     - serializedVersion: 3
       time: 1
       value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.3066743
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  transitionIdleToActive_G:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.3066743
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  transitionIdleToActive_B:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.3066743
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  transitionIdleToActiveGlobalBrightness:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -1.6829517
-      outSlope: -1.6829517
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.3066743
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  transitionIdleToActiveDuration: 4
-  transitionActiveToIdle_R:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 2
-      outSlope: 2
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -4916,7 +4819,80 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdle_G:
+  StartFadeIn_G:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -2.1185377
+      outSlope: -2.1185377
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.065682024
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  StartFadeIn_B:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -2.1185377
+      outSlope: -2.1185377
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.065682024
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  StartFadeInGlobalBrightness:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -2.1185377
+      outSlope: -2.1185377
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.065682024
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  StartFadeInDuration: 4
+  StartFadeOut_R:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
@@ -4940,7 +4916,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdle_B:
+  StartFadeOut_G:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
@@ -4964,7 +4940,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdleGlobalBrightness:
+  StartFadeOut_B:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
@@ -4988,7 +4964,31 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  transitionActiveToIdleDuration: 3
+  StartFadeOutBrightness:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  StartFadeOutDuration: 6
   idleMode: 1
   wasIdled: 0
   byteArrayFilePath: keys.dat
@@ -4999,6 +4999,9 @@ MonoBehaviour:
     lowerAmbilightIndex: 410
     kineticLIndex: 509
     kineticRIndex: 511
+  externalLightChannel: 508
+  externalLightValueIdle: 20
+  externalLightValueActive: 0
 --- !u!1 &1631245014
 GameObject:
   m_ObjectHideFlags: 0
