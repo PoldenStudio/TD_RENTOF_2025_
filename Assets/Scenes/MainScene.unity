@@ -414,9 +414,6 @@ MonoBehaviour:
   swipeProgressMultiplier: 1
   inactivityCloseDelay: 4
   oppositeSwipeTolerance: 0
-  smoothTimeNormal: 0.15
-  smoothTimeSwipeMin: 0.1
-  smoothTimeSwipeMax: 0.3
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
   stateManager: {fileID: 1213853305}
@@ -4938,7 +4935,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  StartFadeInDuration: 4
+  StartFadeInDuration: 8
   StartFadeOut_R:
     serializedVersion: 2
     m_Curve:
@@ -5035,7 +5032,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  StartFadeOutDuration: 6
+  StartFadeOutDuration: 3
   idleMode: 1
   wasIdled: 0
   byteArrayFilePath: keys.dat

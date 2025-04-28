@@ -388,7 +388,7 @@ public class VideoPlaybackController : MonoBehaviour
         _lastSwipeData = swipeData;
 
         int directionFactor = swipeData.direction.x > 0 ? 1 : -1;
-        directionFactor *= -1; 
+        directionFactor *= -1;
 
         float avgTime = swipeData.avgTimeBetween;
         int pCount = swipeData.panelsCount;
@@ -585,7 +585,7 @@ public class VideoPlaybackController : MonoBehaviour
                 {
                     _currentSpeed = _finalTargetSpeed;
                     _state = PlaybackState.Normal;
-                    _velocity = 0f; 
+                    _velocity = 0f;
                     Debug.Log($"[VideoPlaybackController] Deceleration complete. Final speed: {_currentSpeed:F2}");
                 }
 
@@ -654,7 +654,7 @@ public class VideoPlaybackController : MonoBehaviour
             {
 
                 if (Mathf.Abs(_currentSpeed) < 0.01f)
-                { 
+                {
                     _mediaPlayer.SeekToTime(_holdZeroTime);
                 }
             }

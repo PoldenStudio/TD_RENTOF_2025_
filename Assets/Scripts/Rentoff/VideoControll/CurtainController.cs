@@ -280,7 +280,6 @@ public class CurtainController : MonoBehaviour
         );
     }
 
-    // Исправлено: гарантировано запустит комету при каждом переходе Idle->Active
     private void CheckCurtainFullState()
     {
         bool wasFull = _isCurtainFull;
