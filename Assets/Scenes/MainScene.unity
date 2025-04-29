@@ -404,16 +404,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   curtainObject: {fileID: 5636831921781003924}
   curtainRenderer: {fileID: 1652632165326128169}
-  slideDuration: 2
   fadeDuration: 4
-  slideSpeed: 0.1
   minXPosition: -860
   maxXPosition: 0
-  instantMove: 0
-  targetProgressThreshold: 1
-  swipeProgressMultiplier: 1
-  inactivityCloseDelay: 4
-  oppositeSwipeTolerance: 0
+  smoothTimeNormal: 1
+  smoothTimeSwipeMin: 0.1
+  smoothTimeSwipeMax: 0.1
+  smoothTimeHoldMin: 0.1
+  smoothTimeHoldMax: 0.4
+  curtainSensitivity: 0.005
+  curtainThreshold: 0.9
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
   stateManager: {fileID: 1213853305}
@@ -3870,7 +3870,7 @@ MonoBehaviour:
     baudRate: 115200
   - portName: COM6
     baudRate: 115200
-  debugMode: 1
+  debugMode: 0
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
 --- !u!114 &1299263588

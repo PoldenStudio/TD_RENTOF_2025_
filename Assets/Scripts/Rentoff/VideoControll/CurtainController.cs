@@ -5,47 +5,49 @@ using DemolitionStudios.DemolitionMedia;
 
 public class CurtainController : MonoBehaviour
 {
+    private enum PlaybackState
+    {
+        Normal,
+        Decelerating,
+        HoldAccelerating
+    }
+
     [Header("References")]
     [SerializeField] private Transform curtainObject;
     [SerializeField] private MeshRenderer curtainRenderer;
 
     [Header("Animation Settings")]
-    [SerializeField] private float slideDuration = 2f;
     [SerializeField] private float fadeDuration = 0.5f;
-    [SerializeField] private float slideSpeed = 15f;
     [SerializeField] private float minXPosition = -1032f;
     [SerializeField] private float maxXPosition = 0f;
 
-    [Tooltip("True => instant move, False => using smooth motion")]
-    public bool instantMove = false;
-
-    [Header("Logic Settings")]
-    [SerializeField] private float targetProgressThreshold = 5f;
-    [SerializeField] private float swipeProgressMultiplier = 1f;
-    [SerializeField] private float inactivityCloseDelay = 4f;
-
-    [Header("Swipe Logic")]
-    [Tooltip("How many opposite swipes to change direction")]
-    [SerializeField] private int oppositeSwipeTolerance = 1;
+    [Header("Curtain Movement Settings")]
+    [SerializeField] private float smoothTimeNormal = 0.15f;
+    [SerializeField] private float smoothTimeSwipeMin = 0.1f;
+    [SerializeField] private float smoothTimeSwipeMax = 0.3f;
+    [SerializeField] private float smoothTimeHoldMin = 0.1f;
+    [SerializeField] private float smoothTimeHoldMax = 0.4f;
+    [SerializeField] private float curtainSensitivity = 0.5f;
+    [SerializeField] private float curtainThreshold = 0.9f;
 
     [Header("Media Players")]
     [SerializeField] private Media curtainMedia;
     [SerializeField] private InitializationFramework.InitializePlayers initializePlayers;
     [SerializeField] private StateManager stateManager;
 
-    private readonly float _finalApproachDelay = 0.3f;
-
-    private float _currentProgress = 0f;
-    private float _targetProgress = 0f;
-    private Coroutine _progressCoroutine;
-    private Coroutine _fadeCoroutine;
-    private Coroutine _cometPlaybackCoroutine;
-    private bool _isCurtainAnimating = false;
+    private PlaybackState _state = PlaybackState.Normal;
+    private float _currentPosition = 0f; // 0 = closed, 1 = open
+    private float _targetPosition = 0f;
+    private float _velocity = 0f;
     private bool _isCurtainFull = false;
     private bool _isCometPlaying = false;
+    private bool _isHolding = false;
+    private float _holdZeroPosition = 0f;
+    private Vector2 _holdPosition;
+    private float _holdStartTime = 0f;
 
-    private float _lastControlTime = 0f;
-    private float _inactivityTimer = 0f;
+    private Coroutine _fadeCoroutine;
+    private Coroutine _cometPlaybackCoroutine;
 
     private bool _shouldPlayComet = false;
     private bool _shouldCheckCometOnFull = false;
@@ -55,9 +57,6 @@ public class CurtainController : MonoBehaviour
     private Action _onCurtainFullCallback;
     private Action _onCurtainFadedCallback;
 
-    private int _lastCommittedSwipeSign = 0;
-    private int _oppositeSwipeStreak = 0;
-
     private void Awake()
     {
         if (curtainObject == null || curtainRenderer == null)
@@ -66,12 +65,7 @@ public class CurtainController : MonoBehaviour
             return;
         }
 
-        curtainObject.localPosition = new Vector3(
-            minXPosition,
-            curtainObject.localPosition.y,
-            curtainObject.localPosition.z
-        );
-
+        ResetCurtainPosition();
         SetCurtainAlpha(1f);
     }
 
@@ -92,198 +86,141 @@ public class CurtainController : MonoBehaviour
 
     private void Update()
     {
-        HandleInactivity();
-
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            if (stateManager != null && stateManager.CurrentState == StateManager.AppState.Idle)
-            {
-                AddSwipeProgress(0.3f);
-            }
-        }
-    }
-
-    private void HandleInactivity()
-    {
-        if (_lastControlTime > 0f)
-        {
-            _inactivityTimer += Time.deltaTime;
-
-            if (_inactivityTimer >= inactivityCloseDelay && !_isCurtainAnimating && !_isCurtainFull)
-            {
-                Debug.Log("[CurtainController] Inactivity detected. Closing curtain");
-                SlideCurtain(false);
-                ResetInactivityTimer();
-            }
-            else if (_inactivityTimer >= _finalApproachDelay && !_isCurtainAnimating)
-            {
-                if (!Mathf.Approximately(_currentProgress, _targetProgress))
-                {
-                    GoToTargetProgress(_targetProgress, false);
-                }
-            }
-        }
-    }
-
-    public void AddSwipeProgress(float progressIncrement)
-    {
-        UpdateInactivityTimer();
-
-        if (Mathf.Approximately(progressIncrement, 0f)) return;
-
-        if (_isCurtainFull && progressIncrement > 0)
-        {
-            Debug.Log("[CurtainController] Already full, ignoring positive swipe");
-            return;
-        }
-
-        int currentSwipeSign = Math.Sign(progressIncrement);
-        float processedIncrement = progressIncrement;
-
-        if (_lastCommittedSwipeSign == 0)
-        {
-            _lastCommittedSwipeSign = currentSwipeSign;
-            _oppositeSwipeStreak = 0;
-        }
-        else if (currentSwipeSign == _lastCommittedSwipeSign)
-        {
-            _oppositeSwipeStreak = 0;
-        }
-        else
-        {
-            _oppositeSwipeStreak++;
-            if (_oppositeSwipeStreak <= oppositeSwipeTolerance)
-            {
-                processedIncrement = Mathf.Abs(progressIncrement) * _lastCommittedSwipeSign;
-                Debug.Log($"[CurtainController] Tolerating opposite swipe. Original: {progressIncrement}, Processed: {processedIncrement}");
-            }
-            else
-            {
-                _lastCommittedSwipeSign = currentSwipeSign;
-                _oppositeSwipeStreak = 0;
-                Debug.Log($"[CurtainController] Opposite swipe confirmed. New direction: {_lastCommittedSwipeSign}");
-            }
-        }
-
-        ApplyProgressChange(processedIncrement * swipeProgressMultiplier);
-    }
-
-    private void ApplyProgressChange(float change)
-    {
-        float newTarget = _targetProgress + change;
-        newTarget = Mathf.Clamp(newTarget, 0f, targetProgressThreshold);
-
-        if (Mathf.Approximately(newTarget, _targetProgress))
-        {
-            return;
-        }
-
-        GoToTargetProgress(newTarget, false);
-    }
-
-    private void GoToTargetProgress(float target, bool useSlideDuration)
-    {
-        _targetProgress = Mathf.Clamp(target, 0f, targetProgressThreshold);
-
-        if (instantMove)
-        {
-            SetCurrentProgressInternal(_targetProgress);
-            CheckCurtainFullState();
-            return;
-        }
-
-        float duration = slideDuration;
-        if (!useSlideDuration)
-        {
-            float distance = Mathf.Abs(_targetProgress - _currentProgress);
-            if (slideSpeed <= 0)
-            {
-                Debug.LogError("[CurtainController] SlideSpeed must be positive");
-                slideSpeed = 1f;
-            }
-            duration = distance / slideSpeed;
-        }
-
-        if (_progressCoroutine != null)
-        {
-            StopCoroutine(_progressCoroutine);
-        }
-        _progressCoroutine = StartCoroutine(AnimateProgress(_targetProgress, duration));
-    }
-
-    private IEnumerator AnimateProgress(float targetValue, float duration)
-    {
-        _isCurtainAnimating = true;
-        float startValue = _currentProgress;
-        float timeElapsed = 0f;
-        float initialTarget = targetValue;
-
-        if (Mathf.Approximately(duration, 0f) || Mathf.Approximately(startValue, targetValue))
-        {
-            SetCurrentProgressInternal(targetValue);
-            OnProgressAnimationEnd();
-            yield break;
-        }
-
-        while (timeElapsed < duration)
-        {
-            if (!Mathf.Approximately(_targetProgress, initialTarget))
-            {
-                GoToTargetProgress(_targetProgress, false);
-                yield break;
-            }
-
-            timeElapsed += Time.deltaTime;
-            float normalizedTime = Mathf.Clamp01(timeElapsed / duration);
-            float easedTime = EaseOutCubic(normalizedTime);
-            float nextProgress = Mathf.LerpUnclamped(startValue, targetValue, easedTime);
-            SetCurrentProgressInternal(nextProgress);
-            yield return null;
-        }
-
-        SetCurrentProgressInternal(targetValue);
-        OnProgressAnimationEnd();
-    }
-
-    private void OnProgressAnimationEnd()
-    {
-        _isCurtainAnimating = false;
+        UpdateCurtainState();
+        UpdateCurtainPosition();
         CheckCurtainFullState();
-        _progressCoroutine = null;
     }
 
-    private void SetCurrentProgressInternal(float progress)
+    private void UpdateCurtainState()
     {
-        _currentProgress = Mathf.Clamp(progress, 0f, targetProgressThreshold);
-        ApplyCurtainProgress(_currentProgress);
-    }
+        float dt = Time.deltaTime;
+        float currentSmoothTime = 0;
 
-    private void ApplyCurtainProgress(float progress)
-    {
-        float normalized = 0f;
-        if (targetProgressThreshold > 0)
+        switch (_state)
         {
-            normalized = Mathf.Clamp01(progress / targetProgressThreshold);
+            case PlaybackState.Decelerating:
+                float targetPositionMagnitude = Mathf.Abs(_targetPosition);
+                currentSmoothTime = Mathf.Lerp(smoothTimeSwipeMin, smoothTimeSwipeMax, targetPositionMagnitude);
+                _currentPosition = Mathf.SmoothDamp(_currentPosition, _targetPosition, ref _velocity, currentSmoothTime, Mathf.Infinity, dt);
+
+                if (Mathf.Abs(_currentPosition - _targetPosition) < 0.01f)
+                {
+                    _currentPosition = _targetPosition;
+                    _state = PlaybackState.Normal;
+                    _velocity = 0f;
+                    Debug.Log($"[CurtainController] Deceleration complete. Final position: {_currentPosition:F2}");
+                }
+
+                break;
+
+            case PlaybackState.HoldAccelerating:
+                currentSmoothTime = Mathf.Lerp(smoothTimeHoldMin, smoothTimeHoldMax, Mathf.Abs(_currentPosition));
+                _currentPosition = Mathf.SmoothDamp(_currentPosition, _holdZeroPosition, ref _velocity, currentSmoothTime, Mathf.Infinity, dt);
+
+                if (Mathf.Abs(_currentPosition - _holdZeroPosition) < 0.01f)
+                {
+                    _currentPosition = _holdZeroPosition;
+                }
+
+                if (!_isHolding)
+                {
+                    HandleReleaseAfterHold();
+                }
+                break;
+
+            case PlaybackState.Normal:
+                currentSmoothTime = smoothTimeNormal;
+                _currentPosition = Mathf.SmoothDamp(_currentPosition, _targetPosition, ref _velocity, currentSmoothTime, Mathf.Infinity, dt);
+                break;
         }
-        SetCurtainPosition(normalized);
     }
 
-    private void SetCurtainPosition(float normalizedPosition)
+    private void UpdateCurtainPosition()
     {
         if (curtainObject == null) return;
 
-        float targetX = Mathf.Lerp(minXPosition, maxXPosition, normalizedPosition);
+        float positionNormalized = Mathf.Clamp01(_currentPosition);
+        float xPosition = Mathf.Lerp(minXPosition, maxXPosition, positionNormalized);
+
         curtainObject.localPosition = new Vector3(
-            targetX,
+            xPosition,
             curtainObject.localPosition.y,
             curtainObject.localPosition.z
         );
     }
 
+    public void ApplySwipeMovement(float movement)
+    {
+        if (_state == PlaybackState.HoldAccelerating)
+            return;
+
+        float newPosition = _currentPosition + movement * curtainSensitivity;
+        newPosition = Mathf.Clamp01(newPosition);
+
+        _targetPosition = newPosition;
+        _state = PlaybackState.Decelerating;
+        _velocity = 0f;
+    }
+
+    public void ApplyMouseSwipe(Vector2 direction, float speed)
+    {
+        if (_state == PlaybackState.HoldAccelerating)
+            return;
+
+        float horizontalFactor = direction.x;
+        float movement = -horizontalFactor * speed * curtainSensitivity * 0.01f;
+
+        float newPosition = _currentPosition + movement;
+        newPosition = Mathf.Clamp01(newPosition);
+
+        _targetPosition = newPosition;
+        _state = PlaybackState.Decelerating;
+        _velocity = 0f;
+    }
+
+    public void OnMouseHoldStart(Vector2 position)
+    {
+        _isHolding = true;
+        _holdPosition = position;
+        _holdStartTime = Time.time;
+        _holdZeroPosition = _currentPosition;
+
+        _state = PlaybackState.HoldAccelerating;
+        _velocity = 0f;
+    }
+
+    public void OnMouseHoldEnd()
+    {
+        HandleReleaseAfterHold();
+    }
+
+    private void HandleReleaseAfterHold()
+    {
+        if (_state == PlaybackState.HoldAccelerating && _isHolding)
+        {
+            _isHolding = false;
+
+            _state = PlaybackState.Decelerating;
+
+            // Decide where to snap to based on current position
+            if (_currentPosition >= curtainThreshold)
+            {
+                _targetPosition = 1f;
+            }
+            else
+            {
+                _targetPosition = 0f;
+            }
+
+            _velocity = 0f;
+            Debug.Log($"[CurtainController] Hold release => target: {_targetPosition}");
+        }
+    }
+
     private void CheckCurtainFullState()
     {
         bool wasFull = _isCurtainFull;
-        _isCurtainFull = _currentProgress >= targetProgressThreshold;
+        _isCurtainFull = _currentPosition >= curtainThreshold;
 
         if (_isCurtainFull && _shouldPlayComet && _shouldCheckCometOnFull)
         {
@@ -324,18 +261,6 @@ public class CurtainController : MonoBehaviour
         Debug.Log("[CurtainController] Comet sequence completed");
     }
 
-    private void UpdateInactivityTimer()
-    {
-        _lastControlTime = Time.time;
-        _inactivityTimer = 0f;
-    }
-
-    private void ResetInactivityTimer()
-    {
-        _lastControlTime = 0f;
-        _inactivityTimer = 0f;
-    }
-
     #region Easing Functions
 
     private float EaseOutCubic(float t)
@@ -352,9 +277,9 @@ public class CurtainController : MonoBehaviour
 
     #region Public methods
 
-    public Coroutine SlideCurtain(bool slideIn, Action onComplete = null)
+    public void SlideCurtain(bool slideIn, Action onComplete = null)
     {
-        ResetInactivityTimer();
+        CancelHold();
 
         if (curtainRenderer != null)
         {
@@ -362,34 +287,28 @@ public class CurtainController : MonoBehaviour
             SetCurtainAlpha(1f);
         }
 
-        _lastCommittedSwipeSign = slideIn ? 1 : -1;
-        _oppositeSwipeStreak = 0;
+        _targetPosition = slideIn ? 1f : 0f;
+        _state = PlaybackState.Decelerating;
+        _velocity = 0f;
 
-        float targetProgress = slideIn ? targetProgressThreshold : 0f;
-        GoToTargetProgress(targetProgress, true);
-
-        if (_progressCoroutine != null)
-        {
-            StartCoroutine(WaitForProgressCompletion(onComplete));
-            return _progressCoroutine;
-        }
-        else
-        {
-            onComplete?.Invoke();
-            return null;
-        }
+        // Wait one frame to check if animation has completed
+        StartCoroutine(WaitForSlideComplete(onComplete));
     }
 
-    private IEnumerator WaitForProgressCompletion(Action onComplete)
+    private IEnumerator WaitForSlideComplete(Action onComplete)
     {
-        if (_progressCoroutine != null)
+        yield return null;
+
+        // Wait until the state changes back to Normal
+        while (_state == PlaybackState.Decelerating)
         {
-            yield return _progressCoroutine;
+            yield return null;
         }
+
         onComplete?.Invoke();
     }
 
-    public Coroutine FadeCurtain(bool fadeIn, Action onComplete = null)
+    public void FadeCurtain(bool fadeIn, Action onComplete = null)
     {
         if (_fadeCoroutine != null)
         {
@@ -401,7 +320,6 @@ public class CurtainController : MonoBehaviour
             curtainRenderer.enabled = true;
 
         _fadeCoroutine = StartCoroutine(FadeAnimationSafe(fadeIn, onComplete));
-        return _fadeCoroutine;
     }
 
     private IEnumerator FadeAnimationSafe(bool fadeIn, Action onComplete)
@@ -472,11 +390,7 @@ public class CurtainController : MonoBehaviour
 
     public void ResetCurtainProgress()
     {
-        if (_progressCoroutine != null)
-        {
-            StopCoroutine(_progressCoroutine);
-            _progressCoroutine = null;
-        }
+        CancelHold();
 
         if (_fadeCoroutine != null)
         {
@@ -490,24 +404,40 @@ public class CurtainController : MonoBehaviour
             _cometPlaybackCoroutine = null;
         }
 
-        _currentProgress = 0f;
-        _targetProgress = 0f;
+        ResetCurtainPosition();
+        _state = PlaybackState.Normal;
+        _velocity = 0f;
+        _targetPosition = 0f;
         _isCurtainFull = false;
-        _isCurtainAnimating = false;
         _isCometPlaying = false;
+
         _shouldPlayComet = false;
         _shouldCheckCometOnFull = false;
-        ResetInactivityTimer();
-        _lastCommittedSwipeSign = 0;
-        _oppositeSwipeStreak = 0;
-
-        SetCurrentProgressInternal(0f);
 
         if (curtainRenderer != null)
         {
             SetCurtainAlpha(1f);
             curtainRenderer.enabled = true;
         }
+    }
+
+    private void ResetCurtainPosition()
+    {
+        _currentPosition = 0f;
+
+        if (curtainObject != null)
+        {
+            curtainObject.localPosition = new Vector3(
+                minXPosition,
+                curtainObject.localPosition.y,
+                curtainObject.localPosition.z
+            );
+        }
+    }
+
+    private void CancelHold()
+    {
+        _isHolding = false;
     }
 
     public void SetShouldPlayComet(bool value)

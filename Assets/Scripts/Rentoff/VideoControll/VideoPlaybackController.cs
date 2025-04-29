@@ -244,7 +244,6 @@ public class VideoPlaybackController : MonoBehaviour
 
                 _waitingForMouseSwipeRelease = false;
             }
-
         }
         else if (stateManager.CurrentState == AppState.Idle)
         {
@@ -254,18 +253,27 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void HandleMouseCurtainSwipe(MouseSwipeData msd)
     {
-        if (curtainController == null || !msd.isFinalSwipe)
+        if (curtainController == null || msd.isFinalSwipe)
             return;
 
-        float horizFactor = msd.direction.x;
-        float progress = horizFactor * (msd.distance / Screen.width) * mouseCurtainSensitivity;
-        progress = -progress;
-        curtainController.AddSwipeProgress(progress);
+        curtainController.ApplyMouseSwipe(msd.direction, msd.speed);
     }
 
     public void OnMouseHoldDetected(MouseHoldData holdData)
     {
-        if (_mediaPlayer == null || !_swipeControlEnabled) return;
+        if (_mediaPlayer == null || !_swipeControlEnabled)
+            return;
+
+        if (stateManager.CurrentState == AppState.Idle && holdData.isStart)
+        {
+            curtainController?.OnMouseHoldStart(holdData.position);
+            return;
+        }
+        else if (stateManager.CurrentState == AppState.Idle && !holdData.isStart)
+        {
+            curtainController?.OnMouseHoldEnd();
+            return;
+        }
 
         if (holdData.isStart)
         {
@@ -340,29 +348,35 @@ public class VideoPlaybackController : MonoBehaviour
 
     public void OnSwipeDetected(SwipeData swipeData)
     {
-        if (_mediaPlayer == null || stateManager == null || stateManager.CurrentState != AppState.Active) return;
-        if (!_swipeControlEnabled) return;
-
-        CancelHoldState();
-
-        int dir = swipeData.direction.x > 0 ? 1 : -1;
-        if (enableSwipeFiltering && IsAccidentalSwipe(dir))
-        {
-            Debug.Log($"[VideoPlaybackController] Accidental swipe ignored. Dir={dir}");
+        if (_mediaPlayer == null || stateManager == null)
             return;
-        }
 
-        ApplySpeedChange(swipeData);
-
-        if (enableSwipeFiltering)
+        if (stateManager.CurrentState == AppState.Active)
         {
-            AddSwipeToHistory(dir);
+            if (!_swipeControlEnabled) return;
+
+            CancelHoldState();
+
+            int dir = swipeData.direction.x > 0 ? 1 : -1;
+            if (enableSwipeFiltering && IsAccidentalSwipe(dir))
+            {
+                Debug.Log($"[VideoPlaybackController] Accidental swipe ignored. Dir={dir}");
+                return;
+            }
+
+            ApplySpeedChange(swipeData);
+
+            if (enableSwipeFiltering)
+            {
+                AddSwipeToHistory(dir);
+            }
         }
     }
 
     public void OnRelativeSwipeDetected(RelativeSwipeData relativeSwipeData)
     {
-        if (_mediaPlayer == null || stateManager == null) return;
+        if (_mediaPlayer == null || stateManager == null)
+            return;
 
         if (stateManager.CurrentState == AppState.Transition)
             return;
@@ -375,12 +389,11 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void HandleCurtainSwipe(RelativeSwipeData rsd)
     {
-        if (curtainController == null) return;
+        if (curtainController == null)
+            return;
 
         float progressIncrement = rsd.shift / (float)settings.cols;
-        progressIncrement = rsd.shift < 0 ? Mathf.Abs(progressIncrement) : -Mathf.Abs(progressIncrement);
-
-        curtainController.AddSwipeProgress(progressIncrement);
+        curtainController.ApplySwipeMovement(progressIncrement);
     }
 
     private void ApplySpeedChange(SwipeData swipeData)
@@ -652,7 +665,6 @@ public class VideoPlaybackController : MonoBehaviour
             }
             else if (_state == PlaybackState.HoldAccelerating && _reachedZero)
             {
-
                 if (Mathf.Abs(_currentSpeed) < 0.01f)
                 {
                     _mediaPlayer.SeekToTime(_holdZeroTime);
