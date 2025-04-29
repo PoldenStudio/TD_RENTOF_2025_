@@ -1,4 +1,6 @@
-﻿using System;
+﻿
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -71,7 +73,7 @@ namespace LEDControl
         private readonly StringBuilder allDataBuilder = new StringBuilder(4096);
 
         private readonly string[] dataModePrefixes = new string[4];
-        private string clearCommand;
+        private readonly int[] dataModePorts = new int[4];
 
         void Awake()
         {
@@ -90,14 +92,15 @@ namespace LEDControl
                     });
                 }
 
-                portConfigs = portConfigs.GroupBy(pc => pc.portName).Select(g => g.First()).ToList();
-
                 for (int i = 0; i < dataModePrefixes.Length; i++)
                 {
                     dataModePrefixes[i] = i.ToString() + ":";
                 }
 
-                clearCommand = "0:clear\r\n";
+                for (int i = 0; i < dataModePorts.Length; i++)
+                {
+                    dataModePorts[i] = i;
+                }
 
                 Initialize();
             }
@@ -119,7 +122,7 @@ namespace LEDControl
                 return;
             }
 
-            var uniqueConfigs = portConfigs;
+            var uniqueConfigs = portConfigs.GroupBy(pc => pc.portName).Select(g => g.First()).ToList();
 
             int portCount = uniqueConfigs.Count;
             serialPorts.Clear();
@@ -198,7 +201,6 @@ namespace LEDControl
                 }
             }
         }
-
 
         public void SendString(int portIndex, string row)
         {
@@ -415,7 +417,7 @@ namespace LEDControl
                     transfer = false;
                     for (int i = 0; i < 4; i++)
                     {
-                        int portIndex = stripManager.GetPortIndexForStrip(i);
+                        int portIndex = dataModePorts[i];
                         SendString(portIndex, dataModePrefixes[i] + "clear\r\n");
                     }
                 }
