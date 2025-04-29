@@ -152,19 +152,20 @@ public class StateManager : MonoBehaviour
 
         yield return new WaitForSeconds(delayBeforeVideoSwitch);
 
+        yield return new WaitForSeconds(delayBeforeCurtainFadeOut);
+
+        SetState(AppState.Active, CurrentState);
+
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Active);
 
         yield return videoPlayer.SwitchToDefaultMode();
-        //ledController?.StartFadeOut();
+        ledController?.StartFadeOut();
         ledController?.SwitchToActiveJSON();
         soundManager?.ResetTimeCodeSounds();
         soundManager.SetSoundClip(soundManager.ActiveClip);
         soundManager?.StartFadeIn(fadeInDuration);
 
-        yield return new WaitForSeconds(delayBeforeCurtainFadeOut);
-
-        SetState(AppState.Active, CurrentState);
 
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });

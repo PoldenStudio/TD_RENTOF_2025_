@@ -3021,7 +3021,7 @@ MonoBehaviour:
       endTime: 44
       sunMode: 2
       startPosition: 0
-      endPosition: 0.95
+      endPosition: 1
     - startTime: 64
       endTime: 130
       sunMode: 1
@@ -3031,12 +3031,12 @@ MonoBehaviour:
       endTime: 140
       sunMode: 0
       startPosition: 0.65
-      endPosition: 0.95
+      endPosition: 1
     - startTime: 166
       endTime: 180
       sunMode: 2
       startPosition: 0
-      endPosition: 0.95
+      endPosition: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   activeSunSettings:
@@ -3051,29 +3051,29 @@ MonoBehaviour:
       endTime: 50
       sunMode: 2
       startPosition: 0.5
-      endPosition: 0.95
+      endPosition: 1
     - startTime: 65
       endTime: 96
       sunMode: 0
       startPosition: 0
-      endPosition: 0.95
+      endPosition: 1
     - startTime: 120
       endTime: 137
       sunMode: 1
       startPosition: 0
-      endPosition: 0.95
+      endPosition: 1
     - startTime: 154
       endTime: 184
       sunMode: 1
       startPosition: 0
-      endPosition: 0.95
+      endPosition: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   sunFadeDuration: 1
   dataSender: {fileID: 1299263587}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData
-  virtualPadding: 5
+  virtualPadding: 16
   currentSpeedRaw: 1
   MultiplySpeed: 1
   stripDataManager: {fileID: 770569964}
@@ -4523,7 +4523,7 @@ MonoBehaviour:
   - name: LED Strip
     totalLEDs: 35
     ledsPerSegment: 1
-    dmxChannelOffset: 140
+    dmxChannelOffset: 141
     brightness: 3
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
@@ -4935,7 +4935,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  StartFadeInDuration: 1
+  StartFadeInDuration: 3
   StartFadeOut_R:
     serializedVersion: 2
     m_Curve:

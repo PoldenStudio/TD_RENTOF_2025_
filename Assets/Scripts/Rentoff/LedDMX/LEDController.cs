@@ -774,7 +774,7 @@ namespace LEDControl
                         }
                         debugText.text = sb.ToString();
                     }
-                    WriteToDMXChannel(FrameBuffer, externalLightChannel, (byte)(externalLightValueActive));
+                    //WriteToDMXChannel(FrameBuffer, externalLightChannel, (byte)(externalLightValueActive));
                 }
                 else
                 {
@@ -898,10 +898,11 @@ namespace LEDControl
         public void SwitchToActiveJSON()
         {
             idleMode = false;
-            foreach (var strip in ledStrips) strip.ResetFrames();
+            //foreach (var strip in ledStrips) strip.ResetFrames();
             confirmTime = false;
             kineticStartTime = Time.time;
         }
+
         public void SwitchToIdleJSON()
         {
             idleMode = true;

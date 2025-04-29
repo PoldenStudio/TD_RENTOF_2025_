@@ -611,13 +611,13 @@ namespace LEDControl
             switch (reason)
             {
                 case CacheInvalidationReason.AppStateChange:
-                    Debug.Log("Cache invalidated due to AppState change.");
+                    //Debug.Log("Cache invalidated due to AppState change.");
                     break;
                 case CacheInvalidationReason.SpeedChange:
-                    Debug.Log("Cache invalidated due to Speed change.");
+                    //Debug.Log("Cache invalidated due to Speed change.");
                     break;
                 case CacheInvalidationReason.SunSettingsChange:
-                    Debug.Log("Cache invalidated due to SunSettings change.");
+                    //Debug.Log("Cache invalidated due to SunSettings change.");
                     break;
             }
             ClearSunCache();
