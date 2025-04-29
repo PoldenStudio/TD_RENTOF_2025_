@@ -215,8 +215,7 @@ namespace LEDControl
                 Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
                 return 0;
             }
-            Debug.Log($"[StripDataManager] Strip index: " + stripPortAssignments[stripIndex].portIndex);
-            return stripIndex;
+            return stripPortAssignments[stripIndex].portIndex;
         }
 
         public Color32 GetDefaultColor(int stripIndex)
