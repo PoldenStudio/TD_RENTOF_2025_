@@ -407,12 +407,12 @@ MonoBehaviour:
   fadeDuration: 4
   minXPosition: -860
   maxXPosition: 0
-  smoothTimeNormal: 1
+  smoothTimeNormal: 0.15
   smoothTimeSwipeMin: 0.1
-  smoothTimeSwipeMax: 0.1
+  smoothTimeSwipeMax: 0.3
   smoothTimeHoldMin: 0.1
   smoothTimeHoldMax: 0.4
-  curtainSensitivity: 0.005
+  curtainSensitivity: 0.5
   curtainThreshold: 0.9
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
@@ -1673,7 +1673,7 @@ MonoBehaviour:
   ledsPerSegment: 01000000010000000100000001000000
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 02000000020000000200000001000000
+  currentDisplayModes: 02000000020000000000000001000000
   currentSunModes: 02000000020000000200000000000000
   stripSettings:
   - brightness: 1
@@ -3026,11 +3026,11 @@ MonoBehaviour:
       endTime: 130
       sunMode: 1
       startPosition: 0
-      endPosition: 0.65
+      endPosition: 0.35
     - startTime: 130
       endTime: 140
       sunMode: 0
-      startPosition: 0.65
+      startPosition: 0.35
       endPosition: 1
     - startTime: 166
       endTime: 180
@@ -3870,7 +3870,7 @@ MonoBehaviour:
     baudRate: 115200
   - portName: COM6
     baudRate: 115200
-  debugMode: 0
+  debugMode: 1
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
 --- !u!114 &1299263588
