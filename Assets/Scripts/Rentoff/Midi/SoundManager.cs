@@ -234,6 +234,8 @@ public class SoundManager : MonoBehaviour
             synthSource.Stop();
             currentClip = clip;
             synthSource.clip = clip;
+            lowPassFilter.cutoffFrequency = 22000f;
+            synthSource.pitch = 1;
             //synthSource.Play();
         }
     }

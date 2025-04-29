@@ -324,6 +324,7 @@ namespace LEDControl
                 SunMode.Cold => sunColorSettings[stripIndex].coldColor,
                 SunMode.Gradient => sunColorSettings[stripIndex].gradientStartColor, // Will be blended in SunManager
                 _ => Color.white
+
             };
         }
 

@@ -407,12 +407,12 @@ MonoBehaviour:
   fadeDuration: 4
   minXPosition: -860
   maxXPosition: 0
-  smoothTimeNormal: 0.15
+  smoothTimeNormal: 2
   smoothTimeSwipeMin: 0.1
-  smoothTimeSwipeMax: 0.3
+  smoothTimeSwipeMax: 0.1
   smoothTimeHoldMin: 0.1
   smoothTimeHoldMax: 0.4
-  curtainSensitivity: 0.5
+  curtainSensitivity: 0.01
   curtainThreshold: 0.9
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
@@ -497,11 +497,7 @@ MonoBehaviour:
   dataSenderPortConfigs:
   - portName: COM23
     baudRate: 921600
-  - portName: COM23
-    baudRate: 921600
   - portName: COM30
-    baudRate: 921600
-  - portName: COM23
     baudRate: 921600
   loopMidiDeviceId: M1-P27-O0
   dmxComPortName: COM10
@@ -1647,7 +1643,7 @@ MonoBehaviour:
   speedLedCountFactor: 1.5
   speedBrightnessFactor: 1.5
   tailIntensity: 0.5
-  moveDirection: 0
+  moveDirection: 1
   toggleTouchMode: 0
   startFromEnd: 1
   stationaryBrightnessFactor: 1
@@ -1673,7 +1669,7 @@ MonoBehaviour:
   ledsPerSegment: 01000000010000000100000001000000
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
-  currentDisplayModes: 02000000020000000000000001000000
+  currentDisplayModes: 02000000020000000200000001000000
   currentSunModes: 02000000020000000200000000000000
   stripSettings:
   - brightness: 1
@@ -1691,7 +1687,7 @@ MonoBehaviour:
   stripPortAssignments:
   - portIndex: 0
   - portIndex: 0
-  - portIndex: 0
+  - portIndex: 1
   - portIndex: 0
   sunColorSettings:
   - warmColor:
@@ -1705,7 +1701,7 @@ MonoBehaviour:
       rgba: 4294967295
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4286282619
+      rgba: 4286085240
   - warmColor:
       serializedVersion: 2
       rgba: 4286085240
@@ -1720,16 +1716,16 @@ MonoBehaviour:
       rgba: 4294967295
   - warmColor:
       serializedVersion: 2
-      rgba: 4294966784
+      rgba: 4294967295
     coldColor:
       serializedVersion: 2
-      rgba: 4278518015
+      rgba: 4278228991
     gradientStartColor:
       serializedVersion: 2
-      rgba: 4294966784
+      rgba: 4294967295
     gradientEndColor:
       serializedVersion: 2
-      rgba: 4278190335
+      rgba: 4278228991
   - warmColor:
       serializedVersion: 2
       rgba: 4278236415
@@ -3018,51 +3014,51 @@ MonoBehaviour:
     baseCycleLength: 180
     intervals:
     - startTime: 0
-      endTime: 44
+      endTime: 46
       sunMode: 2
-      startPosition: 0
+      startPosition: 0.2
       endPosition: 1
-    - startTime: 64
+    - startTime: 50
       endTime: 130
-      sunMode: 1
+      sunMode: 3
       startPosition: 0
       endPosition: 0.35
     - startTime: 130
-      endTime: 140
-      sunMode: 0
+      endTime: 144
+      sunMode: 2
       startPosition: 0.35
       endPosition: 1
-    - startTime: 166
+    - startTime: 163
       endTime: 180
-      sunMode: 2
+      sunMode: 3
       startPosition: 0
-      endPosition: 1
+      endPosition: 0.2
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
   activeSunSettings:
     baseCycleLength: 184
     intervals:
-    - startTime: 21
+    - startTime: 16
       endTime: 43
       sunMode: 2
       startPosition: 0
       endPosition: 0.5
     - startTime: 43
-      endTime: 50
-      sunMode: 2
+      endTime: 52
+      sunMode: 3
       startPosition: 0.5
       endPosition: 1
-    - startTime: 65
-      endTime: 96
-      sunMode: 0
+    - startTime: 62
+      endTime: 99
+      sunMode: 2
       startPosition: 0
       endPosition: 1
-    - startTime: 120
-      endTime: 137
+    - startTime: 116
+      endTime: 141
       sunMode: 1
       startPosition: 0
       endPosition: 1
-    - startTime: 154
+    - startTime: 150
       endTime: 184
       sunMode: 1
       startPosition: 0
@@ -3862,14 +3858,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portConfigs:
-  - portName: COM6
-    baudRate: 115200
-  - portName: COM6
-    baudRate: 115200
-  - portName: COM6
-    baudRate: 115200
-  - portName: COM6
-    baudRate: 115200
+  - portName: COM23
+    baudRate: 921600
+  - portName: COM30
+    baudRate: 921600
   debugMode: 1
   stripManager: {fileID: 770569964}
   sendInterval: 0.028
@@ -4589,7 +4581,7 @@ MonoBehaviour:
     totalLEDs: 1
     ledsPerSegment: 1
     dmxChannelOffset: 400
-    brightness: 1
+    brightness: 0
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
     - {r: 0, g: 0, b: 0, a: 1}
@@ -4654,7 +4646,7 @@ MonoBehaviour:
     totalLEDs: 1
     ledsPerSegment: 1
     dmxChannelOffset: 410
-    brightness: 1
+    brightness: 0
     globalColor: {r: 1, g: 1, b: 1, a: 1}
     segmentColors:
     - {r: 0, g: 0, b: 0, a: 1}
@@ -5044,7 +5036,7 @@ MonoBehaviour:
     kineticLIndex: 509
     kineticRIndex: 511
   externalLightChannel: 508
-  externalLightValueIdle: 20
+  externalLightValueIdle: 60
   externalLightValueActive: 0
 --- !u!1 &1631245014
 GameObject:

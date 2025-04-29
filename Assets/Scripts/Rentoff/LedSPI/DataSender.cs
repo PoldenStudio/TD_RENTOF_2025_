@@ -199,7 +199,6 @@ namespace LEDControl
             }
         }
 
-
         public void SendString(int portIndex, string row)
         {
             if (portIndex >= 0 && portIndex < serialPorts.Count && IsPortOpen(portIndex))
@@ -337,7 +336,8 @@ namespace LEDControl
                 previousGlobalData[stripIndex] = stripData;
             }
 
-            int portIndex = stripManager.GetPortIndexForStrip(stripIndex);
+            // Custom port mapping: strip 0,1,3 -> port 0; strip 2 -> port 1
+            int portIndex = (stripIndex == 2) ? 1 : 0;
             int lastSentPixel = 0;
             string optimizedHex = OptimizeHexString(globalDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, pixelsToGenerate, ref lastSentPixel);
 
@@ -381,7 +381,8 @@ namespace LEDControl
                 previousSegmentData[stripIndex] = stripData;
             }
 
-            int portIndex = stripManager.GetPortIndexForStrip(stripIndex);
+            // Custom port mapping: strip 0,1,3 -> port 0; strip 2 -> port 1
+            int portIndex = (stripIndex == 2) ? 1 : 0;
             int lastSentPixel = 0;
             string optimizedHex = OptimizeHexString(segmentDataBuilder.ToString(), new string('0', hexPerPixel), hexPerPixel, totalPixels, ref lastSentPixel);
 
@@ -413,10 +414,11 @@ namespace LEDControl
                 if (transfer)
                 {
                     transfer = false;
-                    for (int i = 0; i < 4; i++)
+                    for (int j = 0; j < 4; j++)
                     {
-                        int portIndex = stripManager.GetPortIndexForStrip(i);
-                        SendString(portIndex, dataModePrefixes[i] + "clear\r\n");
+                        // Custom port mapping for clear commands
+                        int portIndex = (j == 2) ? 1 : 0;
+                        SendString(portIndex, dataModePrefixes[j] + "clear\r\n");
                     }
                 }
             }
@@ -457,7 +459,8 @@ namespace LEDControl
                 string stripData = GenerateDataString(i, stripManager, SunManager, effectsManager, colorProcessor, appState);
                 if (!string.IsNullOrEmpty(stripData))
                 {
-                    int portIndex = stripManager.GetPortIndexForStrip(i);
+                    // Custom port mapping: strip 0,1,3 -> port 0; strip 2 -> port 1
+                    int portIndex = (i == 2) ? 1 : 0;
                     EnqueueData(portIndex, stripData);
                 }
             }

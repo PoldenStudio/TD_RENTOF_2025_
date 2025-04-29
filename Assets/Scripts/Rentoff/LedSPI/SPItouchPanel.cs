@@ -1,6 +1,4 @@
-﻿
-
-using LEDControl;
+﻿using LEDControl;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +19,7 @@ public class SPItouchPanel : MonoBehaviour
     [SerializeField] private bool debugMode = false;
 
     private float lastDataSendTime = 0f;
-    private const float sendDataInterval = 0.028f;
+    private const float sendDataInterval = 0.1f;
 
     private Dictionary<int, HashSet<int>> activeSegments = new Dictionary<int, HashSet<int>>();
     private Dictionary<int, float> lastSwipeTime = new Dictionary<int, float>();
@@ -80,7 +78,7 @@ public class SPItouchPanel : MonoBehaviour
         bool anyPortOpen = false;
         for (int i = 0; i < dataSender.portConfigs.Count; i++)
         {
-            if (dataSender.IsPortOpen(i)) 
+            if (dataSender.IsPortOpen(i))
             {
                 anyPortOpen = true;
                 break;
@@ -216,7 +214,6 @@ public class SPItouchPanel : MonoBehaviour
                         }
                         else if (currentColor.Equals(blackColor))
                         {
-                            stripDataManager.SetSegmentColor(stripIndex, segmentIndex, synthColor, debugMode);
                             stripDataManager.SetSegmentColor(stripIndex, segmentIndex, synthColor, debugMode);
                             activeSegments[stripIndex].Add(segmentIndex);
                         }

@@ -616,6 +616,8 @@ namespace LEDControl
                 }
             }
             WriteToDMXChannel(FrameBuffer, externalLightChannel, (byte)(externalLightValueIdle));
+            WriteToDMXChannel(FrameBuffer, 509, 0);
+            WriteToDMXChannel(FrameBuffer, 511, 0);
         }
 
 

@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿//нужен новый режим BackGradient где мы будем перемещаться не между sunColor и sunEndColor, а наоборот
+
+using UnityEngine;
 using System;
 using System.Text;
 using System.Collections.Generic;
@@ -57,7 +59,8 @@ namespace LEDControl
         {
             Warm,
             Cold,
-            Gradient
+            Gradient,
+            BackGradient
         }
 
         [Serializable]
@@ -370,6 +373,8 @@ namespace LEDControl
 
                     float currentNormalizedStripPos = Mathf.Lerp(currentIntervalStartPosition, currentIntervalEndPosition, intervalTimeProgress);
 
+
+
                     int stripPixelCount = stripDataManager.GetSunPixelCountForStrip(stripIndex);
                     float sunRadius = Mathf.Max(1f, stripPixelCount) * 1f;
                     float virtualLength = totalLEDs + 2 * sunRadius;
@@ -396,13 +401,18 @@ namespace LEDControl
                     for (int i = 0; i < totalLEDs; i++)
                     {
                         float normalizedPos = (float)i / totalLEDs;
-                        Color32 blendedColor = currentSunMode == SunMode.Gradient
-                            ? Color32.Lerp(sunColor, sunEndColor, normalizedPos)
-                            : sunColor;
+
+                        Color32 blendedColor = currentSunMode switch
+                        {
+                            SunMode.Gradient => Color32.Lerp(sunColor, sunEndColor , normalizedPos),
+                            SunMode.BackGradient => Color32.Lerp(sunEndColor, sunColor, normalizedPos),
+                            _ => sunColor
+                        };
 
                         pixelColor.r = (byte)(blendedColor.r * pixelBrightness[i] / 255f);
                         pixelColor.g = (byte)(blendedColor.g * pixelBrightness[i] / 255f);
                         pixelColor.b = (byte)(blendedColor.b * pixelBrightness[i] / 255f);
+
 
                         string pixelHex = "";
 
