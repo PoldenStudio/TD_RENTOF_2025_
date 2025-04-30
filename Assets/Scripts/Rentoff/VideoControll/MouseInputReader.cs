@@ -42,15 +42,27 @@ public class MouseInputReader : InputReader
     private bool holdProcessed = false;
     private float holdMovementDistance = 0f;
 
+    private AppState dragInitiatedInState;
+
     protected override void ReadInput()
     {
         if (stateManager == null || (stateManager.CurrentState != AppState.Active && stateManager.CurrentState != AppState.Idle))
         {
+            if (isMouseDragging)
+            {
+                isMouseDragging = false;
+                isHoldChecking = false;
+                isHolding = false;
+                holdProcessed = false;
+                if (enableDebug) Debug.Log($"[MouseInputReader] Drag cancelled due to state becoming neither Active nor Idle.");
+            }
             return;
         }
 
         if (Input.GetMouseButtonDown(0))
         {
+            dragInitiatedInState = stateManager.CurrentState;
+
             isMouseDragging = true;
             startDragPosition = Input.mousePosition;
             currentDragPosition = startDragPosition;
@@ -67,25 +79,29 @@ public class MouseInputReader : InputReader
             }
 
             if (enableDebug)
-                Debug.Log($"[MouseInputReader] Mouse drag started at position {startDragPosition}");
+                Debug.Log($"[MouseInputReader] Mouse drag started at position {startDragPosition} in state {dragInitiatedInState}");
         }
         else if (Input.GetMouseButtonUp(0) && isMouseDragging)
         {
+            if (dragInitiatedInState == AppState.Idle && stateManager.CurrentState == AppState.Active)
+            {
+                if (enableDebug) Debug.Log($"[MouseInputReader] Mouse up in Active, but drag started in Idle. Ignoring swipe for video.");
+                isMouseDragging = false;
+                return;
+            }
+
             Vector2 endPosition = Input.mousePosition;
             float duration = Mathf.Max(0.001f, Time.time - dragStartTime);
             float distance = Vector2.Distance(startDragPosition, endPosition) * distanceMultiplier;
 
-            // Если удерживаем - завершаем hold
             if (isHolding && enableHoldDetection && stateManager.CurrentState == AppState.Active)
             {
                 swipeDetector?.ProcessMouseHold(startDragPosition, endPosition, duration, false);
-
                 if (enableDebug)
                     Debug.Log($"[MouseInputReader] Mouse hold ended, duration: {duration:F2}s");
             }
             else
             {
-                // Финальный свайп - тоже отправляем
                 if (distance > minSwipeDistance)
                 {
                     SendSwipeEvent(startDragPosition, endPosition, duration, true);
@@ -99,9 +115,15 @@ public class MouseInputReader : InputReader
         }
         else if (isMouseDragging)
         {
+            if (dragInitiatedInState == AppState.Idle && stateManager.CurrentState == AppState.Active)
+            {
+                currentDragPosition = Input.mousePosition;
+                if (enableDebug) Debug.Log($"[MouseInputReader] Drag ongoing: started in Idle, now Active. Ignoring for video control purposes this frame.");
+                return;
+            }
+
             currentDragPosition = Input.mousePosition;
 
-            // Проверка на удержание (hold)
             if (isHoldChecking && enableHoldDetection && stateManager.CurrentState == AppState.Active && !holdProcessed)
             {
                 float currentHoldDistance = Vector2.Distance(startDragPosition, currentDragPosition);
@@ -111,26 +133,22 @@ public class MouseInputReader : InputReader
                 {
                     isHoldChecking = false;
                     isHolding = false;
-
                     if (enableDebug)
                         Debug.Log($"[MouseInputReader] Hold check canceled - mouse moved too much: {holdMovementDistance:F1} px");
                 }
                 else if (Time.time - dragStartTime >= holdThresholdTime)
                 {
                     isHolding = true;
-
                     if (!holdProcessed)
                     {
                         swipeDetector?.ProcessMouseHold(startDragPosition, currentDragPosition, Time.time - dragStartTime, true);
                         holdProcessed = true;
-
                         if (enableDebug)
                             Debug.Log($"[MouseInputReader] Hold detected at {currentDragPosition}, movement: {holdMovementDistance:F1} px");
                     }
                 }
             }
 
-            // Промежуточные свайпы (continuous updates)
             if (!isHolding && sendContinuousUpdates && Time.time - lastUpdateTime > continuousUpdateInterval)
             {
                 float movedSinceLast = Vector2.Distance(lastSentPosition, currentDragPosition);
@@ -157,7 +175,6 @@ public class MouseInputReader : InputReader
         if (invertXDirection) xComp = -xComp;
         if (invertYDirection) yComp = -yComp;
 
-        // Смесь горизонтального и вертикального
         xComp *= horizontalBias * 2;
         yComp *= (1 - horizontalBias) * 2;
 

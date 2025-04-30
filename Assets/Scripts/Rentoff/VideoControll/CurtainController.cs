@@ -30,13 +30,17 @@ public class CurtainController : MonoBehaviour
     [SerializeField] private float curtainSensitivity = 0.5f;
     [SerializeField] private float curtainThreshold = 0.9f;
 
+    [Header("Auto Return Settings")]
+    [SerializeField] private float autoReturnDelay = 4f;
+    [SerializeField] private float autoReturnDuration = 1f;
+
     [Header("Media Players")]
     [SerializeField] private Media curtainMedia;
     [SerializeField] private InitializationFramework.InitializePlayers initializePlayers;
     [SerializeField] private StateManager stateManager;
 
     private PlaybackState _state = PlaybackState.Normal;
-    private float _currentPosition = 0f; // 0 = closed, 1 = open
+    private float _currentPosition = 0f;
     private float _targetPosition = 0f;
     private float _velocity = 0f;
     private bool _isCurtainFull = false;
@@ -48,6 +52,7 @@ public class CurtainController : MonoBehaviour
 
     private Coroutine _fadeCoroutine;
     private Coroutine _cometPlaybackCoroutine;
+    private Coroutine _autoReturnCoroutine;
 
     private bool _shouldPlayComet = false;
     private bool _shouldCheckCometOnFull = false;
@@ -56,6 +61,9 @@ public class CurtainController : MonoBehaviour
 
     private Action _onCurtainFullCallback;
     private Action _onCurtainFadedCallback;
+
+    private float _inactivityTimer = 0f;
+    private bool _isAutoReturning = false;
 
     private void Awake()
     {
@@ -86,15 +94,95 @@ public class CurtainController : MonoBehaviour
 
     private void Update()
     {
+        HandleInactivity();
         UpdateCurtainState();
         UpdateCurtainPosition();
         CheckCurtainFullState();
     }
 
+    private void HandleInactivity()
+    {
+        if (_isAutoReturning || _isHolding)
+        {
+            _inactivityTimer = 0f;
+            return;
+        }
+
+        if (_state == PlaybackState.Normal)
+        {
+            if (_currentPosition > 0.0001f)
+            {
+                _inactivityTimer += Time.deltaTime;
+            }
+            else
+            {
+                _inactivityTimer = 0f;
+            }
+
+            if (_inactivityTimer >= autoReturnDelay)
+            {
+                StartAutoReturn();
+            }
+        }
+        else
+        {
+            _inactivityTimer = 0f;
+        }
+    }
+
+    private void StartAutoReturn()
+    {
+        if (_currentPosition <= 0.0001f || _isAutoReturning || _isHolding) return;
+
+        Debug.Log("[CurtainController] Starting auto-return via coroutine.");
+        _isAutoReturning = true;
+        _inactivityTimer = 0f;
+        CancelHold();
+
+        _state = PlaybackState.Normal;
+        _targetPosition = 0f;
+        _velocity = 0f;
+
+        if (_autoReturnCoroutine != null)
+        {
+            StopCoroutine(_autoReturnCoroutine);
+        }
+        _autoReturnCoroutine = StartCoroutine(AutoReturnCoroutine());
+    }
+
+    private IEnumerator AutoReturnCoroutine()
+    {
+        float startPosition = _currentPosition;
+        float target = 0f;
+        float timer = 0f;
+
+        while (timer < autoReturnDuration)
+        {
+            timer += Time.deltaTime;
+            float normalizedTime = Mathf.Clamp01(timer / autoReturnDuration);
+            float easedT = EaseInOutSine(normalizedTime);
+            _currentPosition = Mathf.Lerp(startPosition, target, easedT);
+            yield return null;
+        }
+
+        _currentPosition = target;
+        _velocity = 0f;
+        _isAutoReturning = false;
+        _state = PlaybackState.Normal;
+        _targetPosition = 0f;
+        _autoReturnCoroutine = null;
+        Debug.Log("[CurtainController] Auto-return complete via coroutine.");
+    }
+
     private void UpdateCurtainState()
     {
+        if (_isAutoReturning)
+        {
+            return;
+        }
+
         float dt = Time.deltaTime;
-        float currentSmoothTime = 0;
+        float currentSmoothTime;
 
         switch (_state)
         {
@@ -103,21 +191,20 @@ public class CurtainController : MonoBehaviour
                 currentSmoothTime = Mathf.Lerp(smoothTimeSwipeMin, smoothTimeSwipeMax, targetPositionMagnitude);
                 _currentPosition = Mathf.SmoothDamp(_currentPosition, _targetPosition, ref _velocity, currentSmoothTime, Mathf.Infinity, dt);
 
-                if (Mathf.Abs(_currentPosition - _targetPosition) < 0.01f)
+                if (Mathf.Abs(_currentPosition - _targetPosition) < 0.001f) // Reduced threshold
                 {
                     _currentPosition = _targetPosition;
                     _state = PlaybackState.Normal;
                     _velocity = 0f;
                     Debug.Log($"[CurtainController] Deceleration complete. Final position: {_currentPosition:F2}");
                 }
-
                 break;
 
             case PlaybackState.HoldAccelerating:
                 currentSmoothTime = Mathf.Lerp(smoothTimeHoldMin, smoothTimeHoldMax, Mathf.Abs(_currentPosition));
                 _currentPosition = Mathf.SmoothDamp(_currentPosition, _holdZeroPosition, ref _velocity, currentSmoothTime, Mathf.Infinity, dt);
 
-                if (Mathf.Abs(_currentPosition - _holdZeroPosition) < 0.01f)
+                if (Mathf.Abs(_currentPosition - _holdZeroPosition) < 0.001f)
                 {
                     _currentPosition = _holdZeroPosition;
                 }
@@ -149,8 +236,24 @@ public class CurtainController : MonoBehaviour
         );
     }
 
+    private void ResetInactivity()
+    {
+        _inactivityTimer = 0f;
+        if (_isAutoReturning)
+        {
+            if (_autoReturnCoroutine != null)
+            {
+                StopCoroutine(_autoReturnCoroutine);
+                _autoReturnCoroutine = null;
+            }
+            _isAutoReturning = false;
+            Debug.Log("[CurtainController] Auto-return cancelled by user interaction.");
+        }
+    }
+
     public void ApplySwipeMovement(float movement)
     {
+        ResetInactivity();
         if (_state == PlaybackState.HoldAccelerating)
             return;
 
@@ -164,6 +267,7 @@ public class CurtainController : MonoBehaviour
 
     public void ApplyMouseSwipe(Vector2 direction, float speed)
     {
+        ResetInactivity();
         if (_state == PlaybackState.HoldAccelerating)
             return;
 
@@ -180,6 +284,7 @@ public class CurtainController : MonoBehaviour
 
     public void OnMouseHoldStart(Vector2 position)
     {
+        ResetInactivity();
         _isHolding = true;
         _holdPosition = position;
         _holdStartTime = Time.time;
@@ -199,10 +304,8 @@ public class CurtainController : MonoBehaviour
         if (_state == PlaybackState.HoldAccelerating && _isHolding)
         {
             _isHolding = false;
-
             _state = PlaybackState.Decelerating;
 
-            // Decide where to snap to based on current position
             if (_currentPosition >= curtainThreshold)
             {
                 _targetPosition = 1f;
@@ -213,6 +316,7 @@ public class CurtainController : MonoBehaviour
             }
 
             _velocity = 0f;
+            _inactivityTimer = 0f;
             Debug.Log($"[CurtainController] Hold release => target: {_targetPosition}");
         }
     }
@@ -280,6 +384,7 @@ public class CurtainController : MonoBehaviour
     public void SlideCurtain(bool slideIn, Action onComplete = null)
     {
         CancelHold();
+        ResetInactivity();
 
         if (curtainRenderer != null)
         {
@@ -291,7 +396,6 @@ public class CurtainController : MonoBehaviour
         _state = PlaybackState.Decelerating;
         _velocity = 0f;
 
-        // Wait one frame to check if animation has completed
         StartCoroutine(WaitForSlideComplete(onComplete));
     }
 
@@ -299,8 +403,7 @@ public class CurtainController : MonoBehaviour
     {
         yield return null;
 
-        // Wait until the state changes back to Normal
-        while (_state == PlaybackState.Decelerating)
+        while (_state == PlaybackState.Decelerating || _isAutoReturning)
         {
             yield return null;
         }
@@ -391,6 +494,7 @@ public class CurtainController : MonoBehaviour
     public void ResetCurtainProgress()
     {
         CancelHold();
+        ResetInactivity();
 
         if (_fadeCoroutine != null)
         {
@@ -410,6 +514,7 @@ public class CurtainController : MonoBehaviour
         _targetPosition = 0f;
         _isCurtainFull = false;
         _isCometPlaying = false;
+        _isAutoReturning = false; // Ensure this is reset
 
         _shouldPlayComet = false;
         _shouldCheckCometOnFull = false;
@@ -437,7 +542,11 @@ public class CurtainController : MonoBehaviour
 
     private void CancelHold()
     {
-        _isHolding = false;
+        if (_isHolding)
+        {
+            _isHolding = false;
+            Debug.Log("[CurtainController] Hold cancelled.");
+        }
     }
 
     public void SetShouldPlayComet(bool value)

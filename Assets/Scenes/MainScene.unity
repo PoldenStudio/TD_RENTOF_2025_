@@ -414,6 +414,8 @@ MonoBehaviour:
   smoothTimeHoldMax: 0.4
   curtainSensitivity: 0.01
   curtainThreshold: 0.9
+  autoReturnDelay: 4
+  autoReturnDuration: 0.5
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
   stateManager: {fileID: 1213853305}

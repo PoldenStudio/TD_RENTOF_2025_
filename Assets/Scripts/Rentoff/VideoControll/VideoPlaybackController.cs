@@ -135,6 +135,12 @@ public class VideoPlaybackController : MonoBehaviour
     {
         _swipeControlEnabled = enabled;
         Debug.Log($"[VideoPlaybackController] Swipe control enabled: {enabled}");
+
+        // Сбрасываем состояния, связанные с мышью
+        _isMouseHolding = false;
+        _waitingForMouseSwipeRelease = false;
+        _processedMouseHold = false;
+
         if (!enabled)
         {
             curtainController?.ResetCurtainProgress();
@@ -174,6 +180,11 @@ public class VideoPlaybackController : MonoBehaviour
         }
         _lastMouseSwipeDir = significantDir;
         _lastMouseSwipeSpeed = mouseSwipeData.speed;
+
+        if (stateManager.CurrentState == AppState.Active && !Input.GetMouseButton(0))
+        {
+            return;
+        }
 
         if (stateManager.CurrentState == AppState.Active)
         {
@@ -311,6 +322,12 @@ public class VideoPlaybackController : MonoBehaviour
 
     private void HandleMouseHoldRelease()
     {
+        if (stateManager.CurrentState != AppState.Active)
+        {
+            _isMouseHolding = false;
+            return;
+        }
+
         if (_state == PlaybackState.HoldAccelerating && _isHolding)
         {
             _isHolding = false;
