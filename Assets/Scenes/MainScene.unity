@@ -414,7 +414,7 @@ MonoBehaviour:
   smoothTimeHoldMax: 0.4
   curtainSensitivity: 0.01
   curtainThreshold: 0.9
-  autoReturnDelay: 4
+  autoReturnDelay: 14
   autoReturnDuration: 0.5
   curtainMedia: {fileID: 275200804}
   initializePlayers: {fileID: 5569678818555696787}
@@ -1669,6 +1669,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalLEDsPerStrip: 8c0000008c0000003000000018010000
   ledsPerSegment: 01000000010000000100000001000000
+  virtualPaddingsPerStrip: 10000000100000000600000005000000
   stripEnabled: 01010101
   currentDataModes: 00000000010000000200000003000000
   currentDisplayModes: 02000000020000000200000001000000
@@ -1741,17 +1742,11 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4294901760
   sunStripSettings:
-  - pixelCount: 10
-  - pixelCount: 10
-  - pixelCount: 2
+  - pixelCount: 15
+  - pixelCount: 15
+  - pixelCount: 3
   - pixelCount: 10
   monochromeStripSettings:
-  - globalColor:
-      serializedVersion: 2
-      rgba: 4294967295
-    synthColor:
-      serializedVersion: 2
-      rgba: 4294967295
   - globalColor:
       serializedVersion: 2
       rgba: 4294967295
@@ -3017,22 +3012,22 @@ MonoBehaviour:
     intervals:
     - startTime: 0
       endTime: 46
-      sunMode: 2
+      sunMode: 3
       startPosition: 0.2
       endPosition: 1
     - startTime: 50
       endTime: 130
-      sunMode: 3
+      sunMode: 2
       startPosition: 0
       endPosition: 0.35
     - startTime: 130
       endTime: 144
-      sunMode: 2
+      sunMode: 3
       startPosition: 0.35
       endPosition: 1
     - startTime: 163
       endTime: 180
-      sunMode: 3
+      sunMode: 2
       startPosition: 0
       endPosition: 0.2
     brightnessMultiplier: 1
@@ -3042,17 +3037,17 @@ MonoBehaviour:
     intervals:
     - startTime: 16
       endTime: 43
-      sunMode: 2
+      sunMode: 3
       startPosition: 0
       endPosition: 0.5
     - startTime: 43
       endTime: 52
-      sunMode: 3
+      sunMode: 2
       startPosition: 0.5
       endPosition: 1
     - startTime: 62
       endTime: 99
-      sunMode: 2
+      sunMode: 3
       startPosition: 0
       endPosition: 1
     - startTime: 116
@@ -3071,7 +3066,6 @@ MonoBehaviour:
   dataSender: {fileID: 1299263587}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData
-  virtualPadding: 16
   currentSpeedRaw: 1
   MultiplySpeed: 1
   stripDataManager: {fileID: 770569964}
