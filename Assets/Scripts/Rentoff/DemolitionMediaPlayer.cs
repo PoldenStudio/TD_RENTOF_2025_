@@ -48,6 +48,15 @@ public class DemolitionMediaPlayer : IMediaPlayer
         _media.SeekToFrame(frame);
     }
 
+    public int Loops
+    {
+        set { _media.Loops = 0; }
+    }
+
+    public int LoopsSinceStart
+    {
+        get { return _media.LoopsSinceStart; }
+    }
 
     public float PlaybackSpeed
     {

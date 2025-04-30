@@ -763,6 +763,18 @@ public class VideoPlaybackController : MonoBehaviour
         {
             ResetState();
             SetSwipeControlEnabled(true);
+
+            if (_mediaPlayer != null)
+            {
+                if (_mediaPlayer.LoopsSinceStart > 0)
+                {
+                    _mediaPlayer.Loops = 0;
+                }
+                else
+                {
+                    _mediaPlayer.Loops = -1;
+                }
+            }
         }
     }
 

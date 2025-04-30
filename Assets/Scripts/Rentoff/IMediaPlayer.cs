@@ -17,4 +17,8 @@ public interface IMediaPlayer
 
     int VideoCurrentFrame { get; }
 
+    int Loops { set; }
+
+    int LoopsSinceStart { get; }
+
 }
