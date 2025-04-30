@@ -4,25 +4,24 @@ using UnityEngine;
 
 public class Comet
 {
-    public float position;         // Float position for smooth movement
+    public float position;         
     public Color32 color;
-    public float length;           // Fixed length
+    public float length;           
     public float brightness;
     public bool isActive;
     public float startTime;
     public bool isMoving;
-    public float direction;        // 1 for forward, -1 for backward
+    public float direction;        
 
-    // Cached values to avoid recalculations
     private int totalLEDs;
     private float tailIntensity;
-    private float[] brightnessProfile; // Pre-calculated brightness profile
+    private float[] brightnessProfile;
 
     public Comet(float position, Color32 color, float length, float brightness, float direction, int totalLEDs, float tailIntensity)
     {
         this.position = position;
         this.color = color;
-        this.length = Mathf.Max(1f, length); // Ensure minimum length
+        this.length = Mathf.Max(1f, length); 
         this.brightness = brightness;
         this.isActive = true;
         this.startTime = Time.time;
@@ -31,7 +30,6 @@ public class Comet
         this.totalLEDs = totalLEDs;
         this.tailIntensity = tailIntensity;
 
-        // Pre-calculate brightness profile
         InitializeBrightnessProfile();
     }
 
@@ -40,22 +38,20 @@ public class Comet
         int ledCount = Mathf.CeilToInt(length);
         brightnessProfile = new float[ledCount];
 
-        // Bright head and quickly fading tail
         for (int i = 0; i < ledCount; i++)
         {
             float normalizedPosition = (float)i / (ledCount - 1);
-            // Exponential falloff for sharp brightness drop
-            float falloff = Mathf.Pow(tailIntensity, normalizedPosition * 5); // 5 is the sharpness factor
+
+            float falloff = Mathf.Pow(tailIntensity, normalizedPosition * 5);
+
             brightnessProfile[i] = falloff;
         }
 
-        // Ensure the head is at maximum brightness
         brightnessProfile[0] = 1.0f;
     }
 
     public void UpdatePosition(float deltaTime, float speed, int newTotalLEDs)
     {
-        // Update total LEDs if changed
         if (totalLEDs != newTotalLEDs)
         {
             totalLEDs = newTotalLEDs;
@@ -63,26 +59,21 @@ public class Comet
 
         position += speed * deltaTime * direction;
 
-        // Wrap position around the loop properly
         position = WrapPosition(position, totalLEDs);
     }
 
-    // Get a smooth, interpolated color at a specific LED position
     public Color32 GetColorAtLed(int ledIndex, float globalBrightness)
     {
         float distance = GetDistanceOnCircle(ledIndex, position, totalLEDs);
 
-        // If the LED is too far from the comet center, don't light it
         if (distance >= length)
             return new Color32(0, 0, 0, 0);
 
-        // Find the proper brightness index from our profile
         int profileIndex = Mathf.FloorToInt(distance / length * brightnessProfile.Length);
         profileIndex = Mathf.Clamp(profileIndex, 0, brightnessProfile.Length - 1);
 
         float ledBrightness = brightnessProfile[profileIndex] * brightness * globalBrightness;
 
-        // Ensure the head is always at full brightness
         if (profileIndex == 0)
         {
             ledBrightness = brightness * globalBrightness;
@@ -96,7 +87,6 @@ public class Comet
         );
     }
 
-    // Helper method to calculate the shortest distance on a circular strip
     private float GetDistanceOnCircle(int ledIndex, float centerPosition, int totalLeds)
     {
         float directDistance = Mathf.Abs(ledIndex - centerPosition);
@@ -104,10 +94,8 @@ public class Comet
         return Mathf.Min(directDistance, wrapDistance);
     }
 
-    // Properly wrap a position around the circular strip
     private float WrapPosition(float pos, int totalLeds)
     {
-        // Handle both positive and negative positions correctly
         return ((pos % totalLeds) + totalLeds) % totalLeds;
     }
 

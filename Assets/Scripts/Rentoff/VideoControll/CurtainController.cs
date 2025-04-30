@@ -299,6 +299,25 @@ public class CurtainController : MonoBehaviour
         HandleReleaseAfterHold();
     }
 
+
+    public void SetCurtainPositionByMouse(Vector2 mousePosition)
+    {
+        ResetInactivity();
+
+        _state = PlaybackState.HoldAccelerating;
+
+        //float screenWidth = Screen.width;
+        float screenWidth = 1032;
+        float normalizedX = mousePosition.x / screenWidth;
+        float targetPosition = normalizedX;
+
+        _currentPosition = targetPosition;
+        _velocity = 0f;
+
+        UpdateCurtainPosition();
+    }
+
+
     private void HandleReleaseAfterHold()
     {
         if (_state == PlaybackState.HoldAccelerating && _isHolding)

@@ -115,50 +115,52 @@ public class MouseInputReader : InputReader
         }
         else if (isMouseDragging)
         {
-            if (dragInitiatedInState == AppState.Idle && stateManager.CurrentState == AppState.Active)
+            if (dragInitiatedInState == AppState.Idle)
             {
                 currentDragPosition = Input.mousePosition;
-                if (enableDebug) Debug.Log($"[MouseInputReader] Drag ongoing: started in Idle, now Active. Ignoring for video control purposes this frame.");
-                return;
+                swipeDetector?.ProcessMouseDrag(currentDragPosition);
+                if (enableDebug) Debug.Log($"[MouseInputReader] Drag ongoing in Idle state. Sending drag position: {currentDragPosition}");
             }
-
-            currentDragPosition = Input.mousePosition;
-
-            if (isHoldChecking && enableHoldDetection && stateManager.CurrentState == AppState.Active && !holdProcessed)
+            else if (dragInitiatedInState == AppState.Active)
             {
-                float currentHoldDistance = Vector2.Distance(startDragPosition, currentDragPosition);
-                holdMovementDistance = Mathf.Max(holdMovementDistance, currentHoldDistance);
+                currentDragPosition = Input.mousePosition;
 
-                if (holdMovementDistance > maxHoldMovement)
+                if (isHoldChecking && enableHoldDetection && stateManager.CurrentState == AppState.Active && !holdProcessed)
                 {
-                    isHoldChecking = false;
-                    isHolding = false;
-                    if (enableDebug)
-                        Debug.Log($"[MouseInputReader] Hold check canceled - mouse moved too much: {holdMovementDistance:F1} px");
-                }
-                else if (Time.time - dragStartTime >= holdThresholdTime)
-                {
-                    isHolding = true;
-                    if (!holdProcessed)
+                    float currentHoldDistance = Vector2.Distance(startDragPosition, currentDragPosition);
+                    holdMovementDistance = Mathf.Max(holdMovementDistance, currentHoldDistance);
+
+                    if (holdMovementDistance > maxHoldMovement)
                     {
-                        swipeDetector?.ProcessMouseHold(startDragPosition, currentDragPosition, Time.time - dragStartTime, true);
-                        holdProcessed = true;
+                        isHoldChecking = false;
+                        isHolding = false;
                         if (enableDebug)
-                            Debug.Log($"[MouseInputReader] Hold detected at {currentDragPosition}, movement: {holdMovementDistance:F1} px");
+                            Debug.Log($"[MouseInputReader] Hold check canceled - mouse moved too much: {holdMovementDistance:F1} px");
+                    }
+                    else if (Time.time - dragStartTime >= holdThresholdTime)
+                    {
+                        isHolding = true;
+                        if (!holdProcessed)
+                        {
+                            swipeDetector?.ProcessMouseHold(startDragPosition, currentDragPosition, Time.time - dragStartTime, true);
+                            holdProcessed = true;
+                            if (enableDebug)
+                                Debug.Log($"[MouseInputReader] Hold detected at {currentDragPosition}, movement: {holdMovementDistance:F1} px");
+                        }
                     }
                 }
-            }
 
-            if (!isHolding && sendContinuousUpdates && Time.time - lastUpdateTime > continuousUpdateInterval)
-            {
-                float movedSinceLast = Vector2.Distance(lastSentPosition, currentDragPosition);
-
-                if (movedSinceLast > minSwipeDistance)
+                if (!isHolding && sendContinuousUpdates && Time.time - lastUpdateTime > continuousUpdateInterval)
                 {
-                    float partialDuration = Mathf.Max(0.001f, Time.time - lastUpdateTime);
-                    SendSwipeEvent(lastSentPosition, currentDragPosition, partialDuration, false);
-                    lastSentPosition = currentDragPosition;
-                    lastUpdateTime = Time.time;
+                    float movedSinceLast = Vector2.Distance(lastSentPosition, currentDragPosition);
+
+                    if (movedSinceLast > minSwipeDistance)
+                    {
+                        float partialDuration = Mathf.Max(0.001f, Time.time - lastUpdateTime);
+                        SendSwipeEvent(lastSentPosition, currentDragPosition, partialDuration, false);
+                        lastSentPosition = currentDragPosition;
+                        lastUpdateTime = Time.time;
+                    }
                 }
             }
         }

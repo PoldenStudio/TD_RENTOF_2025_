@@ -3195,7 +3195,6 @@ GameObject:
   - component: {fileID: 963194230}
   - component: {fileID: 963194231}
   - component: {fileID: 963194232}
-  - component: {fileID: 963194233}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -3336,27 +3335,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SourceMedia: {fileID: 26417743}
   TargetMaterial: {fileID: 2100000, guid: 6b0a0fa21d6b6f24994bdf342df89baf, type: 2}
-  TargetTextureName: 
-  FallbackTexture: {fileID: 0}
-  Scale: {x: 1, y: 1}
-  Offset: {x: 0, y: 0}
-  FlipX: 0
-  FlipY: 0
---- !u!114 &963194233
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 013bff22963a4c7499ffa26da1317465, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  SourceMedia: {fileID: 26417743}
-  TargetMaterial: {fileID: 2100000, guid: 8aa8c7778b398304dba3635290600915, type: 2}
-  TargetTextureName: 
+  TargetTextureName: _MainTex
   FallbackTexture: {fileID: 0}
   Scale: {x: 1, y: 1}
   Offset: {x: 0, y: 0}
@@ -3761,7 +3740,7 @@ MonoBehaviour:
   idleTransitionMode: 1
   transitionImage: {fileID: 2098835844}
   imageFadeDuration: 0.5
-  imageHoldDuration: 1
+  imageHoldDuration: 3
 --- !u!114 &1213853306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5143,10 +5122,10 @@ MonoBehaviour:
   enableDebug: 1
   sendContinuousUpdates: 1
   holdThresholdTime: 0.5
-  maxHoldMovement: 5
+  maxHoldMovement: 40
   enableHoldDetection: 1
-  speedMultiplier: 1
-  distanceMultiplier: 1
+  speedMultiplier: 2
+  distanceMultiplier: 2
   responseVelocityCurve:
     serializedVersion: 2
     m_Curve:

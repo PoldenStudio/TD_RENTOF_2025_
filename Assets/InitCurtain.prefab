@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7039708337437479852
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8246069700227597284}
+  - component: {fileID: 1902153498015195668}
+  - component: {fileID: 5256004768551443492}
+  m_Layer: 0
+  m_Name: InitCurtain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &8246069700227597284
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7039708337437479852}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1902153498015195668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7039708337437479852}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2341625453ddd0a4ea5e38e46592a04d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  curtainObject: {fileID: 0}
+  curtainRenderer: {fileID: 0}
+  fadeDuration: 4
+  minXPosition: -860
+  maxXPosition: 0
+  smoothTimeNormal: 2
+  smoothTimeSwipeMin: 0.1
+  smoothTimeSwipeMax: 0.1
+  smoothTimeHoldMin: 0.1
+  smoothTimeHoldMax: 0.4
+  curtainSensitivity: 0.01
+  curtainThreshold: 0.9
+  autoReturnDelay: 4
+  autoReturnDuration: 0.5
+  curtainMedia: {fileID: 0}
+  initializePlayers: {fileID: 0}
+  stateManager: {fileID: 0}
+--- !u!114 &5256004768551443492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7039708337437479852}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49d0a73a2947a6a4582bd1bb600bc80c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

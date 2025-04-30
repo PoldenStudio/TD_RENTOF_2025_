@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using LEDControl;
+using System.Threading.Tasks;
 
 namespace LEDControl
 {
@@ -189,7 +190,6 @@ namespace LEDControl
             return true;
         }
 
-        // --- Изменения для полной передачи данных без обрезки нулей ---
         public string GetHexDataForSpeedSynthMode(int stripIndex, DataMode mode, StripDataManager stripManager, ColorProcessor colorProcessor)
         {
             if (hexCache.TryGetValue(stripIndex, out string cachedHex) &&
@@ -218,12 +218,22 @@ namespace LEDControl
 
             Color32[] pixelColors = GetPixelBuffer(stripIndex, totalLEDs, blackColor);
 
-            foreach (Comet comet in comets.Where(c => c.isActive))
+            float speedDifference = Mathf.Abs(CurrentCometSpeed);
+            float dynamicBrightnessBase = stripBrightness + speedDifference * 0.5f;
+
+            // Кэш для dynamicBrightness
+            Dictionary<float, float> dynamicBrightnessCache = new Dictionary<float, float>();
+
+            Parallel.ForEach(comets, comet =>
             {
-                float dynamicBrightness = comet.brightness;
-                float speedDifference = Mathf.Abs(CurrentCometSpeed);
-                dynamicBrightness += speedDifference * 0.5f;
-                dynamicBrightness = Mathf.Clamp01(dynamicBrightness * stripBrightness);
+                if (!comet.isActive) return;
+
+                float dynamicBrightness;
+                if (!dynamicBrightnessCache.TryGetValue(comet.brightness, out dynamicBrightness))
+                {
+                    dynamicBrightness = Mathf.Clamp01(dynamicBrightnessBase * comet.brightness);
+                    dynamicBrightnessCache[comet.brightness] = dynamicBrightness;
+                }
 
                 for (int ledIndex = 0; ledIndex < totalLEDs; ledIndex++)
                 {
@@ -240,7 +250,7 @@ namespace LEDControl
                         );
                     }
                 }
-            }
+            });
 
             string result = GenerateRawHexString(pixelColors, mode, colorProcessor, stripIndex);
             hexCache[stripIndex] = result;

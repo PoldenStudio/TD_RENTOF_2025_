@@ -12,36 +12,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16d00b7005a47ef47802a8421dc6baf6, type: 3}
   m_Name: Settings
   m_EditorClassIdentifier: 
-  _isEnabled: 0
+  _isEnabled: 1
   _disableWelcomePopup: 0
   _uiInputMode: 0
-  _defaultTab: 0
+  _defaultTab: 2
   _triggerEnableMode: 0
-  _triggerBehaviour: 0
-  _errorNotification: 0
+  _triggerBehaviour: 1
+  _errorNotification: 1
   _enableKeyboardShortcuts: 1
   _keyboardShortcuts: []
   _newKeyboardShortcuts:
-  - Action: 1
+  - Action: 8
     Alt: 0
     Control: 1
-    Key: 282
-    Shift: 1
+    Key: 127
+    Shift: 0
   - Action: 2
     Alt: 0
     Control: 1
     Key: 283
-    Shift: 1
+    Shift: 0
   - Action: 3
     Alt: 0
     Control: 1
     Key: 284
-    Shift: 1
+    Shift: 0
   - Action: 4
     Alt: 0
     Control: 1
     Key: 285
-    Shift: 1
+    Shift: 0
   _keyboardModifierControl: 1
   _keyboardModifierAlt: 0
   _keyboardModifierShift: 1
@@ -53,8 +53,8 @@ MonoBehaviour:
   _requireEntryCode: 0
   _requireEntryCodeEveryTime: 0
   _entryCode: 00000000000000000000000000000000
-  _useDebugCamera: 0
-  _debugLayer: 5
+  _useDebugCamera: 1
+  _debugLayer: 0
   _debugCameraDepth: 100
   _apiKey: 
   _enableBugReporter: 0
@@ -63,7 +63,7 @@ MonoBehaviour:
   _profilerAlignment: 2
   _optionsAlignment: 3
   _consoleAlignment: 0
-  _triggerPosition: 0
+  _triggerPosition: 6
   _maximumConsoleEntries: 1500
   _enableEventSystemCreation: 1
   _automaticShowCursor: 1

@@ -82,7 +82,7 @@ public class VideoPlaybackController : MonoBehaviour
     [SerializeField] private float maintainSpeedThreshold = 5f;
 
     [Header("Mouse Swipe Settings")]
-    [SerializeField] private float mouseSensitivity = 0.002f;
+    [SerializeField] private float mouseSensitivity = 0.005f;
     [SerializeField] private float mouseCurtainSensitivity = 0.5f;
     [SerializeField] private float mouseMinimumImpact = 1.0f;
     [SerializeField] private float mouseMaximumImpact = 8.0f;
@@ -622,7 +622,7 @@ public class VideoPlaybackController : MonoBehaviour
                 break;
 
             case PlaybackState.HoldAccelerating:
-                currentSmoothTime = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeHoldMax, Mathf.InverseLerp(1f, maxTargetSpeed, Mathf.Abs(_previousSpeed)));
+                currentSmoothTime = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeHoldMax, Mathf.InverseLerp(1f, maxTargetSpeed, _previousSpeed));
                 _currentSpeed = Mathf.SmoothDamp(_currentSpeed, 0f, ref _velocity, currentSmoothTime, maxTargetSpeed, dt);
 
                 if (Mathf.Abs(_currentSpeed) <= skipTime)

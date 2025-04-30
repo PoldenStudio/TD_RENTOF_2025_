@@ -336,6 +336,16 @@ public class SwipeDetector : MonoBehaviour
         Debug.Log($"[SwipeDetector] Mouse hold {(isStart ? "started" : "ended")}: position={position}, duration={duration:F2}s");
     }
 
+    public void ProcessMouseDrag(Vector2 position)
+    {
+        CurtainController curtainController = FindObjectOfType<CurtainController>();
+        if (curtainController != null)
+        {
+            curtainController.SetCurtainPositionByMouse(position);
+        }
+    }
+
+
     private Vector2 GetPanelPos(int globalIndex)
     {
         if (Settings.Instance == null)

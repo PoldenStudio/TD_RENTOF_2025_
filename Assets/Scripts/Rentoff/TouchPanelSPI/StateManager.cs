@@ -184,6 +184,15 @@ public class StateManager : MonoBehaviour
         AppState previousState = CurrentState;
         SetState(AppState.Transition, previousState);
 
+        if (spiTouchPanel != null && spiTouchPanel.stripDataManager != null)
+        {
+            for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
+            {
+                if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
+                    effectsManager?.ResetComets(stripIndex);
+            }
+        }
+
         Debug.Log("[StateManager] Starting transition to Idle.");
 
         curtainController.SetShouldPlayComet(false);
@@ -241,6 +250,8 @@ public class StateManager : MonoBehaviour
         yield return videoPlayer.SwitchToIdleMode();
 
         yield return StartCoroutine(FadeImage(false, imageFadeDuration));
+
+
 
         transitionImage.gameObject.SetActive(false);
     }
