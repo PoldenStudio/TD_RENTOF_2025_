@@ -110,7 +110,7 @@ public class CurtainController : MonoBehaviour
 
         if (_state == PlaybackState.Normal)
         {
-            if (_currentPosition > 0.0001f)
+            if (_currentPosition > 0.0001f && _currentPosition < 0.9999f)
             {
                 _inactivityTimer += Time.deltaTime;
             }
