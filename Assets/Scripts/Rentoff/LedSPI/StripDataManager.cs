@@ -10,22 +10,18 @@ namespace LEDControl
     [Serializable]
     public class StripSegmentColors
     {
-        [Tooltip("Цвета сегментов для данной ленты")]
         public List<Color32> segments = new();
     }
 
     [Serializable]
     public class StripSettings
     {
-        [Tooltip("Яркость ленты (0-1)")]
         [Range(0f, 1f)]
         public float brightness = 1f;
 
-        [Tooltip("Гамма-коррекция для ленты")]
         [Range(0.1f, 5f)]
         public float gammaValue = 2.2f;
 
-        [Tooltip("Включена ли гамма-коррекция для ленты")]
         public bool enableGammaCorrection = false;
     }
 
@@ -41,7 +37,6 @@ namespace LEDControl
     [Serializable]
     public class SunStripSettings
     {
-        [Tooltip("Number of LEDs the sun occupies for this specific strip.")]
         public int pixelCount = 10;
     }
 
@@ -55,47 +50,26 @@ namespace LEDControl
     public class StripDataManager : MonoBehaviour
     {
         public List<int> totalLEDsPerStrip = new() { 200, 200, 200, 200 };
-
-        [Header("Segment Settings")]
-        [Tooltip("Number of LEDs per segment for each strip.")]
         public List<int> ledsPerSegment = new() { 1, 1, 1, 1 };
-
-        [Header("Data Mode")]
         public List<bool> stripEnabled = new() { true, true, true, true };
         public List<DataMode> currentDataModes = new() { DataMode.Monochrome1Color, DataMode.RGBW, DataMode.RGB, DataMode.Monochrome1Color };
-
-        [Header("Display Settings")]
         public List<DisplayMode> currentDisplayModes = new() { DisplayMode.GlobalColor, DisplayMode.GlobalColor, DisplayMode.GlobalColor, DisplayMode.GlobalColor };
         public List<SunMode> currentSunModes = new() { SunMode.Warm, SunMode.Warm, SunMode.Warm, SunMode.Warm };
-
-        [Header("Strip-Specific Settings")]
         public List<StripSettings> stripSettings = new();
         public List<StripPortAssignment> stripPortAssignments = new();
-
-        [Header("Sun Color Settings (for strips in SunMovement mode)")]
         public List<SunColorSettings> sunColorSettings = new();
-
-        [Header("Sun Strip Settings (for strips in SunMovement mode)")]
         public List<SunStripSettings> sunStripSettings = new();
-
-        [Header("Monochrome Settings")]
         public List<MonochromeStripSettings> monochromeStripSettings = new()
         {
             new MonochromeStripSettings() { globalColor = new Color32(255, 255, 255, 255), synthColor = new Color32(255, 255, 255, 255) },
             new MonochromeStripSettings() { globalColor = new Color32(255, 255, 255, 255), synthColor = new Color32(255, 255, 255, 255) }
         };
-
-        [Header("RGBW/RGB Settings")]
         public List<RGBStripSettings> rgbStripSettings = new()
         {
             new RGBStripSettings() { globalColor = new Color32(255, 0, 0, 255), synthColor = new Color32(255, 255, 255, 255) },
             new RGBStripSettings() { globalColor = new Color32(0, 255, 0, 255), synthColor = new Color32(255, 255, 255, 255) }
         };
-
-        [Header("Segment Mode Settings")]
         public List<StripSegmentColors> stripSegmentColors = new();
-
-        [Header("Touch Panel Settings")]
         public int touchPanelCols = 10;
         public int touchPanelOffset = 0;
 
@@ -126,95 +100,51 @@ namespace LEDControl
 
         public void InitializeStripData()
         {
-            if (stripEnabled.Count != totalLEDsPerStrip.Count)
-            {
-                while (stripEnabled.Count < totalLEDsPerStrip.Count) stripEnabled.Add(true);
-                while (stripEnabled.Count > totalLEDsPerStrip.Count) stripEnabled.RemoveAt(stripEnabled.Count - 1);
-            }
-
-            if (currentDataModes.Count != totalLEDsPerStrip.Count)
-            {
-                while (currentDataModes.Count < totalLEDsPerStrip.Count) currentDataModes.Add(DataMode.Monochrome1Color);
-                while (currentDataModes.Count > totalLEDsPerStrip.Count) currentDataModes.RemoveAt(currentDataModes.Count - 1);
-            }
-
-            if (currentDisplayModes.Count != totalLEDsPerStrip.Count)
-            {
-                while (currentDisplayModes.Count < totalLEDsPerStrip.Count) currentDisplayModes.Add(DisplayMode.GlobalColor);
-                while (currentDisplayModes.Count > totalLEDsPerStrip.Count) currentDisplayModes.RemoveAt(currentDisplayModes.Count - 1);
-            }
-
-            if (currentSunModes.Count != totalLEDsPerStrip.Count)
-            {
-                while (currentSunModes.Count < totalLEDsPerStrip.Count) currentSunModes.Add(SunMode.Warm);
-                while (currentSunModes.Count > totalLEDsPerStrip.Count) currentSunModes.RemoveAt(currentSunModes.Count - 1);
-            }
-
-            if (stripSettings.Count != totalLEDsPerStrip.Count)
-            {
-                while (stripSettings.Count < totalLEDsPerStrip.Count) stripSettings.Add(new StripSettings());
-                while (stripSettings.Count > totalLEDsPerStrip.Count) stripSettings.RemoveAt(stripSettings.Count - 1);
-            }
-
-            if (stripPortAssignments.Count != totalLEDsPerStrip.Count)
-            {
-                while (stripPortAssignments.Count < totalLEDsPerStrip.Count) stripPortAssignments.Add(new StripPortAssignment());
-                while (stripPortAssignments.Count > totalLEDsPerStrip.Count) stripPortAssignments.RemoveAt(stripPortAssignments.Count - 1);
-            }
-
-            if (sunColorSettings.Count != totalLEDsPerStrip.Count)
-            {
-                while (sunColorSettings.Count < totalLEDsPerStrip.Count) sunColorSettings.Add(new SunColorSettings());
-                while (sunColorSettings.Count > totalLEDsPerStrip.Count) sunColorSettings.RemoveAt(sunColorSettings.Count - 1);
-            }
-
-            if (sunStripSettings.Count != totalLEDsPerStrip.Count)
-            {
-                while (sunStripSettings.Count < totalLEDsPerStrip.Count) sunStripSettings.Add(new SunStripSettings());
-                while (sunStripSettings.Count > totalLEDsPerStrip.Count) sunStripSettings.RemoveAt(sunStripSettings.Count - 1);
-            }
-
-            if (ledsPerSegment.Count != totalLEDsPerStrip.Count)
-            {
-                while (ledsPerSegment.Count < totalLEDsPerStrip.Count) ledsPerSegment.Add(1);
-                while (ledsPerSegment.Count > totalLEDsPerStrip.Count) ledsPerSegment.RemoveAt(ledsPerSegment.Count - 1);
-            }
-
-            if (stripSegmentColors.Count != totalLEDsPerStrip.Count)
-            {
-                while (stripSegmentColors.Count < totalLEDsPerStrip.Count) stripSegmentColors.Add(new StripSegmentColors());
-                while (stripSegmentColors.Count > totalLEDsPerStrip.Count) stripSegmentColors.RemoveAt(stripSegmentColors.Count - 1);
-            }
+            ResizeList(ref stripEnabled, totalLEDsPerStrip.Count, true);
+            ResizeList(ref currentDataModes, totalLEDsPerStrip.Count, DataMode.Monochrome1Color);
+            ResizeList(ref currentDisplayModes, totalLEDsPerStrip.Count, DisplayMode.GlobalColor);
+            ResizeList(ref currentSunModes, totalLEDsPerStrip.Count, SunMode.Warm);
+            ResizeList(ref stripSettings, totalLEDsPerStrip.Count, new StripSettings());
+            ResizeList(ref stripPortAssignments, totalLEDsPerStrip.Count, new StripPortAssignment());
+            ResizeList(ref sunColorSettings, totalLEDsPerStrip.Count, new SunColorSettings());
+            ResizeList(ref sunStripSettings, totalLEDsPerStrip.Count, new SunStripSettings());
+            ResizeList(ref ledsPerSegment, totalLEDsPerStrip.Count, 1);
+            ResizeList(ref stripSegmentColors, totalLEDsPerStrip.Count, new StripSegmentColors());
 
             for (int stripIndex = 0; stripIndex < totalLEDsPerStrip.Count; stripIndex++)
             {
                 int requiredSegmentCount = GetTotalSegments(stripIndex);
                 if (stripSegmentColors[stripIndex].segments == null || stripSegmentColors[stripIndex].segments.Count != requiredSegmentCount)
                 {
-                    List<Color32> newSegmentColors = new List<Color32>();
-                    for (int j = 0; j < requiredSegmentCount; j++) newSegmentColors.Add(Color.black);
-                    stripSegmentColors[stripIndex].segments = newSegmentColors;
+                    ResizeList(ref stripSegmentColors[stripIndex].segments, requiredSegmentCount, Color.black);
                 }
             }
 
             int monochromeCount = currentDataModes.Count(x => x == DataMode.Monochrome1Color || x == DataMode.Monochrome2Color);
             while (monochromeStripSettings.Count < monochromeCount)
                 monochromeStripSettings.Add(new MonochromeStripSettings() { globalColor = new Color32(255, 255, 255, 255), synthColor = new Color32(255, 255, 255, 255) });
+            while (monochromeStripSettings.Count > monochromeCount)
+                monochromeStripSettings.RemoveAt(monochromeStripSettings.Count - 1);
 
             int rgbCount = currentDataModes.Count(x => x == DataMode.RGB || x == DataMode.RGBW);
             while (rgbStripSettings.Count < rgbCount)
                 rgbStripSettings.Add(new RGBStripSettings() { globalColor = new Color32(255, 0, 0, 255), synthColor = new Color32(255, 255, 255, 255) });
+            while (rgbStripSettings.Count > rgbCount)
+                rgbStripSettings.RemoveAt(rgbStripSettings.Count - 1);
 
             CachePreviousValues();
         }
 
+        private void ResizeList<T>(ref List<T> list, int newSize, T defaultValue) where T : new()
+        {
+            if (list == null) list = new List<T>();
+            while (list.Count < newSize) list.Add(defaultValue is Color ? (T)(object)Color.black : defaultValue);
+            while (list.Count > newSize) list.RemoveAt(list.Count - 1);
+        }
+
         public int GetPortIndexForStrip(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripPortAssignments.Count)
-            {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
-                return 0;
-            }
+            if (stripIndex < 0 || stripIndex >= stripPortAssignments.Count) return 0;
             return stripPortAssignments[stripIndex].portIndex;
         }
 
@@ -266,7 +196,7 @@ namespace LEDControl
 
         public void SetSegmentColor(int stripIndex, int segmentIndex, Color32 color, bool debug = false)
         {
-            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return; }
+            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) return;
             if (segmentIndex >= 0 && segmentIndex < GetTotalSegments(stripIndex))
             {
                 if (currentDataModes[stripIndex] == DataMode.Monochrome1Color || currentDataModes[stripIndex] == DataMode.Monochrome2Color)
@@ -277,19 +207,18 @@ namespace LEDControl
                 stripSegmentColors[stripIndex].segments[segmentIndex] = color;
                 if (debug) Debug.Log($"Strip {stripIndex}, Segment {segmentIndex} color set to {color}");
             }
-            else Debug.LogError($"[StripDataManager] Invalid segment index: {segmentIndex} for strip {stripIndex}");
         }
 
         public Color32 GetSegmentColor(int stripIndex, int segmentIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return GetDefaultColor(stripIndex); }
+            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) return GetDefaultColor(stripIndex);
             if (segmentIndex >= 0 && segmentIndex < GetTotalSegments(stripIndex)) return stripSegmentColors[stripIndex].segments[segmentIndex];
-            else { Debug.LogError($"[StripDataManager] Invalid segment index: {segmentIndex} for strip {stripIndex}"); return GetDefaultColor(stripIndex); }
+            return GetDefaultColor(stripIndex);
         }
 
         public List<Color32> GetSegmentColors(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return new List<Color32>(); }
+            if (stripIndex < 0 || stripIndex >= stripSegmentColors.Count) return new List<Color32>();
             return new List<Color32>(stripSegmentColors[stripIndex].segments);
         }
 
@@ -314,7 +243,6 @@ namespace LEDControl
         {
             if (stripIndex < 0 || stripIndex >= sunColorSettings.Count)
             {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
                 return sunMode == SunMode.Warm ? new Color32(255, 180, 0, 255) : new Color32(0, 150, 255, 255);
             }
 
@@ -322,7 +250,8 @@ namespace LEDControl
             {
                 SunMode.Warm => sunColorSettings[stripIndex].warmColor,
                 SunMode.Cold => sunColorSettings[stripIndex].coldColor,
-                SunMode.Gradient => sunColorSettings[stripIndex].gradientStartColor, // Will be blended in SunManager
+                SunMode.Gradient => sunColorSettings[stripIndex].gradientStartColor,
+                SunMode.BackGradient => sunColorSettings[stripIndex].gradientStartColor,
                 _ => Color.white
 
             };
@@ -332,14 +261,14 @@ namespace LEDControl
         {
             if (stripIndex < 0 || stripIndex >= sunColorSettings.Count)
             {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
                 return Color.white;
             }
 
             return sunMode switch
             {
                 SunMode.Gradient => sunColorSettings[stripIndex].gradientEndColor,
-                _ => GetSunColorForStrip(stripIndex, sunMode) // For non-gradient modes, return the same color
+                SunMode.BackGradient => sunColorSettings[stripIndex].gradientEndColor,
+                _ => GetSunColorForStrip(stripIndex, sunMode)
             };
         }
 
@@ -347,7 +276,6 @@ namespace LEDControl
         {
             if (stripIndex < 0 || stripIndex >= sunStripSettings.Count)
             {
-                Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}");
                 return 10;
             }
             return sunStripSettings[stripIndex].pixelCount;
@@ -441,19 +369,19 @@ namespace LEDControl
 
         public float GetStripBrightness(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripSettings.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return 1f; }
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count) return 1f;
             return stripSettings[stripIndex].brightness;
         }
 
         public float GetStripGamma(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripSettings.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return 2.2f; }
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count) return 2.2f;
             return stripSettings[stripIndex].gammaValue;
         }
 
         public bool IsGammaCorrectionEnabled(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= stripSettings.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return true; }
+            if (stripIndex < 0 || stripIndex >= stripSettings.Count) return true;
             return stripSettings[stripIndex].enableGammaCorrection;
         }
 
@@ -477,8 +405,23 @@ namespace LEDControl
 
         public SunMode GetSunMode(int stripIndex)
         {
-            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count) { Debug.LogError($"[StripDataManager] Invalid strip index: {stripIndex}"); return SunMode.Warm; }
+            if (stripIndex < 0 || stripIndex >= totalLEDsPerStrip.Count) return SunMode.Warm;
             return currentSunModes[stripIndex];
+        }
+
+        public int GetVirtualPadding(int stripIndex)
+        {
+            switch (currentDataModes[stripIndex])
+            {
+                case DataMode.Monochrome1Color:
+                case DataMode.Monochrome2Color:
+                    return 5;
+                case DataMode.RGB:
+                case DataMode.RGBW:
+                    return 5;
+                default:
+                    return 5;
+            }
         }
     }
 }
@@ -613,11 +556,9 @@ public class StripDataManagerEditor : Editor
                     EditorGUILayout.PropertyField(warmColorProp, new GUIContent("Цвет тёплого солнца"));
                     EditorGUILayout.PropertyField(coldColorProp, new GUIContent("Цвет холодного солнца"));
 
-                    //if ((SunManager.SunMode)sunModeProp.enumValueIndex == SunManager.SunMode.Gradient)
-                    {
-                        EditorGUILayout.PropertyField(gradientStartColorProp, new GUIContent("Начальный цвет градиента"));
-                        EditorGUILayout.PropertyField(gradientEndColorProp, new GUIContent("Конечный цвет градиента"));
-                    }
+                    EditorGUILayout.PropertyField(gradientStartColorProp, new GUIContent("Начальный цвет градиента"));
+                    EditorGUILayout.PropertyField(gradientEndColorProp, new GUIContent("Конечный цвет градиента"));
+
 
                     SerializedProperty sunStripSettingsProp = sunStripSettingsProperty.GetArrayElementAtIndex(stripIndex);
                     SerializedProperty pixelCountProp = sunStripSettingsProp.FindPropertyRelative("pixelCount");

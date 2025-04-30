@@ -1,6 +1,4 @@
-﻿//нужен новый режим BackGradient где мы будем перемещаться не между sunColor и sunEndColor, а наоборот
-
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Text;
 using System.Collections.Generic;
@@ -26,10 +24,6 @@ namespace LEDControl
         public float preBakeFrameRate = 35f;
         public string bakedDataFolderPath = "SunData";
 
-        [Header("Virtual Strip Settings")]
-        [Tooltip("Number of virtual LEDs to add on each end of the strip")]
-        public int virtualPadding = 5;
-
         public float currentSpeedRaw = 1f;
         public float MultiplySpeed = 1f;
         private float CurrentSunSpeed => currentSpeedRaw * MultiplySpeed;
@@ -40,13 +34,11 @@ namespace LEDControl
         private Dictionary<int, float> lastUpdateTime = new();
         private float cacheLifetime = 0.05f;
 
-        private Dictionary<int, StringBuilder> stringBuilderCache = new();
-
         private StateManager.AppState _currentAppState = StateManager.AppState.Idle;
         private StateManager.AppState _targetAppState = StateManager.AppState.Idle;
 
         private bool _isSunFading = false;
-        private float _sunFadeDurationInternal = 1f; // Renamed to avoid conflict with public field
+        private float _sunFadeDurationInternal = 1f;
         private float _sunFadeStartTime;
         private float _currentSunFadeFactor = 1f;
 
@@ -117,7 +109,7 @@ namespace LEDControl
 
         private void Awake()
         {
-            _sunFadeDurationInternal = sunFadeDuration; // Initialize internal variable
+            _sunFadeDurationInternal = sunFadeDuration;
             PreloadBakedSunData();
         }
 
@@ -275,6 +267,7 @@ namespace LEDControl
 
             DataMode dataMode = stripDataManager.currentDataModes[stripIndex];
             int actualLEDs = stripDataManager.totalLEDsPerStrip[stripIndex];
+            int virtualPadding = stripDataManager.GetVirtualPadding(stripIndex);
             int totalLEDs = actualLEDs + virtualPadding * 2;
 
             Debug.Log($"Pre-baking SunMovement data for Strip {stripIndex} ({actualLEDs} LEDs + {virtualPadding * 2} virtual LEDs) in {dataMode} mode...");
@@ -330,7 +323,7 @@ namespace LEDControl
 
             byte[] pixelBrightness = new byte[totalLEDs];
 
-            bool previouslyActive = false; // Track if the *previous* frame was active
+            bool previouslyActive = false;
 
             for (int frame = 0; frame < frameCount; frame++)
             {
@@ -344,7 +337,6 @@ namespace LEDControl
                 float currentIntervalDuration = 1f;
 
 
-                // Determine if current frame is active and get interval details
                 foreach (var interval in settingsRef.intervals)
                 {
                     if (interval.endTime <= interval.startTime) continue;
@@ -365,7 +357,6 @@ namespace LEDControl
 
                 if (isActiveTime)
                 {
-                    // Logic for ACTIVE frame
                     Array.Clear(pixelBrightness, 0, totalLEDs);
 
                     float activeTime = currentTime - currentIntervalStartTime;
@@ -404,7 +395,7 @@ namespace LEDControl
 
                         Color32 blendedColor = currentSunMode switch
                         {
-                            SunMode.Gradient => Color32.Lerp(sunColor, sunEndColor , normalizedPos),
+                            SunMode.Gradient => Color32.Lerp(sunColor, sunEndColor, normalizedPos),
                             SunMode.BackGradient => Color32.Lerp(sunEndColor, sunColor, normalizedPos),
                             _ => sunColor
                         };
@@ -440,11 +431,12 @@ namespace LEDControl
                     }
 
                     string fullHexString = frameHexBuilder.ToString();
+                    int virtualPadding = stripDataManager.GetVirtualPadding(stripIndex);
                     string trimmedHexString = TrimVirtualPadding(fullHexString, hexPerPixel, virtualPadding, actualLEDs);
                     frameDataToAdd = OptimizeHexStringForBaking(trimmedHexString, blackHexValue, hexPerPixel);
                     previouslyActive = true;
                 }
-                else // Not active time for this frame
+                else
                 {
                     if (previouslyActive)
                     {
@@ -621,13 +613,10 @@ namespace LEDControl
             switch (reason)
             {
                 case CacheInvalidationReason.AppStateChange:
-                    //Debug.Log("Cache invalidated due to AppState change.");
                     break;
                 case CacheInvalidationReason.SpeedChange:
-                    //Debug.Log("Cache invalidated due to Speed change.");
                     break;
                 case CacheInvalidationReason.SunSettingsChange:
-                    //Debug.Log("Cache invalidated due to SunSettings change.");
                     break;
             }
             ClearSunCache();
