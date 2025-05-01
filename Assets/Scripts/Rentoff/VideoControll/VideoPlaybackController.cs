@@ -667,6 +667,40 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
+    private int _manualLoopOffset = 0;
+    private float WrapTime(float time, float duration)
+    {
+        if (duration <= 0f) return 0f;
+
+        if (stateManager.CurrentState == AppState.Active)
+        {
+            // Обработка граничных условий для ручных петель
+            if (time < 0)
+            {
+                if (_manualLoopOffset > 0)
+                {
+                    _manualLoopOffset--;
+                    return duration; // Переход к концу предыдущей петли
+                }
+                return 0f; // Блокировка отрицательного времени
+            }
+
+            if (time > duration)
+            {
+                _manualLoopOffset++;
+                return 0f; // Начало новой петли
+            }
+
+            return time; // В пределах текущей петли
+        }
+        else
+        {
+            // Стандартное циклическое воспроизведение для других режимов
+            float wrappedTime = time % duration;
+            return wrappedTime < 0 ? wrappedTime + duration : wrappedTime;
+        }
+    }
+
     private void UpdateMediaPlayer()
     {
         if (_mediaPlayer != null)
@@ -677,29 +711,16 @@ public class VideoPlaybackController : MonoBehaviour
             {
                 _accumulatedTimeDelta += _currentSpeed * Time.deltaTime;
                 float newTime = _effectStartTime + _accumulatedTimeDelta;
+
                 newTime = WrapTime(newTime, _mediaPlayer.DurationSeconds);
+
+                // Обновляем начало отсчета для следующей итерации
+                _effectStartTime = newTime;
+                _accumulatedTimeDelta = 0f;
+
                 _mediaPlayer.SeekToTime(newTime);
             }
-            else if (_state == PlaybackState.HoldAccelerating && _reachedZero)
-            {
-                if (Mathf.Abs(_currentSpeed) < 0.01f)
-                {
-                    _mediaPlayer.SeekToTime(_holdZeroTime);
-                }
-            }
         }
-    }
-
-    private float WrapTime(float time, float duration)
-    {
-        if (duration <= 0f) return 0f;
-
-        float wrappedTime = time % duration;
-        if (wrappedTime < 0)
-        {
-            wrappedTime += duration;
-        }
-        return wrappedTime;
     }
 
     private void UpdateDebugText()
@@ -755,26 +776,22 @@ public class VideoPlaybackController : MonoBehaviour
 
     public void OnStateChanged(AppState newState)
     {
-        if (newState == AppState.Idle)
-        {
-            ResetState();
-        }
         if (newState == AppState.Active)
         {
+            _manualLoopOffset = 0;
             ResetState();
             SetSwipeControlEnabled(true);
+            _effectStartTime = 0f;
 
             if (_mediaPlayer != null)
             {
-                if (_mediaPlayer.LoopsSinceStart > 0)
-                {
-                    _mediaPlayer.Loops = 0;
-                }
-                else
-                {
-                    _mediaPlayer.Loops = -1;
-                }
+                _mediaPlayer.Loops = -1;
+                _mediaPlayer.SeekToTime(0f);
             }
+        }
+        else if (newState == AppState.Idle)
+        {
+            ResetState();
         }
     }
 

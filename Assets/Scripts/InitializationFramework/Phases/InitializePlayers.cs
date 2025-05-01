@@ -23,16 +23,15 @@ namespace InitializationFramework
         private string _CometMovieName;
 
         private bool _isIdleMode = true;
-        public Settings settings;
 
         public IEnumerator Initialize(System.Action<Object> OnFinished)
         {
             gameObject.SetActive(true);
 
-            _idleModeMovieName = settings.idleModeMovieName;
-            _defaultModeMovieName = settings.defaultModeMovieName;
-            _CurtainMovieName = settings.CurtainMovieName;
-            _CometMovieName = settings.CometMovieName;
+            _idleModeMovieName = Settings.Instance.idleModeMovieName;
+            _defaultModeMovieName = Settings.Instance.defaultModeMovieName;
+            _CurtainMovieName = Settings.Instance.CurtainMovieName;
+            _CometMovieName = Settings.Instance.CometMovieName;
 
             string initialMoviePath = _idleModeMovieName;
 

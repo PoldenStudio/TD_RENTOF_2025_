@@ -43,6 +43,7 @@ public class DemolitionMediaPlayer : IMediaPlayer
     {
         _media.SeekToTime(seconds);
     }
+
     public void SeekToFrame(int frame)
     {
         _media.SeekToFrame(frame);
@@ -50,7 +51,8 @@ public class DemolitionMediaPlayer : IMediaPlayer
 
     public int Loops
     {
-        set { _media.Loops = 0; }
+        get { return _media.Loops; }
+        set { _media.Loops = value; }
     }
 
     public int LoopsSinceStart
@@ -74,9 +76,75 @@ public class DemolitionMediaPlayer : IMediaPlayer
         set { _media.StartTime = value; }
     }
 
+    public float EndTime
+    {
+        set { _media.EndTime = value; }
+    }
+
+    public int StartFrame
+    {
+        set { _media.StartFrame = value; }
+    }
+
+    public int EndFrame
+    {
+        set { _media.EndFrame = value; }
+    }
 
     public int VideoCurrentFrame
     {
         get { return _media.VideoCurrentFrame; }
+    }
+
+    public bool FramedropEnabled
+    {
+        get { return _media.FramedropEnabled; }
+        set { _media.FramedropEnabled = value; }
+    }
+
+    public void GetFramedropCount(out int earlyDrops, out int lateDrops)
+    {
+        _media.GetFramedropCount(out earlyDrops, out lateDrops);
+    }
+
+    public SyncMode SyncMode
+    {
+        get { return _media.SyncMode; }
+        set { _media.SyncMode = value; }
+    }
+
+    public PixelFormat VideoPixelFormat
+    {
+        get { return _media.VideoPixelFormat; }
+    }
+
+    public bool RequiresColorConversion
+    {
+        get { return _media.RequiresColorConversion; }
+    }
+
+    public int VideoWidth
+    {
+        get { return _media.VideoWidth; }
+    }
+
+    public int VideoHeight
+    {
+        get { return _media.VideoHeight; }
+    }
+
+    public float VideoFramerate
+    {
+        get { return _media.VideoFramerate; }
+    }
+
+    public float VideoAspectRatio
+    {
+        get { return _media.VideoAspectRatio; }
+    }
+
+    public int VideoNumFrames
+    {
+        get { return _media.VideoNumFrames; }
     }
 }
