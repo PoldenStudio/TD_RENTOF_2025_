@@ -537,6 +537,11 @@ namespace LEDControl
             _currentSunFadeFactor = 1f;
         }
 
+        public void StartSunFadeIn(float duration)
+        {
+        }
+
+
         private void UpdateSunFade()
         {
             if (_isSunFading)

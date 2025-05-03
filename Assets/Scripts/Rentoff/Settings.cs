@@ -97,7 +97,7 @@ public class Settings : MonoBehaviour
 #if UNITY_EDITOR
         settingsPath = Path.Combine(Application.streamingAssetsPath, "settings.json");
 #else
-        settingsPath = Path.Combine(Application.persistentDataPath, "settings.json");
+        settingsPath = Path.Combine(Application.streamingAssetsPath, "settings.json");
 #endif
 
         var dir = Path.GetDirectoryName(settingsPath);

@@ -131,6 +131,9 @@ public class StateManager : MonoBehaviour
 
         ledController?.StartFadeIn();
 
+        sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
+
+
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
@@ -156,8 +159,8 @@ public class StateManager : MonoBehaviour
 
         SetState(AppState.Active, CurrentState);
 
-        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
         sunManager?.SetAppState(AppState.Active);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
 
         yield return videoPlayer.SwitchToDefaultMode();
         ledController?.StartFadeOut();
@@ -198,14 +201,11 @@ public class StateManager : MonoBehaviour
         curtainController.SetShouldPlayComet(false);
         playbackController.SetSwipeControlEnabled(false);
 
-        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
-        sunManager?.SetAppState(AppState.Idle);
+        sunManager?.StartSunFadeIn(1f);
 
-        if (ledController != null)
-        {
-            ledController.wasIdled = true;
-            ledController.SwitchToIdleJSON();
-        }
+        ledController?.StartFadeIn();
+
+        soundManager?.StartFadeOut(soundFadeDuration);
 
         switch (idleTransitionMode)
         {
@@ -218,8 +218,6 @@ public class StateManager : MonoBehaviour
                 break;
         }
 
-        SetState(AppState.Idle, CurrentState);
-        CompleteTransitionToIdle();
     }
 
     private IEnumerator CurtainIdleTransition()
@@ -228,8 +226,16 @@ public class StateManager : MonoBehaviour
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
 
-        soundManager?.StartFadeOut(0.2f);
+
+
+        SetState(AppState.Idle, CurrentState);
+        CompleteTransitionToIdle();
+
+        soundManager?.StartFadeOut(soundFadeDuration);
         yield return videoPlayer.SwitchToIdleMode();
+
+        sunManager?.SetAppState(AppState.Idle);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
     }
 
     private IEnumerator ImageOverlayIdleTransition()
@@ -243,11 +249,28 @@ public class StateManager : MonoBehaviour
 
         transitionImage.gameObject.SetActive(true);
 
+
+
         yield return StartCoroutine(FadeImage(true, imageFadeDuration));
         yield return new WaitForSeconds(imageHoldDuration);
 
-        soundManager?.StartFadeOut(0.2f);
+        SetState(AppState.Idle, CurrentState);
+        CompleteTransitionToIdle();
+
+        soundManager.SetSoundClip(soundManager.IdleClip);
+        soundManager?.StartFadeIn(soundFadeDuration);
+
         yield return videoPlayer.SwitchToIdleMode();
+
+        if (ledController != null)
+        {
+            ledController.wasIdled = true;
+            ledController.SwitchToIdleJSON();
+        }
+
+        ledController?.StartFadeOut();
+
+        sunManager?.SetAppState(AppState.Idle);
 
         yield return StartCoroutine(FadeImage(false, imageFadeDuration));
 
@@ -280,18 +303,6 @@ public class StateManager : MonoBehaviour
 
         curtainController.ResetCurtainProgress();
         curtainController.SetShouldPlayComet(false);
-
-        if (spiTouchPanel != null && spiTouchPanel.stripDataManager != null)
-        {
-            for (int stripIndex = 0; stripIndex < spiTouchPanel.stripDataManager.totalLEDsPerStrip.Count; stripIndex++)
-            {
-                if (spiTouchPanel.stripDataManager.currentDisplayModes[stripIndex] == DisplayMode.SpeedSynthMode)
-                    effectsManager?.ResetComets(stripIndex);
-            }
-        }
-
-        soundManager.SetSoundClip(soundManager.IdleClip);
-        soundManager?.StartFadeIn(soundFadeDuration);
 
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
     }
@@ -344,7 +355,7 @@ public class StateManager : MonoBehaviour
 
         yield return videoPlayer.SwitchToIdleMode();
         ledController.SwitchToIdleJSON();
-        soundManager?.StartFadeOut(0.2f);
+        soundManager?.StartFadeOut(0.5f);
 
         playbackController.SetSwipeControlEnabled(false);
 

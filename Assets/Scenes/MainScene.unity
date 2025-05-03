@@ -254,7 +254,7 @@ MonoBehaviour:
   defaultModeMovieName: Active_mode.mov
   idleModeMovieName: Idle_mode.mov
   CurtainMovieName: Stars.mov
-  CometMovieName: Comet_mode.mov
+  CometMovieName: Comet.mov
   frameRate: 120
   serialPortNames:
   - COM27
@@ -3169,7 +3169,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2fef018dc2da5e5478ae6108027e9953, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mediaUrl: Comet_mode.mov
+  mediaUrl: Comet.mov
   openWithAudio: 0
   useNativeAudioPlugin: 0
   openOnStart: 1
@@ -4244,6 +4244,8 @@ MonoBehaviour:
   enableMouseHold: 1
   mouseHoldThreshold: 0.5
   mouseHoldMovementThreshold: 5
+  holdStopThreshold: 0.1
+  holdSnapSpeed: 5
   enableSwipeFiltering: 0
   swipeHistoryCapacity: 5
   swipeIgnoreThreshold: 0.8

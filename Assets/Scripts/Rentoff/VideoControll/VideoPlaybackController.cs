@@ -58,7 +58,7 @@ public class VideoPlaybackController : MonoBehaviour
     [SerializeField] private SPItouchPanel _SPItouchPanel;
 
     private bool _swipeControlEnabled = false;
-
+    private int _manualLoopOffset = 0;
     private float _velocity = 0f;
 
     [Header("Mouse swipe Timings")]
@@ -94,6 +94,8 @@ public class VideoPlaybackController : MonoBehaviour
     [SerializeField] private bool enableMouseHold = true;
     [SerializeField] private float mouseHoldThreshold = 0.5f;
     [SerializeField] private float mouseHoldMovementThreshold = 5.0f;
+    [SerializeField] private float holdStopThreshold = 0.1f;
+    [SerializeField] private float holdSnapSpeed = 20f;
 
     [Header("Accidental Swipe Filtering")]
     [SerializeField] private bool enableSwipeFiltering = true;
@@ -622,41 +624,35 @@ public class VideoPlaybackController : MonoBehaviour
                 break;
 
             case PlaybackState.HoldAccelerating:
-                currentSmoothTime = Mathf.Lerp(_smoothTimeHoldMin, _smoothTimeHoldMax, Mathf.InverseLerp(1f, maxTargetSpeed, _previousSpeed));
-                _currentSpeed = Mathf.SmoothDamp(_currentSpeed, 0f, ref _velocity, currentSmoothTime, maxTargetSpeed, dt);
-
-                if (Mathf.Abs(_currentSpeed) <= skipTime)
                 {
-                    if (!_reachedZero)
+                    // Если скорость ещё не в пороге остановки, резко снижаем
+                    if (Mathf.Abs(_currentSpeed) > holdStopThreshold)
                     {
-                        _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
-                        _currentSpeed = 0f;
-                        _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
-                        _accumulatedTimeDelta = 0f;
+                        float direction = Mathf.Sign(_currentSpeed);
+                        _currentSpeed = Mathf.MoveTowards(_currentSpeed, 0f, holdSnapSpeed * Time.deltaTime);
                     }
-                    _reachedZero = true;
-                }
-                else
-                {
-                    _reachedZero = false;
-                }
-
-                if ((_previousSpeed < 0 && _currentSpeed >= 0) || (_previousSpeed > 0 && _currentSpeed <= 0))
-                {
-                    if (!_reachedZero)
+                    else
                     {
+                        // Если скорость ниже порога, мгновенно ставим 0
                         _currentSpeed = 0f;
-                        _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
-                        _effectStartTime = _mediaPlayer?.CurrentTime ?? 0f;
-                        _accumulatedTimeDelta = 0f;
                         _reachedZero = true;
-                        Debug.Log("[VideoPlaybackController] Speed crossed zero during hold");
                     }
-                }
 
-                if (!_isHolding && !_isMouseHolding)
-                {
-                    HandleReleaseAfterHold();
+                    // Фиксируем время остановки при переходе через ноль
+                    if ((_previousSpeed < 0 && _currentSpeed >= 0) || (_previousSpeed > 0 && _currentSpeed <= 0))
+                    {
+                        _currentSpeed = 0f;
+                        _reachedZero = true;
+                        _holdZeroTime = _mediaPlayer?.CurrentTime ?? 0f;
+                        _effectStartTime = _holdZeroTime;
+                        _accumulatedTimeDelta = 0f;
+                    }
+
+                    // Если удержание завершено, переходим к Decelerating или Normal
+                    if (!_isHolding && !_isMouseHolding)
+                    {
+                        HandleReleaseAfterHold();
+                    }
                 }
                 break;
 
@@ -667,35 +663,45 @@ public class VideoPlaybackController : MonoBehaviour
         }
     }
 
-    private int _manualLoopOffset = 0;
+
+    private float SmoothDampTowardsZero(float current, float target, ref float velocity, float smoothTime, float deltaTime)
+    {
+        float maxStep = (current > 0 ? current : -current) * smoothTime * deltaTime;
+        float desired = Mathf.MoveTowards(current, target, maxStep);
+        return Mathf.SmoothDamp(current, desired, ref velocity, smoothTime, Mathf.Infinity, deltaTime);
+    }
+
     private float WrapTime(float time, float duration)
     {
         if (duration <= 0f) return 0f;
 
         if (stateManager.CurrentState == AppState.Active)
         {
-            // Обработка граничных условий для ручных петель
+            // Блокируем прокрутку вперёд при остановке
+            if (_state == PlaybackState.HoldAccelerating && _reachedZero)
+            {
+                return _holdZeroTime;
+            }
+
             if (time < 0)
             {
                 if (_manualLoopOffset > 0)
                 {
-                    _manualLoopOffset--;
-                    return duration; // Переход к концу предыдущей петли
+                    return duration + time; // Сохраняем точное время
                 }
-                return 0f; // Блокировка отрицательного времени
+                return 0f;
             }
 
             if (time > duration)
             {
                 _manualLoopOffset++;
-                return 0f; // Начало новой петли
+                return 0f;
             }
 
-            return time; // В пределах текущей петли
+            return time;
         }
         else
         {
-            // Стандартное циклическое воспроизведение для других режимов
             float wrappedTime = time % duration;
             return wrappedTime < 0 ? wrappedTime + duration : wrappedTime;
         }
@@ -710,18 +716,38 @@ public class VideoPlaybackController : MonoBehaviour
             if (!(_state == PlaybackState.HoldAccelerating && _reachedZero))
             {
                 _accumulatedTimeDelta += _currentSpeed * Time.deltaTime;
-                float newTime = _effectStartTime + _accumulatedTimeDelta;
+                float newTimeUnwrapped = _effectStartTime + _accumulatedTimeDelta;
 
-                newTime = WrapTime(newTime, _mediaPlayer.DurationSeconds);
+                float wrappedTime = WrapTime(newTimeUnwrapped, _mediaPlayer.DurationSeconds);
 
-                // Обновляем начало отсчета для следующей итерации
-                _effectStartTime = newTime;
+                // Проверка застревания в начале видео с отрицательной скоростью
+                if (Mathf.Approximately(wrappedTime, 0f) && _currentSpeed < 0f)
+                {
+                    // Блокируем отрицательную скорость, если нет возможности вернуться к предыдущему циклу
+                    if (_manualLoopOffset == 0 && newTimeUnwrapped < 0f)
+                    {
+                        _currentSpeed = 0f;
+                        _finalTargetSpeed = 0f;
+                        _velocity = 0f;
+                        _state = PlaybackState.Normal;
+                        Debug.Log("[VideoPlaybackController] Заблокирована отрицательная скорость на первом цикле");
+                    }
+                }
+
+                // Обновляем начало отсчёта для следующей итерации
+                _effectStartTime = wrappedTime;
                 _accumulatedTimeDelta = 0f;
 
-                _mediaPlayer.SeekToTime(newTime);
+                _mediaPlayer.SeekToTime(wrappedTime);
+            }
+            else if (_state == PlaybackState.HoldAccelerating && _reachedZero)
+            {
+                // Если видео должно остановиться, устанавливаем позицию на месте
+                _mediaPlayer.SeekToTime(_holdZeroTime);
             }
         }
     }
+
 
     private void UpdateDebugText()
     {
