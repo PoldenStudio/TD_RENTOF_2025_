@@ -2825,7 +2825,7 @@ MonoBehaviour:
       endPosition: 1
     brightnessMultiplier: 1
     gaussianSpreadFactor: 1
-  sunFadeDuration: 1
+  sunFadeDuration: 2
   dataSender: {fileID: 1299263587}
   preBakeFrameRate: 35.714283
   bakedDataFolderPath: SunData

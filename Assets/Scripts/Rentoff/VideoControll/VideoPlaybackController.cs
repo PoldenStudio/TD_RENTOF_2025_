@@ -782,7 +782,7 @@ public class VideoPlaybackController : MonoBehaviour
     {
         if (_mediaPlayer != null)
         {
-            _currentSpeed = 1f;
+            //currentSpeed = 1f;
             _finalTargetSpeed = 1f;
             _isReversePlayback = false;
             _state = PlaybackState.Normal;
@@ -850,7 +850,7 @@ public class VideoPlaybackController : MonoBehaviour
 
         if (_mediaPlayer != null)
         {
-            _mediaPlayer.PlaybackSpeed = 1f;
+            //_mediaPlayer.PlaybackSpeed = 1f;
 
             if (_mediaPlayer.DurationSeconds > 0)
             {

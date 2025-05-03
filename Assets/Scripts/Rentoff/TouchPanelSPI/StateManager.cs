@@ -131,7 +131,7 @@ public class StateManager : MonoBehaviour
 
         ledController?.StartFadeIn();
 
-        sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
 
 
         bool slideCompleted = false;
@@ -160,7 +160,7 @@ public class StateManager : MonoBehaviour
         SetState(AppState.Active, CurrentState);
 
         sunManager?.SetAppState(AppState.Active);
-        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
 
         yield return videoPlayer.SwitchToDefaultMode();
         ledController?.StartFadeOut();
@@ -201,7 +201,7 @@ public class StateManager : MonoBehaviour
         curtainController.SetShouldPlayComet(false);
         playbackController.SetSwipeControlEnabled(false);
 
-        sunManager?.StartSunFadeIn(1f);
+        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
 
         ledController?.StartFadeIn();
 
@@ -235,7 +235,7 @@ public class StateManager : MonoBehaviour
         yield return videoPlayer.SwitchToIdleMode();
 
         sunManager?.SetAppState(AppState.Idle);
-        sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
+        sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
     }
 
     private IEnumerator ImageOverlayIdleTransition()
@@ -271,6 +271,7 @@ public class StateManager : MonoBehaviour
         ledController?.StartFadeOut();
 
         sunManager?.SetAppState(AppState.Idle);
+        sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
 
         yield return StartCoroutine(FadeImage(false, imageFadeDuration));
 
@@ -312,7 +313,7 @@ public class StateManager : MonoBehaviour
         CurrentState = newState;
         OnPreviousStateChanged?.Invoke(previousState);
         OnStateChanged?.Invoke(CurrentState);
-        sunManager?.SetAppState(CurrentState);
+        //sunManager?.SetAppState(CurrentState);
 
         if (CurrentState == AppState.Active)
             _lastInteractionTime = Time.time;
