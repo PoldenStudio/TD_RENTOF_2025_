@@ -901,4 +901,21 @@ public class VideoPlaybackController : MonoBehaviour
     {
         _swipeDirectionHistory?.Clear();
     }
+
+
+    public void PauseVideo()
+    {
+        _finalTargetSpeed = 0f;
+        _currentSpeed = 0f;
+        _velocity = 0f;
+        _state = PlaybackState.Normal;
+        Debug.Log("[VideoPlaybackController] Video paused");
+    }
+
+    public void ResumeVideo(float speed = 1f)
+    {
+        _finalTargetSpeed = speed;
+        _state = PlaybackState.Decelerating;
+        Debug.Log($"[VideoPlaybackController] Video resumed with speed {speed}");
+    }
 }

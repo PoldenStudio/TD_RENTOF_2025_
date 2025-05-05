@@ -79,7 +79,7 @@ namespace LEDControl
         private byte[] FrameBuffer = new byte[513];
 
         private IMediaPlayer mediaPlayer;
-        private float kineticStartTime = 0f;
+        public float kineticStartTime = 0f;
 
         private int totalLedChannels = 0;
         private int relocatedKineticHeightChannel1;
@@ -839,7 +839,7 @@ namespace LEDControl
             }
         }
 
-        private void TurnOffAllLEDs()
+        public void TurnOffAllLEDs()
         {
             if (dmxCommunicator == null || !dmxCommunicator.IsActive) return;
 

@@ -316,4 +316,18 @@ public class SoundManager : MonoBehaviour
     {
         muteAtHighSpeed = enabled;
     }
+
+
+
+    public void PauseSound()
+    {
+        if (synthSource.isPlaying)
+            synthSource.Pause();
+    }
+
+    public void ResumeSound()
+    {
+        if (!synthSource.isPlaying)
+            synthSource.UnPause();
+    }
 }

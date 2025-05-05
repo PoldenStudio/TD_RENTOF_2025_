@@ -59,6 +59,12 @@ public class MouseInputReader : InputReader
             return;
         }
 
+        bool mouseActive = Input.GetMouseButton(0) || Input.GetMouseButtonDown(0) || Input.GetMouseButtonUp(0);
+        if (mouseActive)
+        {
+            stateManager.ResetInteractionTimers(); // Reset both idle and hibernation timers
+        }
+
         if (Input.GetMouseButtonDown(0))
         {
             dragInitiatedInState = stateManager.CurrentState;

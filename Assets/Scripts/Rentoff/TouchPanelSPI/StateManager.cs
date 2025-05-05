@@ -22,6 +22,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private EffectsManager effectsManager;
     [SerializeField] private SunManager sunManager;
     [SerializeField] private SwipeDetector swipeDetector;
+    [SerializeField] private Hibernate hibernate;
 
     [Header("Transition Parameters")]
     [SerializeField] private float curtainFullWait = 0f;
@@ -34,6 +35,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float idleTimeout = 180.0f;
     [SerializeField] private float delayBeforeVideoSwitch = 1f;
     [SerializeField] private float delayBeforeCurtainFadeOut = 0.5f;
+    [SerializeField] private float hibernateTimeout = 10f;
 
     [Header("Idle Image Overlay Transition")]
     [SerializeField] private IdleTransitionMode idleTransitionMode = IdleTransitionMode.Curtain;
@@ -42,6 +44,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private float imageHoldDuration = 1f;
 
     private float _lastInteractionTime;
+    private float _lastMouseInteractionTime;
 
     public event Action<AppState> OnStateChanged;
     public event Action<AppState> OnPreviousStateChanged;
@@ -55,12 +58,6 @@ public class StateManager : MonoBehaviour
             swipeDetector = GetComponent<SwipeDetector>();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.E))
-            StartTransitionToIdle();
-    }
-
     private void Start()
     {
         CurrentState = AppState.Idle;
@@ -69,6 +66,7 @@ public class StateManager : MonoBehaviour
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
         curtainController.SetShouldPlayComet(false);
         _lastInteractionTime = Time.time;
+        _lastMouseInteractionTime = Time.time;
 
         if (transitionImage != null)
         {
@@ -79,8 +77,16 @@ public class StateManager : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.E))
+            StartTransitionToIdle();
+    }
+
     private void FixedUpdate()
     {
+        CheckHibernateState();
+
         if (CurrentState == AppState.Active && (Time.time - _lastInteractionTime > idleTimeout))
         {
             Debug.Log($"[StateManager] Idle timeout ({idleTimeout}s) reached. Initiating transition to Idle.");
@@ -88,13 +94,28 @@ public class StateManager : MonoBehaviour
         }
     }
 
-    public void ResetIdleTimer()
+    private void CheckHibernateState()
     {
-        if (CurrentState == AppState.Active)
+        if (CurrentState == AppState.Idle && Time.time - _lastMouseInteractionTime > hibernateTimeout)
         {
-            _lastInteractionTime = Time.time;
-            Debug.Log("[StateManager] Idle timer reset due to interaction.");
+            if (!hibernate.IsHibernated)
+            {
+                hibernate.SetHibernate(true);
+                Debug.Log($"[StateManager] Hibernate triggered due to {hibernateTimeout}s inactivity.");
+            }
         }
+        else if (hibernate.IsHibernated && Time.time - _lastMouseInteractionTime <= hibernateTimeout)
+        {
+            hibernate.SetHibernate(false);
+            Debug.Log($"[StateManager] Waking up from hibernation due to mouse activity.");
+        }
+    }
+
+    public void ResetInteractionTimers()
+    {
+        _lastInteractionTime = Time.time;
+        _lastMouseInteractionTime = Time.time;
+        Debug.Log("[StateManager] Interaction timers reset.");
     }
 
     private void OnCurtainFull()
@@ -133,7 +154,6 @@ public class StateManager : MonoBehaviour
 
         sunManager?.StartSunFadeOut(sunFadeOutOnTransitionDuration);
 
-
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
@@ -169,7 +189,6 @@ public class StateManager : MonoBehaviour
         soundManager.SetSoundClip(soundManager.ActiveClip);
         soundManager?.StartFadeIn(fadeInDuration);
 
-
         bool fadeCompleted = false;
         curtainController.FadeCurtain(false, () => { fadeCompleted = true; });
         while (!fadeCompleted) yield return null;
@@ -177,7 +196,7 @@ public class StateManager : MonoBehaviour
         yield return new WaitForSeconds(swipeReactivateDelay);
 
         playbackController.SetSwipeControlEnabled(true);
-        _lastInteractionTime = Time.time;
+        ResetInteractionTimers();
 
         curtainController.SetShouldPlayComet(false);
     }
@@ -217,7 +236,6 @@ public class StateManager : MonoBehaviour
                 yield return StartCoroutine(ImageOverlayIdleTransition());
                 break;
         }
-
     }
 
     private IEnumerator CurtainIdleTransition()
@@ -225,8 +243,6 @@ public class StateManager : MonoBehaviour
         bool slideCompleted = false;
         curtainController.SlideCurtain(true, () => { slideCompleted = true; });
         while (!slideCompleted) yield return null;
-
-
 
         SetState(AppState.Idle, CurrentState);
         CompleteTransitionToIdle();
@@ -248,8 +264,6 @@ public class StateManager : MonoBehaviour
         }
 
         transitionImage.gameObject.SetActive(true);
-
-
 
         yield return StartCoroutine(FadeImage(true, imageFadeDuration));
         yield return new WaitForSeconds(imageHoldDuration);
@@ -274,8 +288,6 @@ public class StateManager : MonoBehaviour
         sunManager?.StartSunFadeIn(sunFadeOutOnTransitionDuration);
 
         yield return StartCoroutine(FadeImage(false, imageFadeDuration));
-
-
 
         transitionImage.gameObject.SetActive(false);
     }
@@ -312,11 +324,10 @@ public class StateManager : MonoBehaviour
     {
         CurrentState = newState;
         OnPreviousStateChanged?.Invoke(previousState);
-        OnStateChanged?.Invoke(CurrentState);
-        //sunManager?.SetAppState(CurrentState);
+        OnStateChanged?.Invoke(newState);
 
         if (CurrentState == AppState.Active)
-            _lastInteractionTime = Time.time;
+            ResetInteractionTimers();
     }
 
     public void SwitchToIdleDirect(bool performTransition = true)
@@ -383,5 +394,14 @@ public class StateManager : MonoBehaviour
         while (!slideCompleted) yield return null;
 
         curtainController.SetOnCurtainFullCallback(OnCurtainFull);
+    }
+
+        public void ResetIdleTimer()
+    {
+        if (CurrentState == AppState.Active)
+        {
+            _lastInteractionTime = Time.time;
+            Debug.Log("[StateManager] Idle timer reset due to interaction.");
+        }
     }
 }
